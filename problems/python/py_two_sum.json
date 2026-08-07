@@ -1,0 +1,55 @@
+{
+  "id": "py_two_sum",
+  "title": "Two Sum",
+  "language": "python",
+  "difficulty": "easy",
+  "topics": [
+    "dictionaries",
+    "arrays"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Find two numbers in a list that add up to a target, and return their\npositions.\n\n## Your function\n\n```\ndef two_sum(numbers, target):\n```\n\nReturn a tuple `(i, j)` with `i < j` and\n`numbers[i] + numbers[j] == target`, or `None` if no such pair exists.\n\n## Watch out\n\n- If several pairs work, return the one whose second index is smallest.\n- The same element may not be used twice, but two equal values at\n  different positions are a valid pair.\n- The nested-loop version is O(n squared). A dictionary of\n  value to index gets you one pass.\n",
+  "starter_code": "def two_sum(numbers, target):\n    \"\"\"Return (i, j) with i < j and numbers[i] + numbers[j] == target.\n\n    Return None when no pair adds up to target.\n    \"\"\"\n    # your code here\n    return None\n",
+  "harness": "\"\"\"Reads: target on the first line, then the numbers.\"\"\"\nimport sys\n\nfrom solution import two_sum\n\n\ndef main():\n    data = sys.stdin.read().split()\n    if not data:\n        print(\"none\")\n        return\n    target = int(data[0])\n    numbers = [int(value) for value in data[1:]]\n\n    result = two_sum(numbers, target)\n    if result is None:\n        print(\"none\")\n    else:\n        first, second = result\n        print(f\"{first} {second}\")\n\n\nmain()\n",
+  "tests": [
+    {
+      "name": "pair at the start",
+      "stdin": "9\n2 7 11 15\n",
+      "expected_stdout": "0 1"
+    },
+    {
+      "name": "pair further in",
+      "stdin": "26\n5 11 15 20 6\n",
+      "expected_stdout": "1 2",
+      "description": "numbers[1] + numbers[2] = 11 + 15 = 26. Indices are returned in ascending order."
+    },
+    {
+      "name": "no pair",
+      "stdin": "100\n1 2 3\n",
+      "expected_stdout": "none"
+    },
+    {
+      "name": "duplicate values",
+      "stdin": "6\n3 3 4\n",
+      "expected_stdout": "0 1",
+      "description": "Two equal values at different positions are a valid pair."
+    },
+    {
+      "name": "negative numbers",
+      "stdin": "-8\n-3 4 -5 2\n",
+      "expected_stdout": "0 2"
+    },
+    {
+      "name": "empty list",
+      "stdin": "5\n",
+      "expected_stdout": "none"
+    },
+    {
+      "name": "single number",
+      "stdin": "5\n5\n",
+      "expected_stdout": "none",
+      "description": "One element cannot pair with itself."
+    }
+  ],
+  "reference_solution_b64": "ZGVmIHR3b19zdW0obnVtYmVycywgdGFyZ2V0KToKICAgICIiIlJldHVybiAoaSwgaikgd2l0aCBpIDwgaiBhbmQgbnVtYmVyc1tpXSArIG51bWJlcnNbal0gPT0gdGFyZ2V0LiIiIgogICAgc2VlbiA9IHt9CiAgICBmb3IgaW5kZXgsIHZhbHVlIGluIGVudW1lcmF0ZShudW1iZXJzKToKICAgICAgICBjb21wbGVtZW50ID0gdGFyZ2V0IC0gdmFsdWUKICAgICAgICBpZiBjb21wbGVtZW50IGluIHNlZW46CiAgICAgICAgICAgIHJldHVybiAoc2Vlbltjb21wbGVtZW50XSwgaW5kZXgpCiAgICAgICAgc2Vlbi5zZXRkZWZhdWx0KHZhbHVlLCBpbmRleCkKICAgIHJldHVybiBOb25lCg=="
+}

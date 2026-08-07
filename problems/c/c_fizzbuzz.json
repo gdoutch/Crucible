@@ -1,0 +1,44 @@
+{
+  "id": "c_fizzbuzz",
+  "title": "FizzBuzz",
+  "language": "c",
+  "difficulty": "easy",
+  "topics": [
+    "control flow",
+    "modulo",
+    "output format"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Print the numbers from `1` to `n`, one per line, with two\nsubstitutions:\n\n- multiples of **3** print `Fizz`\n- multiples of **5** print `Buzz`\n- multiples of **both** print `FizzBuzz`\n\n## Your function\n\n```\nvoid fizzbuzz(int n);\n```\n\n## Watch out\n\n- Check the \"both\" case first, or every multiple of 15 comes out wrong.\n- When `n` is `0` (or negative) print nothing at all.\n- Output is compared line by line, so the spelling and capitalisation\n  have to match exactly.\n",
+  "starter_code": "#include <stdio.h>\n\n/* Print 1..n, one per line, substituting Fizz / Buzz / FizzBuzz. */\nvoid fizzbuzz(int n)\n{\n    /* your code here */\n}\n",
+  "harness": "#include <stdio.h>\n\n/* Provided by the candidate in solution.c */\nvoid fizzbuzz(int n);\n\nint main(void)\n{\n    int n;\n    if (scanf(\"%d\", &n) != 1) {\n        return 1;\n    }\n    fizzbuzz(n);\n    return 0;\n}\n",
+  "tests": [
+    {
+      "name": "up to 5",
+      "stdin": "5\n",
+      "expected_stdout": "1\n2\nFizz\n4\nBuzz"
+    },
+    {
+      "name": "up to 15 hits FizzBuzz",
+      "stdin": "15\n",
+      "expected_stdout": "1\n2\nFizz\n4\nBuzz\nFizz\n7\n8\nFizz\nBuzz\n11\nFizz\n13\n14\nFizzBuzz",
+      "description": "15 is divisible by 3 and 5, so it must print FizzBuzz, not Fizz."
+    },
+    {
+      "name": "n is 1",
+      "stdin": "1\n",
+      "expected_stdout": "1"
+    },
+    {
+      "name": "n is 3",
+      "stdin": "3\n",
+      "expected_stdout": "1\n2\nFizz"
+    },
+    {
+      "name": "n is 0 prints nothing",
+      "stdin": "0\n",
+      "expected_stdout": ""
+    }
+  ],
+  "reference_solution_b64": "I2luY2x1ZGUgPHN0ZGlvLmg+Cgp2b2lkIGZpenpidXp6KGludCBuKQp7CiAgICBmb3IgKGludCBpID0gMTsgaSA8PSBuOyBpKyspIHsKICAgICAgICBpZiAoaSAlIDE1ID09IDApIHsKICAgICAgICAgICAgcHJpbnRmKCJGaXp6QnV6elxuIik7CiAgICAgICAgfSBlbHNlIGlmIChpICUgMyA9PSAwKSB7CiAgICAgICAgICAgIHByaW50ZigiRml6elxuIik7CiAgICAgICAgfSBlbHNlIGlmIChpICUgNSA9PSAwKSB7CiAgICAgICAgICAgIHByaW50ZigiQnV6elxuIik7CiAgICAgICAgfSBlbHNlIHsKICAgICAgICAgICAgcHJpbnRmKCIlZFxuIiwgaSk7CiAgICAgICAgfQogICAgfQp9Cg=="
+}

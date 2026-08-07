@@ -1,0 +1,11 @@
+# Store everything with LF in the repository and let Git handle the working
+# copy, so the tree is identical whichever platform it is cloned onto.
+* text=auto eol=lf
+
+# Batch files are read by cmd.exe, which is happiest with CRLF.
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Problem definitions are data: keep them LF everywhere so the base64 blobs
+# and embedded C sources hash identically across platforms.
+*.json text eol=lf

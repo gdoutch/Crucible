@@ -1,0 +1,55 @@
+{
+  "id": "py_run_length_encode",
+  "title": "Run-Length Encoding",
+  "language": "python",
+  "difficulty": "medium",
+  "topics": [
+    "strings",
+    "iteration"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Compress a string by replacing each run of repeated characters with the\ncharacter followed by the length of the run.\n\n## Your function\n\n```\ndef encode(text):\n```\n\n`\"aaabbc\"` becomes `\"a3b2c1\"`. Every character gets a count, including\nruns of length one.\n\n## Watch out\n\n- The empty string encodes to the empty string.\n- Runs of ten or more are written as-is: `\"a\" * 12` becomes `\"a12\"`.\n- Case is significant: `\"aA\"` is two runs, not one.\n",
+  "starter_code": "def encode(text):\n    \"\"\"Return the run-length encoding of `text`.\n\n    \"aaabbc\" -> \"a3b2c1\"\n    \"\"\"\n    # your code here\n    return \"\"\n",
+  "harness": "\"\"\"Reads one line and prints its encoding.\"\"\"\nimport sys\n\nfrom solution import encode\n\n\ndef main():\n    line = sys.stdin.readline().rstrip(\"\\r\\n\")\n    print(encode(line))\n\n\nmain()\n",
+  "tests": [
+    {
+      "name": "mixed runs",
+      "stdin": "aaabbc\n",
+      "expected_stdout": "a3b2c1"
+    },
+    {
+      "name": "no repeats",
+      "stdin": "abc\n",
+      "expected_stdout": "a1b1c1",
+      "description": "Single characters still get a count."
+    },
+    {
+      "name": "empty string",
+      "stdin": "\n",
+      "expected_stdout": ""
+    },
+    {
+      "name": "one character",
+      "stdin": "z\n",
+      "expected_stdout": "z1"
+    },
+    {
+      "name": "run longer than nine",
+      "stdin": "aaaaaaaaaaaa\n",
+      "expected_stdout": "a12",
+      "description": "Twelve a's -- the count is written in full, not as two separate runs."
+    },
+    {
+      "name": "case is significant",
+      "stdin": "aAaa\n",
+      "expected_stdout": "a1A1a2"
+    },
+    {
+      "name": "the run returns",
+      "stdin": "aabbaa\n",
+      "expected_stdout": "a2b2a2",
+      "description": "A character that comes back later starts a new run."
+    }
+  ],
+  "reference_solution_b64": "ZGVmIGVuY29kZSh0ZXh0KToKICAgICIiIlJldHVybiB0aGUgcnVuLWxlbmd0aCBlbmNvZGluZyBvZiBgdGV4dGAuIiIiCiAgICBpZiBub3QgdGV4dDoKICAgICAgICByZXR1cm4gIiIKCiAgICBwYXJ0cyA9IFtdCiAgICBydW5fY2hhciA9IHRleHRbMF0KICAgIHJ1bl9sZW5ndGggPSAxCgogICAgZm9yIGNoYXIgaW4gdGV4dFsxOl06CiAgICAgICAgaWYgY2hhciA9PSBydW5fY2hhcjoKICAgICAgICAgICAgcnVuX2xlbmd0aCArPSAxCiAgICAgICAgZWxzZToKICAgICAgICAgICAgcGFydHMuYXBwZW5kKGYie3J1bl9jaGFyfXtydW5fbGVuZ3RofSIpCiAgICAgICAgICAgIHJ1bl9jaGFyID0gY2hhcgogICAgICAgICAgICBydW5fbGVuZ3RoID0gMQoKICAgIHBhcnRzLmFwcGVuZChmIntydW5fY2hhcn17cnVuX2xlbmd0aH0iKQogICAgcmV0dXJuICIiLmpvaW4ocGFydHMpCg=="
+}

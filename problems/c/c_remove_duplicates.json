@@ -1,0 +1,54 @@
+{
+  "id": "c_remove_duplicates",
+  "title": "Remove Duplicates From a Sorted Array",
+  "language": "c",
+  "difficulty": "medium",
+  "topics": [
+    "arrays",
+    "in-place",
+    "two pointers"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Given a **sorted** array, remove the repeats in place so that each\nvalue appears once, and return how many values are left.\n\n## Your function\n\n```\nint remove_duplicates(int *values, int count);\n```\n\nThe first `n` elements of `values` must hold the unique values in their\noriginal order, where `n` is your return value. Whatever sits beyond\nindex `n - 1` is ignored.\n\n## Watch out\n\n- Do not allocate a second array -- the point is to compact in place.\n- Two indices work well: one reading, one writing.\n- `count` may be `0`.\n",
+  "starter_code": "/* Compact `values` in place so each value appears once, and return the\n * number of unique values.\n *\n * `values` is sorted ascending and may be NULL when `count` is 0.\n */\nint remove_duplicates(int *values, int count)\n{\n    /* your code here */\n    return 0;\n}\n",
+  "harness": "#include <stdio.h>\n#include <stdlib.h>\n\n/* Provided by the candidate in solution.c */\nint remove_duplicates(int *values, int count);\n\nstatic int read_int_array(int **out, int *count_out)\n{\n    int count;\n    if (scanf(\"%d\", &count) != 1 || count < 0) {\n        return 0;\n    }\n    int *values = NULL;\n    if (count > 0) {\n        values = malloc((size_t)count * sizeof *values);\n        if (values == NULL) {\n            return 0;\n        }\n        for (int i = 0; i < count; i++) {\n            if (scanf(\"%d\", &values[i]) != 1) {\n                free(values);\n                return 0;\n            }\n        }\n    }\n    *out = values;\n    *count_out = count;\n    return 1;\n}\n\nint main(void)\n{\n    int *values = NULL;\n    int count = 0;\n    if (!read_int_array(&values, &count)) {\n        return 1;\n    }\n\n    int unique = remove_duplicates(values, count);\n    printf(\"%d\\n\", unique);\n    for (int i = 0; i < unique; i++) {\n        printf(\"%d%s\", values[i], (i + 1 < unique) ? \" \" : \"\");\n    }\n    printf(\"\\n\");\n\n    free(values);\n    return 0;\n}\n",
+  "tests": [
+    {
+      "name": "consecutive repeats",
+      "stdin": "6\n1 1 2 2 3 3\n",
+      "expected_stdout": "3\n1 2 3"
+    },
+    {
+      "name": "no duplicates",
+      "stdin": "4\n1 2 3 4\n",
+      "expected_stdout": "4\n1 2 3 4"
+    },
+    {
+      "name": "all the same",
+      "stdin": "5\n7 7 7 7 7\n",
+      "expected_stdout": "1\n7"
+    },
+    {
+      "name": "empty array",
+      "stdin": "0\n",
+      "expected_stdout": "0",
+      "description": "Return 0 and print nothing after it."
+    },
+    {
+      "name": "single element",
+      "stdin": "1\n9\n",
+      "expected_stdout": "1\n9"
+    },
+    {
+      "name": "long run in the middle",
+      "stdin": "8\n0 1 1 1 1 2 3 3\n",
+      "expected_stdout": "4\n0 1 2 3"
+    },
+    {
+      "name": "negatives",
+      "stdin": "5\n-3 -3 -1 0 0\n",
+      "expected_stdout": "3\n-3 -1 0"
+    }
+  ],
+  "reference_solution_b64": "aW50IHJlbW92ZV9kdXBsaWNhdGVzKGludCAqdmFsdWVzLCBpbnQgY291bnQpCnsKICAgIGlmIChjb3VudCA8PSAwKSB7CiAgICAgICAgcmV0dXJuIDA7CiAgICB9CgogICAgaW50IHdyaXRlID0gMTsKICAgIGZvciAoaW50IHJlYWQgPSAxOyByZWFkIDwgY291bnQ7IHJlYWQrKykgewogICAgICAgIGlmICh2YWx1ZXNbcmVhZF0gIT0gdmFsdWVzW3dyaXRlIC0gMV0pIHsKICAgICAgICAgICAgdmFsdWVzW3dyaXRlXSA9IHZhbHVlc1tyZWFkXTsKICAgICAgICAgICAgd3JpdGUrKzsKICAgICAgICB9CiAgICB9CiAgICByZXR1cm4gd3JpdGU7Cn0K"
+}

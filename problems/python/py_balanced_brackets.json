@@ -1,0 +1,60 @@
+{
+  "id": "py_balanced_brackets",
+  "title": "Balanced Brackets",
+  "language": "python",
+  "difficulty": "medium",
+  "topics": [
+    "stacks",
+    "strings",
+    "parsing"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Decide whether the brackets in a string are balanced.\n\n## Your function\n\n```\ndef is_balanced(text):\n```\n\nReturn `True` if every `(`, `[` and `{` is closed by the matching\n`)`, `]` or `}` in the right order. Any other character is ignored.\n\n## Watch out\n\n- Order matters: `([)]` is **not** balanced.\n- A closing bracket with nothing open is not balanced.\n- Brackets left open at the end are not balanced.\n- The empty string is balanced.\n\nThis is the classic use for a stack: push on open, pop and check on\nclose.\n",
+  "starter_code": "def is_balanced(text):\n    \"\"\"Return True if the brackets in `text` are balanced.\n\n    Characters other than ()[]{} are ignored.\n    \"\"\"\n    # your code here\n    return False\n",
+  "harness": "\"\"\"Reads one line and prints true/false.\"\"\"\nimport sys\n\nfrom solution import is_balanced\n\n\ndef main():\n    line = sys.stdin.readline().rstrip(\"\\r\\n\")\n    print(\"true\" if is_balanced(line) else \"false\")\n\n\nmain()\n",
+  "tests": [
+    {
+      "name": "simple pair",
+      "stdin": "()\n",
+      "expected_stdout": "true"
+    },
+    {
+      "name": "nested",
+      "stdin": "{[()]}\n",
+      "expected_stdout": "true"
+    },
+    {
+      "name": "interleaved is not nested",
+      "stdin": "([)]\n",
+      "expected_stdout": "false",
+      "description": "The ) tries to close a [ -- wrong order."
+    },
+    {
+      "name": "unclosed",
+      "stdin": "(((\n",
+      "expected_stdout": "false"
+    },
+    {
+      "name": "unopened",
+      "stdin": ")\n",
+      "expected_stdout": "false"
+    },
+    {
+      "name": "empty string",
+      "stdin": "\n",
+      "expected_stdout": "true"
+    },
+    {
+      "name": "other characters ignored",
+      "stdin": "if (a[i] > 0) { x++; }\n",
+      "expected_stdout": "true",
+      "description": "Letters, digits and punctuation are not brackets."
+    },
+    {
+      "name": "mismatched types",
+      "stdin": "(]\n",
+      "expected_stdout": "false"
+    }
+  ],
+  "reference_solution_b64": "ZGVmIGlzX2JhbGFuY2VkKHRleHQpOgogICAgIiIiUmV0dXJuIFRydWUgaWYgdGhlIGJyYWNrZXRzIGluIGB0ZXh0YCBhcmUgYmFsYW5jZWQuIiIiCiAgICBjbG9zaW5nID0geyIpIjogIigiLCAiXSI6ICJbIiwgIn0iOiAieyJ9CiAgICBzdGFjayA9IFtdCgogICAgZm9yIGNoYXIgaW4gdGV4dDoKICAgICAgICBpZiBjaGFyIGluICIoW3siOgogICAgICAgICAgICBzdGFjay5hcHBlbmQoY2hhcikKICAgICAgICBlbGlmIGNoYXIgaW4gY2xvc2luZzoKICAgICAgICAgICAgaWYgbm90IHN0YWNrIG9yIHN0YWNrLnBvcCgpICE9IGNsb3NpbmdbY2hhcl06CiAgICAgICAgICAgICAgICByZXR1cm4gRmFsc2UKCiAgICByZXR1cm4gbm90IHN0YWNrCg=="
+}

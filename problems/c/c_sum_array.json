@@ -1,0 +1,46 @@
+{
+  "id": "c_sum_array",
+  "title": "Sum of an Array",
+  "language": "c",
+  "difficulty": "easy",
+  "topics": [
+    "arrays",
+    "pointers",
+    "loops"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Write a function that adds up every element of an array of integers.\n\n## Your function\n\n```\nint sum_array(const int *values, int count);\n```\n\nReturn the sum of the first `count` elements of `values`.\n\n## Watch out\n\n- When `count` is `0` the array is empty and `values` may be `NULL`.\n  Your function must return `0` without reading through the pointer.\n- The test harness reads the array for you and calls your function.\n  You only write `sum_array` -- do not write `main`.\n",
+  "starter_code": "/* Return the sum of the first `count` elements of `values`.\n *\n * `values` may be NULL when `count` is 0.\n */\nint sum_array(const int *values, int count)\n{\n    /* your code here */\n    return 0;\n}\n",
+  "harness": "#include <stdio.h>\n#include <stdlib.h>\n\n/* Provided by the candidate in solution.c */\nint sum_array(const int *values, int count);\n\nstatic int read_int_array(int **out, int *count_out)\n{\n    int count;\n    if (scanf(\"%d\", &count) != 1 || count < 0) {\n        return 0;\n    }\n    int *values = NULL;\n    if (count > 0) {\n        values = malloc((size_t)count * sizeof *values);\n        if (values == NULL) {\n            return 0;\n        }\n        for (int i = 0; i < count; i++) {\n            if (scanf(\"%d\", &values[i]) != 1) {\n                free(values);\n                return 0;\n            }\n        }\n    }\n    *out = values;\n    *count_out = count;\n    return 1;\n}\n\nint main(void)\n{\n    int *values = NULL;\n    int count = 0;\n    if (!read_int_array(&values, &count)) {\n        return 1;\n    }\n    printf(\"%d\\n\", sum_array(values, count));\n    free(values);\n    return 0;\n}\n",
+  "tests": [
+    {
+      "name": "five positive numbers",
+      "stdin": "5\n1 2 3 4 5\n",
+      "expected_stdout": "15",
+      "description": "The straightforward case: 1+2+3+4+5."
+    },
+    {
+      "name": "empty array",
+      "stdin": "0\n",
+      "expected_stdout": "0",
+      "description": "count is 0 and values is NULL. Return 0 without dereferencing the pointer."
+    },
+    {
+      "name": "single element",
+      "stdin": "1\n42\n",
+      "expected_stdout": "42"
+    },
+    {
+      "name": "negative numbers",
+      "stdin": "4\n-5 -10 3 2\n",
+      "expected_stdout": "-10"
+    },
+    {
+      "name": "sums back to zero",
+      "stdin": "6\n10 -10 20 -20 30 -30\n",
+      "expected_stdout": "0",
+      "description": "A zero result must not be confused with an empty array."
+    }
+  ],
+  "reference_solution_b64": "aW50IHN1bV9hcnJheShjb25zdCBpbnQgKnZhbHVlcywgaW50IGNvdW50KQp7CiAgICBpbnQgdG90YWwgPSAwOwogICAgZm9yIChpbnQgaSA9IDA7IGkgPCBjb3VudDsgaSsrKSB7CiAgICAgICAgdG90YWwgKz0gdmFsdWVzW2ldOwogICAgfQogICAgcmV0dXJuIHRvdGFsOwp9Cg=="
+}

@@ -1,0 +1,65 @@
+{
+  "id": "c_binary_search",
+  "title": "Binary Search",
+  "language": "c",
+  "difficulty": "medium",
+  "topics": [
+    "algorithms",
+    "arrays",
+    "search"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Find a value in a **sorted** array of integers and return its index.\n\n## Your function\n\n```\nint binary_search(const int *values, int count, int target);\n```\n\nReturn the index of `target`, or `-1` if it is not present. `values` is\nsorted in ascending order.\n\n## Watch out\n\n- Halve the search range each step. A linear scan passes these tests\n  but misses the point of the exercise.\n- `lo + (hi - lo) / 2` avoids the overflow that `(lo + hi) / 2` can hit\n  on large arrays.\n- Getting the loop condition wrong here usually means an infinite loop\n  rather than a wrong answer, so the tests have a time limit.\n- `count` may be `0`, in which case `values` may be `NULL`.\n",
+  "starter_code": "/* Return the index of `target` in the ascending sorted array `values`,\n * or -1 if it is not there.\n *\n * `values` may be NULL when `count` is 0.\n */\nint binary_search(const int *values, int count, int target)\n{\n    /* your code here */\n    return -1;\n}\n",
+  "harness": "#include <stdio.h>\n#include <stdlib.h>\n\n/* Provided by the candidate in solution.c */\nint binary_search(const int *values, int count, int target);\n\nstatic int read_int_array(int **out, int *count_out)\n{\n    int count;\n    if (scanf(\"%d\", &count) != 1 || count < 0) {\n        return 0;\n    }\n    int *values = NULL;\n    if (count > 0) {\n        values = malloc((size_t)count * sizeof *values);\n        if (values == NULL) {\n            return 0;\n        }\n        for (int i = 0; i < count; i++) {\n            if (scanf(\"%d\", &values[i]) != 1) {\n                free(values);\n                return 0;\n            }\n        }\n    }\n    *out = values;\n    *count_out = count;\n    return 1;\n}\n\nint main(void)\n{\n    int *values = NULL;\n    int count = 0;\n    if (!read_int_array(&values, &count)) {\n        return 1;\n    }\n    int target;\n    if (scanf(\"%d\", &target) != 1) {\n        free(values);\n        return 1;\n    }\n    printf(\"%d\\n\", binary_search(values, count, target));\n    free(values);\n    return 0;\n}\n",
+  "tests": [
+    {
+      "name": "found in the middle",
+      "stdin": "7\n1 3 5 7 9 11 13\n7\n",
+      "expected_stdout": "3"
+    },
+    {
+      "name": "first element",
+      "stdin": "7\n1 3 5 7 9 11 13\n1\n",
+      "expected_stdout": "0"
+    },
+    {
+      "name": "last element",
+      "stdin": "7\n1 3 5 7 9 11 13\n13\n",
+      "expected_stdout": "6",
+      "description": "A common off-by-one: `high` must start at count-1 and the loop must still run when low == high."
+    },
+    {
+      "name": "missing value",
+      "stdin": "7\n1 3 5 7 9 11 13\n8\n",
+      "expected_stdout": "-1"
+    },
+    {
+      "name": "below the range",
+      "stdin": "3\n10 20 30\n5\n",
+      "expected_stdout": "-1"
+    },
+    {
+      "name": "above the range",
+      "stdin": "3\n10 20 30\n35\n",
+      "expected_stdout": "-1"
+    },
+    {
+      "name": "empty array",
+      "stdin": "0\n99\n",
+      "expected_stdout": "-1",
+      "description": "Must return -1 without reading through a NULL pointer."
+    },
+    {
+      "name": "single element, present",
+      "stdin": "1\n42\n42\n",
+      "expected_stdout": "0"
+    },
+    {
+      "name": "single element, absent",
+      "stdin": "1\n42\n7\n",
+      "expected_stdout": "-1"
+    }
+  ],
+  "reference_solution_b64": "aW50IGJpbmFyeV9zZWFyY2goY29uc3QgaW50ICp2YWx1ZXMsIGludCBjb3VudCwgaW50IHRhcmdldCkKewogICAgaW50IGxvdyA9IDA7CiAgICBpbnQgaGlnaCA9IGNvdW50IC0gMTsKCiAgICB3aGlsZSAobG93IDw9IGhpZ2gpIHsKICAgICAgICBpbnQgbWlkID0gbG93ICsgKGhpZ2ggLSBsb3cpIC8gMjsKICAgICAgICBpZiAodmFsdWVzW21pZF0gPT0gdGFyZ2V0KSB7CiAgICAgICAgICAgIHJldHVybiBtaWQ7CiAgICAgICAgfQogICAgICAgIGlmICh2YWx1ZXNbbWlkXSA8IHRhcmdldCkgewogICAgICAgICAgICBsb3cgPSBtaWQgKyAxOwogICAgICAgIH0gZWxzZSB7CiAgICAgICAgICAgIGhpZ2ggPSBtaWQgLSAxOwogICAgICAgIH0KICAgIH0KICAgIHJldHVybiAtMTsKfQo="
+}
