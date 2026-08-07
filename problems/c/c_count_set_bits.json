@@ -1,0 +1,43 @@
+{
+  "id": "c_count_set_bits",
+  "title": "Count the Set Bits",
+  "language": "c",
+  "difficulty": "easy",
+  "topics": [
+    "bitwise",
+    "loops"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Count how many bits are set to 1 in a 32-bit unsigned value.\n\n## Your function\n\n```\nint count_set_bits(unsigned int value);\n```\n\n`count_set_bits(0)` is `0`; `count_set_bits(255)` is `8`.\n\n## Watch out\n\n- The argument is `unsigned` on purpose. Right-shifting a *signed* negative\n  value is implementation defined, and a loop written around `int` can spin\n  forever on a value with the top bit set.\n- `value & 1u` tests the lowest bit; `value >>= 1` moves the next one down.\n  Stop when the value reaches zero rather than always going round 32 times --\n  though 32 times is correct too.\n- `value &= value - 1` clears the lowest set bit, which turns the loop into\n  one iteration per bit that is actually set.\n",
+  "starter_code": "int count_set_bits(unsigned int value)\n{\n    /* your code here */\n    return 0;\n}\n",
+  "harness": "#include <stdio.h>\n\n/* Provided by the candidate in solution.c */\nint count_set_bits(unsigned int value);\n\nint main(void)\n{\n    unsigned int value;\n    if (scanf(\"%u\", &value) != 1) {\n        return 1;\n    }\n    printf(\"%d\\n\", count_set_bits(value));\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random 32-bit values for the bit counter.\n\nValues are assembled out of chosen bit positions rather than picked and then\nexamined, which is what lets each case say honestly how it was built.\n\"\"\"\n\n\ndef generate(rng, count):\n    builders = (_anything, _one_bit, _low_run, _high_bits)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, value, description=\"\"):\n    return {\"name\": name, \"stdin\": \"%d\\n\" % value, \"description\": description}\n\n\ndef _anything(rng, index):\n    return _case(\"a random value #%d\" % index, rng.randrange(0, 2 ** 32))\n\n\ndef _one_bit(rng, index):\n    bit = rng.randrange(32)\n    return _case(\"bit %d alone #%d\" % (bit, index), 1 << bit,\n                 \"A power of two: one bit set, the rest clear.\")\n\n\ndef _low_run(rng, index):\n    width = rng.randint(2, 24)\n    return _case(\"the bottom %d bits #%d\" % (width, index), (1 << width) - 1,\n                 \"A solid run of set bits starting at bit 0.\")\n\n\ndef _high_bits(rng, index):\n    value = 0\n    for bit in rng.sample(range(16, 32), rng.randint(2, 6)):\n        value |= 1 << bit\n    return _case(\"scattered high bits #%d\" % index, value,\n                 \"Everything set is at bit 16 or above, including sometimes \"\n                 \"bit 31.\")\n"
+  },
+  "tests": [
+    {
+      "name": "zero",
+      "stdin": "0\n",
+      "expected_stdout": "0"
+    },
+    {
+      "name": "one",
+      "stdin": "1\n",
+      "expected_stdout": "1"
+    },
+    {
+      "name": "every bit set",
+      "stdin": "4294967295\n",
+      "expected_stdout": "32",
+      "description": "The largest 32-bit value. A loop built on a signed int tends to hang or come back wrong here."
+    },
+    {
+      "name": "the top bit alone",
+      "stdin": "2147483648\n",
+      "expected_stdout": "1",
+      "description": "Bit 31 and nothing else -- the value that makes a signed right shift misbehave."
+    }
+  ],
+  "reference_solution_b64": "aW50IGNvdW50X3NldF9iaXRzKHVuc2lnbmVkIGludCB2YWx1ZSkKewogICAgaW50IGNvdW50ID0gMDsKCiAgICB3aGlsZSAodmFsdWUgIT0gMCkgewogICAgICAgIHZhbHVlICY9IHZhbHVlIC0gMXU7CiAgICAgICAgY291bnQrKzsKICAgIH0KCiAgICByZXR1cm4gY291bnQ7Cn0K"
+}

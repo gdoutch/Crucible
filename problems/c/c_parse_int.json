@@ -1,0 +1,49 @@
+{
+  "id": "c_parse_int",
+  "title": "Parse an Integer",
+  "language": "c",
+  "difficulty": "medium",
+  "topics": [
+    "strings",
+    "pointers"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Turn a string of digits into an `int`, by hand.\n\n## Your function\n\n```\nint parse_int(const char *s, int *out);\n```\n\nIf the whole string is a valid decimal integer, store its value through `out`\nand return `1`. Otherwise return `0` and leave `*out` alone.\n\nValid means: an optional `+` or `-`, then one or more digits, then the end of\nthe string. No spaces, and nothing after the digits. Every value used in the\ntests fits in an `int`.\n\n## Watch out\n\n- `\"\"`, `\"-\"` and `\"+\"` are not valid: a sign on its own is not a number.\n- `\"12a\"` is not valid either. Stopping at the first bad character and\n  returning what you had is what `atoi` does, and is not what is wanted here.\n- Leading zeros are fine: `\"007\"` is 7.\n- `c - '0'` converts a digit character to its value. The digits are guaranteed\n  to be consecutive in any C character set, which is why this works and the\n  same trick on letters does not.\n- Return `0` *before* touching `*out`, so a caller who ignored the return\n  value at least keeps whatever was in the variable.\n",
+  "starter_code": "#include <stddef.h>   /* NULL */\n\nint parse_int(const char *s, int *out)\n{\n    /* your code here */\n    (void)s;\n    (void)out;\n    return 0;\n}\n",
+  "harness": "#include <stdio.h>\n#include <string.h>\n\n/* Provided by the candidate in solution.c */\nint parse_int(const char *s, int *out);\n\nstatic void read_line(char *buffer, size_t size)\n{\n    if (fgets(buffer, (int)size, stdin) == NULL) {\n        buffer[0] = '\\0';\n        return;\n    }\n    buffer[strcspn(buffer, \"\\r\\n\")] = '\\0';\n}\n\nint main(void)\n{\n    char buffer[1024];\n    read_line(buffer, sizeof buffer);\n\n    int value = 0;\n    if (parse_int(buffer, &value)) {\n        printf(\"ok %d\\n\", value);\n    } else {\n        printf(\"bad\\n\");\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random numerals for the parser.\n\nThe invalid cases are made by taking a valid numeral and dropping one\ncharacter into it that cannot appear in a number. That is a property of the\nedit, not something anyone here had to go and check.\n\"\"\"\n\nJUNK = \"abcxyzQZ_%*/. ,\"\n\n\ndef generate(rng, count):\n    builders = (_positive, _negative, _leading_zeros, _spoilt)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, text, description=\"\"):\n    return {\"name\": name, \"stdin\": text + \"\\n\", \"description\": description}\n\n\ndef _numeral(rng):\n    return str(rng.randint(1, 2000000000))\n\n\ndef _positive(rng, index):\n    return _case(\"a positive number #%d\" % index, _numeral(rng))\n\n\ndef _negative(rng, index):\n    return _case(\"a negative number #%d\" % index, \"-\" + _numeral(rng))\n\n\ndef _leading_zeros(rng, index):\n    text = \"0\" * rng.randint(1, 4) + str(rng.randint(0, 9999))\n    if rng.random() < 0.3:\n        text = \"-\" + text\n    return _case(\"padded with zeros #%d\" % index, text,\n                 \"Leading zeros do not change the value and do not make the \"\n                 \"string invalid.\")\n\n\ndef _spoilt(rng, index):\n    text = _numeral(rng)\n    if rng.random() < 0.4:\n        text = rng.choice(\"+-\") + text\n    where = rng.randint(1, len(text))\n    spoilt = text[:where] + rng.choice(JUNK) + text[where:]\n    return _case(\"not a number #%d\" % index, spoilt,\n                 \"A valid numeral with one character in it that cannot be part \"\n                 \"of a number.\")\n"
+  },
+  "tests": [
+    {
+      "name": "zero",
+      "stdin": "0\n",
+      "expected_stdout": "ok 0"
+    },
+    {
+      "name": "empty string",
+      "stdin": "\n",
+      "expected_stdout": "bad",
+      "description": "No digits at all."
+    },
+    {
+      "name": "a lone sign",
+      "stdin": "-\n",
+      "expected_stdout": "bad",
+      "description": "A sign has to be followed by at least one digit."
+    },
+    {
+      "name": "an explicit plus",
+      "stdin": "+58\n",
+      "expected_stdout": "ok 58"
+    },
+    {
+      "name": "trailing rubbish",
+      "stdin": "12a\n",
+      "expected_stdout": "bad",
+      "description": "The whole string has to be a number, so this is a rejection rather than a 12."
+    }
+  ],
+  "reference_solution_b64": "I2luY2x1ZGUgPHN0ZGRlZi5oPgoKaW50IHBhcnNlX2ludChjb25zdCBjaGFyICpzLCBpbnQgKm91dCkKewogICAgaWYgKHMgPT0gTlVMTCB8fCAqcyA9PSAnXDAnKSB7CiAgICAgICAgcmV0dXJuIDA7CiAgICB9CgogICAgaW50IG5lZ2F0aXZlID0gMDsKICAgIGlmICgqcyA9PSAnKycgfHwgKnMgPT0gJy0nKSB7CiAgICAgICAgbmVnYXRpdmUgPSAoKnMgPT0gJy0nKTsKICAgICAgICBzKys7CiAgICB9CiAgICBpZiAoKnMgPT0gJ1wwJykgewogICAgICAgIHJldHVybiAwOwogICAgfQoKICAgIGxvbmcgbG9uZyB2YWx1ZSA9IDA7CiAgICBmb3IgKDsgKnMgIT0gJ1wwJzsgcysrKSB7CiAgICAgICAgaWYgKCpzIDwgJzAnIHx8ICpzID4gJzknKSB7CiAgICAgICAgICAgIHJldHVybiAwOwogICAgICAgIH0KICAgICAgICB2YWx1ZSA9IHZhbHVlICogMTAgKyAoKnMgLSAnMCcpOwogICAgfQoKICAgICpvdXQgPSAoaW50KShuZWdhdGl2ZSA/IC12YWx1ZSA6IHZhbHVlKTsKICAgIHJldHVybiAxOwp9Cg=="
+}

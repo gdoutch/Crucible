@@ -1,0 +1,43 @@
+{
+  "id": "c_gcd",
+  "title": "Greatest Common Divisor",
+  "language": "c",
+  "difficulty": "easy",
+  "topics": [
+    "loops",
+    "arithmetic"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Find the largest number that divides both of two non-negative\nintegers.\n\n## Your function\n\n```\nint gcd(int a, int b);\n```\n\nBoth arguments are zero or positive and fit in an `int`.\n\n## Watch out\n\n- `gcd(0, n)` is `n`, and `gcd(0, 0)` is `0`. Every number divides zero.\n- Euclid's algorithm is three lines: while `b` is not zero, replace the pair\n  `(a, b)` with `(b, a % b)`. Trying every divisor from the smaller number\n  downwards also works, and is dramatically slower.\n- `%` on two non-negative `int`s is well behaved, so no sign juggling is\n  needed here.\n",
+  "starter_code": "int gcd(int a, int b)\n{\n    /* your code here */\n    return 0;\n}\n",
+  "harness": "#include <stdio.h>\n\n/* Provided by the candidate in solution.c */\nint gcd(int a, int b);\n\nint main(void)\n{\n    int a, b;\n    if (scanf(\"%d %d\", &a, &b) != 2) {\n        return 1;\n    }\n    printf(\"%d\\n\", gcd(a, b));\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random pairs for the greatest common divisor.\n\nEach builder says how its pair was made -- two multiples of seven, two\nneighbouring numbers -- rather than what the answer is. Consecutive integers\nnever share a factor above one, so that case is guaranteed without anything\nhere having to divide.\n\"\"\"\n\n\ndef generate(rng, count):\n    builders = (_shared_factor, _neighbours, _one_divides_the_other, _with_zero)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, a, b, description=\"\"):\n    return {\"name\": name, \"stdin\": \"%d %d\\n\" % (a, b), \"description\": description}\n\n\ndef _shared_factor(rng, index):\n    factor = rng.randint(2, 40)\n    return _case(\"two multiples of %d #%d\" % (factor, index),\n                 factor * rng.randint(2, 50), factor * rng.randint(2, 50),\n                 \"Both numbers were built from the same factor, so the answer \"\n                 \"is at least that factor -- possibly more.\")\n\n\ndef _neighbours(rng, index):\n    n = rng.randint(20, 900)\n    return _case(\"neighbouring numbers #%d\" % index, n, n + 1,\n                 \"Consecutive integers never share a factor above 1.\")\n\n\ndef _one_divides_the_other(rng, index):\n    smaller = rng.randint(2, 60)\n    return _case(\"one divides the other #%d\" % index,\n                 smaller * rng.randint(2, 30), smaller)\n\n\ndef _with_zero(rng, index):\n    value = rng.randint(1, 500)\n    zero_first = rng.random() < 0.5\n    return _case(\"zero on %s #%d\" % (\"the left\" if zero_first else \"the right\",\n                                     index),\n                 0 if zero_first else value, value if zero_first else 0,\n                 \"The loop has to cope with a zero arriving on either side.\")\n"
+  },
+  "tests": [
+    {
+      "name": "both zero",
+      "stdin": "0 0\n",
+      "expected_stdout": "0",
+      "description": "Nothing divides into a largest common factor here, and 0 is the conventional answer."
+    },
+    {
+      "name": "zero and a number",
+      "stdin": "0 18\n",
+      "expected_stdout": "18",
+      "description": "Every number divides 0, so the answer is the other one."
+    },
+    {
+      "name": "the same number twice",
+      "stdin": "24 24\n",
+      "expected_stdout": "24"
+    },
+    {
+      "name": "one",
+      "stdin": "1 97\n",
+      "expected_stdout": "1"
+    }
+  ],
+  "reference_solution_b64": "aW50IGdjZChpbnQgYSwgaW50IGIpCnsKICAgIHdoaWxlIChiICE9IDApIHsKICAgICAgICBpbnQgcmVtYWluZGVyID0gYSAlIGI7CiAgICAgICAgYSA9IGI7CiAgICAgICAgYiA9IHJlbWFpbmRlcjsKICAgIH0KICAgIHJldHVybiBhOwp9Cg=="
+}

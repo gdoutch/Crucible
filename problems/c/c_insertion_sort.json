@@ -1,0 +1,43 @@
+{
+  "id": "c_insertion_sort",
+  "title": "Sort an Array In Place",
+  "language": "c",
+  "difficulty": "medium",
+  "topics": [
+    "sorting",
+    "arrays"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Sort an array of integers into ascending order, in place.\n\n## Your function\n\n```\nvoid sort_values(int *values, int count);\n```\n\nWhen it returns, `values[0] .. values[count - 1]` are in ascending order.\nThere is no return value; the caller's array *is* the answer.\n\n## Watch out\n\n- Write the loops. Calling `qsort` passes the tests and misses the exercise.\n- Do not allocate a second array. Insertion sort shifts elements along inside\n  the array it was given.\n- `count` may be `0`, in which case `values` may be `NULL`, and it may be `1`,\n  in which case there is nothing to do.\n- Duplicates are ordinary values, not a special case -- but a comparison\n  written `>=` instead of `>` will shuffle them about needlessly.\n",
+  "starter_code": "void sort_values(int *values, int count)\n{\n    /* your code here */\n    (void)values;\n    (void)count;\n}\n",
+  "harness": "#include <stdio.h>\n#include <stdlib.h>\n\n/* Provided by the candidate in solution.c */\nvoid sort_values(int *values, int count);\n\nstatic int read_int_array(int **out, int *count_out)\n{\n    int count;\n    if (scanf(\"%d\", &count) != 1 || count < 0) {\n        return 0;\n    }\n    int *values = NULL;\n    if (count > 0) {\n        values = malloc((size_t)count * sizeof *values);\n        if (values == NULL) {\n            return 0;\n        }\n        for (int i = 0; i < count; i++) {\n            if (scanf(\"%d\", &values[i]) != 1) {\n                free(values);\n                return 0;\n            }\n        }\n    }\n    *out = values;\n    *count_out = count;\n    return 1;\n}\n\nint main(void)\n{\n    int *values = NULL;\n    int count = 0;\n    if (!read_int_array(&values, &count)) {\n        return 1;\n    }\n\n    sort_values(values, count);\n\n    for (int i = 0; i < count; i++) {\n        printf(\"%d%s\", values[i], (i + 1 < count) ? \" \" : \"\");\n    }\n    printf(\"\\n\");\n\n    free(values);\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random arrays to sort.\n\nValues stay small and the arrays stay short, because what is being tested is\nthe loop, not the machine. The shapes that break a half-written insertion sort\n-- reversed input, heavy duplication, one element out of place -- each get a\nbuilder rather than being left to a uniform shuffle.\n\"\"\"\n\n\ndef generate(rng, count):\n    builders = (_shuffled, _reversed, _many_duplicates, _nearly_sorted)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, values, description=\"\"):\n    return {\n        \"name\": name,\n        \"stdin\": \"%d\\n%s\\n\" % (len(values), \" \".join(str(v) for v in values)),\n        \"description\": description,\n    }\n\n\ndef _shuffled(rng, index):\n    values = [rng.randint(-99, 99) for _ in range(rng.randint(6, 12))]\n    return _case(\"shuffled values #%d\" % index, values)\n\n\ndef _reversed(rng, index):\n    values = sorted((rng.randint(-99, 99) for _ in range(rng.randint(5, 10))),\n                    reverse=True)\n    return _case(\"in reverse order #%d\" % index, values,\n                 \"The worst case for insertion sort: every element travels the \"\n                 \"whole way back.\")\n\n\ndef _many_duplicates(rng, index):\n    pool = [rng.randint(-20, 20) for _ in range(3)]\n    values = [rng.choice(pool) for _ in range(rng.randint(6, 12))]\n    return _case(\"only a few distinct values #%d\" % index, values,\n                 \"Mostly repeats, drawn from three values.\")\n\n\ndef _nearly_sorted(rng, index):\n    values = sorted(rng.randint(-99, 99) for _ in range(rng.randint(6, 11)))\n    first = rng.randrange(len(values) - 1)\n    second = rng.randrange(first + 1, len(values))\n    values[first], values[second] = values[second], values[first]\n    return _case(\"one pair out of place #%d\" % index, values,\n                 \"Sorted apart from a single swapped pair.\")\n"
+  },
+  "tests": [
+    {
+      "name": "empty array",
+      "stdin": "0\n",
+      "expected_stdout": "",
+      "description": "count is 0 and values may be NULL. Print nothing and do not dereference the pointer."
+    },
+    {
+      "name": "single element",
+      "stdin": "1\n42\n",
+      "expected_stdout": "42"
+    },
+    {
+      "name": "already sorted",
+      "stdin": "5\n1 2 3 4 5\n",
+      "expected_stdout": "1 2 3 4 5",
+      "description": "The best case: nothing should move."
+    },
+    {
+      "name": "all the same",
+      "stdin": "4\n7 7 7 7\n",
+      "expected_stdout": "7 7 7 7"
+    }
+  ],
+  "reference_solution_b64": "dm9pZCBzb3J0X3ZhbHVlcyhpbnQgKnZhbHVlcywgaW50IGNvdW50KQp7CiAgICBmb3IgKGludCBpID0gMTsgaSA8IGNvdW50OyBpKyspIHsKICAgICAgICBpbnQga2V5ID0gdmFsdWVzW2ldOwogICAgICAgIGludCBqID0gaSAtIDE7CgogICAgICAgIHdoaWxlIChqID49IDAgJiYgdmFsdWVzW2pdID4ga2V5KSB7CiAgICAgICAgICAgIHZhbHVlc1tqICsgMV0gPSB2YWx1ZXNbal07CiAgICAgICAgICAgIGotLTsKICAgICAgICB9CgogICAgICAgIHZhbHVlc1tqICsgMV0gPSBrZXk7CiAgICB9Cn0K"
+}

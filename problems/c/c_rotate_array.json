@@ -1,0 +1,43 @@
+{
+  "id": "c_rotate_array",
+  "title": "Rotate an Array Left",
+  "language": "c",
+  "difficulty": "medium",
+  "topics": [
+    "arrays",
+    "in-place"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Rotate an array left by a given number of places, in place.\n\n## Your function\n\n```\nvoid rotate_left(int *values, int count, int shift);\n```\n\nRotating `1 2 3 4 5` left by `2` gives `3 4 5 1 2`. The first `shift`\nelements move to the back and everything else slides down.\n\n## Watch out\n\n- `shift` is zero or positive but may be **larger than** `count`. Rotating a\n  five-element array by 7 is the same as rotating it by 2, so reduce `shift`\n  modulo `count` first.\n- `count` may be `0`. Taking a modulus by `count` before checking it is a\n  division by zero, which is a crash rather than a wrong answer.\n- Rotating by exactly `count` (or by `0`) leaves the array alone.\n- The neat trick: reverse the first `shift` elements, reverse the rest, then\n  reverse the whole thing. No second array and one pass over each part.\n",
+  "starter_code": "void rotate_left(int *values, int count, int shift)\n{\n    /* your code here */\n    (void)values;\n    (void)count;\n    (void)shift;\n}\n",
+  "harness": "#include <stdio.h>\n#include <stdlib.h>\n\n/* Provided by the candidate in solution.c */\nvoid rotate_left(int *values, int count, int shift);\n\nstatic int read_int_array(int **out, int *count_out)\n{\n    int count;\n    if (scanf(\"%d\", &count) != 1 || count < 0) {\n        return 0;\n    }\n    int *values = NULL;\n    if (count > 0) {\n        values = malloc((size_t)count * sizeof *values);\n        if (values == NULL) {\n            return 0;\n        }\n        for (int i = 0; i < count; i++) {\n            if (scanf(\"%d\", &values[i]) != 1) {\n                free(values);\n                return 0;\n            }\n        }\n    }\n    *out = values;\n    *count_out = count;\n    return 1;\n}\n\nint main(void)\n{\n    int *values = NULL;\n    int count = 0;\n    if (!read_int_array(&values, &count)) {\n        return 1;\n    }\n    int shift;\n    if (scanf(\"%d\", &shift) != 1) {\n        free(values);\n        return 1;\n    }\n\n    rotate_left(values, count, shift);\n\n    for (int i = 0; i < count; i++) {\n        printf(\"%d%s\", values[i], (i + 1 < count) ? \" \" : \"\");\n    }\n    printf(\"\\n\");\n\n    free(values);\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random arrays and shifts for the rotation.\n\nThe shift is what this problem is really about, so the builders vary it\ndeliberately: inside the array, past its end, and an exact multiple of its\nlength. The values themselves are just cargo.\n\"\"\"\n\n\ndef generate(rng, count):\n    builders = (_partial_turn, _past_the_end, _whole_turns, _long_array)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, values, shift, description=\"\"):\n    return {\n        \"name\": name,\n        \"stdin\": \"%d\\n%s\\n%d\\n\" % (len(values),\n                                    \" \".join(str(v) for v in values), shift),\n        \"description\": description,\n    }\n\n\ndef _values(rng, how_many):\n    return [rng.randint(-99, 99) for _ in range(how_many)]\n\n\ndef _partial_turn(rng, index):\n    values = _values(rng, rng.randint(5, 10))\n    return _case(\"a partial turn #%d\" % index, values,\n                 rng.randint(1, len(values) - 1))\n\n\ndef _past_the_end(rng, index):\n    values = _values(rng, rng.randint(4, 8))\n    shift = len(values) * rng.randint(1, 4) + rng.randint(1, len(values) - 1)\n    return _case(\"a shift past the end #%d\" % index, values, shift,\n                 \"The shift is bigger than the array, so it has to come down \"\n                 \"modulo the length before anything moves.\")\n\n\ndef _whole_turns(rng, index):\n    values = _values(rng, rng.randint(3, 8))\n    return _case(\"whole turns only #%d\" % index, values,\n                 len(values) * rng.randint(1, 5),\n                 \"An exact multiple of the length: the array comes back \"\n                 \"unchanged.\")\n\n\ndef _long_array(rng, index):\n    values = _values(rng, rng.randint(11, 16))\n    return _case(\"a longer array #%d\" % index, values,\n                 rng.randint(1, len(values) - 1))\n"
+  },
+  "tests": [
+    {
+      "name": "empty array",
+      "stdin": "0\n3\n",
+      "expected_stdout": "",
+      "description": "count is 0. Reducing the shift modulo count here is a division by zero -- check the count first."
+    },
+    {
+      "name": "single element",
+      "stdin": "1\n9\n5\n",
+      "expected_stdout": "9"
+    },
+    {
+      "name": "shift of zero",
+      "stdin": "4\n1 2 3 4\n0\n",
+      "expected_stdout": "1 2 3 4"
+    },
+    {
+      "name": "shift equal to the length",
+      "stdin": "4\n1 2 3 4\n4\n",
+      "expected_stdout": "1 2 3 4",
+      "description": "A full turn brings everything back to where it was."
+    }
+  ],
+  "reference_solution_b64": "c3RhdGljIHZvaWQgcmV2ZXJzZV9yYW5nZShpbnQgKnZhbHVlcywgaW50IGZyb20sIGludCB0bykKewogICAgd2hpbGUgKGZyb20gPCB0bykgewogICAgICAgIGludCB0ZW1wID0gdmFsdWVzW2Zyb21dOwogICAgICAgIHZhbHVlc1tmcm9tXSA9IHZhbHVlc1t0b107CiAgICAgICAgdmFsdWVzW3RvXSA9IHRlbXA7CiAgICAgICAgZnJvbSsrOwogICAgICAgIHRvLS07CiAgICB9Cn0KCnZvaWQgcm90YXRlX2xlZnQoaW50ICp2YWx1ZXMsIGludCBjb3VudCwgaW50IHNoaWZ0KQp7CiAgICBpZiAoY291bnQgPD0gMCkgewogICAgICAgIHJldHVybjsKICAgIH0KCiAgICBzaGlmdCAlPSBjb3VudDsKICAgIGlmIChzaGlmdCA9PSAwKSB7CiAgICAgICAgcmV0dXJuOwogICAgfQoKICAgIHJldmVyc2VfcmFuZ2UodmFsdWVzLCAwLCBzaGlmdCAtIDEpOwogICAgcmV2ZXJzZV9yYW5nZSh2YWx1ZXMsIHNoaWZ0LCBjb3VudCAtIDEpOwogICAgcmV2ZXJzZV9yYW5nZSh2YWx1ZXMsIDAsIGNvdW50IC0gMSk7Cn0K"
+}

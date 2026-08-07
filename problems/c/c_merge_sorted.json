@@ -1,0 +1,44 @@
+{
+  "id": "c_merge_sorted",
+  "title": "Merge Two Sorted Arrays",
+  "language": "c",
+  "difficulty": "medium",
+  "topics": [
+    "arrays",
+    "pointers"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Merge two ascending arrays into one ascending array.\n\n## Your function\n\n```\nvoid merge_sorted(const int *a, int count_a,\n                  const int *b, int count_b,\n                  int *out);\n```\n\nBoth inputs are already sorted ascending. Write all `count_a + count_b` values\ninto `out`, in ascending order. The caller has made `out` big enough.\n\n## Watch out\n\n- One walk through each array is enough: compare the two front elements, take\n  the smaller, advance that one. Concatenating and then sorting works and\n  throws away everything the inputs already told you.\n- When one array runs out, the rest of the other one is copied across\n  unchanged. Two of the three loops you write do nothing but that.\n- Either array may be empty, and both may be. An empty array's pointer may be\n  `NULL`, so the count has to be checked before the pointer is read.\n- Values may repeat, both within an array and across the two.\n",
+  "starter_code": "void merge_sorted(const int *a, int count_a,\n                  const int *b, int count_b,\n                  int *out)\n{\n    /* your code here */\n    (void)a;\n    (void)count_a;\n    (void)b;\n    (void)count_b;\n    (void)out;\n}\n",
+  "harness": "#include <stdio.h>\n#include <stdlib.h>\n\n/* Provided by the candidate in solution.c */\nvoid merge_sorted(const int *a, int count_a,\n                  const int *b, int count_b,\n                  int *out);\n\nstatic int read_int_array(int **out, int *count_out)\n{\n    int count;\n    if (scanf(\"%d\", &count) != 1 || count < 0) {\n        return 0;\n    }\n    int *values = NULL;\n    if (count > 0) {\n        values = malloc((size_t)count * sizeof *values);\n        if (values == NULL) {\n            return 0;\n        }\n        for (int i = 0; i < count; i++) {\n            if (scanf(\"%d\", &values[i]) != 1) {\n                free(values);\n                return 0;\n            }\n        }\n    }\n    *out = values;\n    *count_out = count;\n    return 1;\n}\n\nint main(void)\n{\n    int *a = NULL, *b = NULL;\n    int count_a = 0, count_b = 0;\n    if (!read_int_array(&a, &count_a) || !read_int_array(&b, &count_b)) {\n        free(a);\n        return 1;\n    }\n\n    int total = count_a + count_b;\n    int *out = NULL;\n    if (total > 0) {\n        out = malloc((size_t)total * sizeof *out);\n        if (out == NULL) {\n            free(a);\n            free(b);\n            return 1;\n        }\n    }\n\n    merge_sorted(a, count_a, b, count_b, out);\n\n    for (int i = 0; i < total; i++) {\n        printf(\"%d%s\", out[i], (i + 1 < total) ? \" \" : \"\");\n    }\n    printf(\"\\n\");\n\n    free(a);\n    free(b);\n    free(out);\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random pairs of sorted arrays to merge.\n\nBoth arrays are sorted before they are written out, which is the precondition\nthe one-pass merge depends on. The interesting shapes are about how the two\nranges sit relative to each other, so each builder places them differently.\n\"\"\"\n\n\ndef generate(rng, count):\n    builders = (_interleaved, _disjoint, _one_empty, _shared_values)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, a, b, description=\"\"):\n    return {\n        \"name\": name,\n        \"stdin\": \"%d\\n%s\\n%d\\n%s\\n\" % (len(a), \" \".join(str(v) for v in a),\n                                         len(b), \" \".join(str(v) for v in b)),\n        \"description\": description,\n    }\n\n\ndef _sorted_values(rng, low, high, how_many):\n    return sorted(rng.randint(low, high) for _ in range(how_many))\n\n\ndef _interleaved(rng, index):\n    return _case(\"overlapping ranges #%d\" % index,\n                 _sorted_values(rng, -50, 50, rng.randint(3, 7)),\n                 _sorted_values(rng, -50, 50, rng.randint(3, 7)),\n                 \"The two arrays cover the same range, so the merge keeps \"\n                 \"switching sides.\")\n\n\ndef _disjoint(rng, index):\n    low = _sorted_values(rng, -80, -20, rng.randint(2, 6))\n    high = _sorted_values(rng, 20, 80, rng.randint(2, 6))\n    first_low = rng.random() < 0.5\n    return _case(\"one range entirely below the other #%d\" % index,\n                 low if first_low else high, high if first_low else low,\n                 \"One array is exhausted before the other is reached, so the \"\n                 \"copy-the-remainder loop does most of the work.\")\n\n\ndef _one_empty(rng, index):\n    values = _sorted_values(rng, -40, 40, rng.randint(3, 8))\n    empty_first = rng.random() < 0.5\n    return _case(\"one side empty #%d\" % index,\n                 [] if empty_first else values, values if empty_first else [],\n                 \"An empty array's pointer may be NULL, so its count has to be \"\n                 \"checked first.\")\n\n\ndef _shared_values(rng, index):\n    shared = sorted(rng.sample(range(-30, 30), rng.randint(2, 4)))\n    a = sorted(shared + [rng.randint(-30, 30) for _ in range(rng.randint(1, 3))])\n    b = sorted(shared + [rng.randint(-30, 30) for _ in range(rng.randint(1, 3))])\n    return _case(\"values present in both #%d\" % index, a, b,\n                 \"Several values appear on both sides. Equal elements are not \"\n                 \"a special case, but they are where an off-by-one shows up.\")\n"
+  },
+  "tests": [
+    {
+      "name": "both empty",
+      "stdin": "0\n0\n",
+      "expected_stdout": "",
+      "description": "Nothing to merge. Both pointers may be NULL."
+    },
+    {
+      "name": "first empty",
+      "stdin": "0\n3\n1 2 3\n",
+      "expected_stdout": "1 2 3",
+      "description": "The whole of the second array is copied across."
+    },
+    {
+      "name": "second empty",
+      "stdin": "3\n4 5 6\n0\n",
+      "expected_stdout": "4 5 6"
+    },
+    {
+      "name": "one entirely before the other",
+      "stdin": "2\n1 2\n2\n8 9\n",
+      "expected_stdout": "1 2 8 9",
+      "description": "The first array empties before the second is touched."
+    }
+  ],
+  "reference_solution_b64": "dm9pZCBtZXJnZV9zb3J0ZWQoY29uc3QgaW50ICphLCBpbnQgY291bnRfYSwKICAgICAgICAgICAgICAgICAgY29uc3QgaW50ICpiLCBpbnQgY291bnRfYiwKICAgICAgICAgICAgICAgICAgaW50ICpvdXQpCnsKICAgIGludCBpID0gMCwgaiA9IDAsIGsgPSAwOwoKICAgIHdoaWxlIChpIDwgY291bnRfYSAmJiBqIDwgY291bnRfYikgewogICAgICAgIG91dFtrKytdID0gKGFbaV0gPD0gYltqXSkgPyBhW2krK10gOiBiW2orK107CiAgICB9CiAgICB3aGlsZSAoaSA8IGNvdW50X2EpIHsKICAgICAgICBvdXRbaysrXSA9IGFbaSsrXTsKICAgIH0KICAgIHdoaWxlIChqIDwgY291bnRfYikgewogICAgICAgIG91dFtrKytdID0gYltqKytdOwogICAgfQp9Cg=="
+}

@@ -1,0 +1,39 @@
+{
+  "id": "c_reverse_list",
+  "title": "Reverse a Linked List",
+  "language": "c",
+  "difficulty": "hard",
+  "topics": [
+    "pointers",
+    "linked lists"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Reverse a singly linked list by relinking it, and return the\nnew head.\n\n## Your function\n\n```\nstruct node {\n    int value;\n    struct node *next;\n};\n\nstruct node *reverse_list(struct node *head);\n```\n\nThe struct is declared in your file and in the harness -- copy it exactly as\nabove. Afterwards the last node is the head and every `next` points the other\nway.\n\n## Watch out\n\n- Relink the nodes. Copying the values into an array, reversing that and\n  writing them back gives the right output and dodges the entire exercise.\n- Three pointers: the node before, the node you are on, and the node after.\n  Save `head->next` **before** you overwrite it, or the rest of the list is\n  gone and no amount of care afterwards gets it back.\n- The empty list is `NULL`, and reversing it gives `NULL`. A one-node list\n  comes back unchanged.\n- The old head becomes the new tail, so its `next` has to end up `NULL`.\n- Do not allocate anything, and do not free anything -- the caller owns the\n  nodes and will free the list you hand back.\n",
+  "starter_code": "#include <stddef.h>   /* NULL */\n\nstruct node {\n    int value;\n    struct node *next;\n};\n\nstruct node *reverse_list(struct node *head)\n{\n    /* your code here */\n    return head;\n}\n",
+  "harness": "#include <stdio.h>\n#include <stdlib.h>\n\n/* Declared identically in solution.c -- separate translation units, same\n   layout, which is exactly what a shared header would give you. */\nstruct node {\n    int value;\n    struct node *next;\n};\n\n/* Provided by the candidate in solution.c */\nstruct node *reverse_list(struct node *head);\n\nstatic void free_list(struct node *head)\n{\n    while (head != NULL) {\n        struct node *next = head->next;\n        free(head);\n        head = next;\n    }\n}\n\nint main(void)\n{\n    int count;\n    if (scanf(\"%d\", &count) != 1 || count < 0) {\n        return 1;\n    }\n\n    struct node *head = NULL;\n    struct node *tail = NULL;\n    for (int i = 0; i < count; i++) {\n        int value;\n        if (scanf(\"%d\", &value) != 1) {\n            free_list(head);\n            return 1;\n        }\n        struct node *fresh = malloc(sizeof *fresh);\n        if (fresh == NULL) {\n            free_list(head);\n            return 1;\n        }\n        fresh->value = value;\n        fresh->next = NULL;\n        if (tail == NULL) {\n            head = fresh;\n        } else {\n            tail->next = fresh;\n        }\n        tail = fresh;\n    }\n\n    head = reverse_list(head);\n\n    for (struct node *walk = head; walk != NULL; walk = walk->next) {\n        printf(\"%d%s\", walk->value, (walk->next != NULL) ? \" \" : \"\");\n    }\n    printf(\"\\n\");\n\n    free_list(head);\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random lists to reverse.\n\nThe harness builds the nodes from these values in the order given, so a case\nis just a list of numbers. Lengths are kept short: a pointer bug shows up at\nthree nodes exactly as clearly as at three hundred, and a shorter expected\nline is a great deal easier to read when it goes wrong.\n\"\"\"\n\n\ndef generate(rng, count):\n    builders = (_short, _medium, _with_repeats, _longer)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, values, description=\"\"):\n    return {\n        \"name\": name,\n        \"stdin\": \"%d\\n%s\\n\" % (len(values), \" \".join(str(v) for v in values)),\n        \"description\": description,\n    }\n\n\ndef _short(rng, index):\n    return _case(\"three nodes #%d\" % index,\n                 [rng.randint(-99, 99) for _ in range(3)])\n\n\ndef _medium(rng, index):\n    return _case(\"a handful of nodes #%d\" % index,\n                 [rng.randint(-99, 99) for _ in range(rng.randint(4, 7))])\n\n\ndef _with_repeats(rng, index):\n    value = rng.randint(-50, 50)\n    values = [value] * rng.randint(2, 4) + [rng.randint(-99, 99)\n                                            for _ in range(rng.randint(1, 3))]\n    rng.shuffle(values)\n    return _case(\"repeated values #%d\" % index, values,\n                 \"Equal values in different nodes. What is being reversed is \"\n                 \"the links, not the numbers.\")\n\n\ndef _longer(rng, index):\n    return _case(\"a longer list #%d\" % index,\n                 [rng.randint(-99, 99) for _ in range(rng.randint(8, 12))])\n"
+  },
+  "tests": [
+    {
+      "name": "empty list",
+      "stdin": "0\n",
+      "expected_stdout": "",
+      "description": "head is NULL. Return NULL without following it."
+    },
+    {
+      "name": "one node",
+      "stdin": "1\n7\n",
+      "expected_stdout": "7",
+      "description": "The head is already the tail. Its next must end up NULL, which it already is."
+    },
+    {
+      "name": "two nodes",
+      "stdin": "2\n1 2\n",
+      "expected_stdout": "2 1",
+      "description": "The smallest list where the links actually change."
+    }
+  ],
+  "reference_solution_b64": "I2luY2x1ZGUgPHN0ZGRlZi5oPgoKc3RydWN0IG5vZGUgewogICAgaW50IHZhbHVlOwogICAgc3RydWN0IG5vZGUgKm5leHQ7Cn07CgpzdHJ1Y3Qgbm9kZSAqcmV2ZXJzZV9saXN0KHN0cnVjdCBub2RlICpoZWFkKQp7CiAgICBzdHJ1Y3Qgbm9kZSAqcHJldmlvdXMgPSBOVUxMOwoKICAgIHdoaWxlIChoZWFkICE9IE5VTEwpIHsKICAgICAgICBzdHJ1Y3Qgbm9kZSAqbmV4dCA9IGhlYWQtPm5leHQ7CiAgICAgICAgaGVhZC0+bmV4dCA9IHByZXZpb3VzOwogICAgICAgIHByZXZpb3VzID0gaGVhZDsKICAgICAgICBoZWFkID0gbmV4dDsKICAgIH0KCiAgICByZXR1cm4gcHJldmlvdXM7Cn0K"
+}

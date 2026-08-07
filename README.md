@@ -26,6 +26,7 @@ python -m crucible
 - [How a submission is run](#how-a-submission-is-run)
 - [The reference-solution gate](#the-reference-solution-gate)
 - [Randomised test data](#randomised-test-data)
+- [What is in the box](#what-is-in-the-box)
 - [Writing a problem](#writing-a-problem)
 - [Adding a language](#adding-a-language)
 - [Command line](#command-line)
@@ -77,9 +78,11 @@ window mid-problem loses nothing. *File → Reset to starter code* discards it.
 ## Installing a C compiler
 
 The app searches `PATH` and the usual install locations for `gcc`, `clang`,
-`cc` and `cl.exe`. If none is found, C problems still open and their test cases
-still display — only running is unavailable, and the banner says so rather than
-pretending the problem is broken.
+`cc` and `cl.exe`. If none is found, C problems still open and their
+hand-written test cases still display — only running is unavailable, and the
+banner says so rather than pretending the problem is broken. Their randomised
+cases do not appear, because generating one means running the reference
+solution, which means compiling it.
 
 Any one of these works:
 
@@ -250,6 +253,55 @@ A generator runs in its own process with a ten-second limit, so one with an
 endless loop is reported rather than hanging the app, and a stray `print` left
 in it turns up as a diagnostic instead of corrupting the data.
 
+## What is in the box
+
+21 problems — 18 in C, 3 in Python. Every one of them mixes hand-written edge
+cases with four randomised ones.
+
+The C set is deliberately weighted towards the things C makes you think about
+and other languages do not: what the pointer points at, who owns the memory,
+what happens at the boundary, and what the standard actually promises.
+
+| | Language | Problem | Topics |
+| --- | --- | --- | --- |
+| **easy** | C | Sum of an Array | arrays, pointers, loops |
+| | C | Count the Vowels | strings, ctype, loops |
+| | C | Count the Words | strings, state machines |
+| | C | Reverse a String In Place | strings, pointers, in-place |
+| | C | FizzBuzz | control flow, modulo, output format |
+| | C | Greatest Common Divisor | loops, arithmetic |
+| | C | Count the Set Bits | bitwise, loops |
+| | Python | Two Sum | dictionaries, arrays |
+| **medium** | C | Binary Search | algorithms, arrays, search |
+| | C | Palindrome Check | strings, two pointers, ctype |
+| | C | Remove Duplicates From a Sorted Array | arrays, in-place, two pointers |
+| | C | Sort an Array In Place | sorting, arrays |
+| | C | Merge Two Sorted Arrays | arrays, pointers |
+| | C | Rotate an Array Left | arrays, in-place |
+| | C | Parse an Integer | strings, pointers |
+| | C | Primes up to N | arrays, loops |
+| | Python | Balanced Brackets | stacks, strings, parsing |
+| | Python | Run-Length Encoding | strings, iteration |
+| **hard** | C | Maximum Subarray Sum | algorithms, dynamic programming, arrays |
+| | C | Reverse a Linked List | pointers, linked lists |
+| | C | Edit Distance | dynamic programming, strings |
+
+A few are worth calling out for what they are really testing:
+
+- **Count the Set Bits** takes an `unsigned int` on purpose. A loop written
+  around a signed `int` can spin forever on a value with the top bit set, and
+  one of the fixed cases is exactly that value.
+- **Rotate an Array Left** accepts a shift larger than the array. Reducing it
+  modulo the length before checking the length for zero is a division by zero
+  rather than a wrong answer.
+- **Parse an Integer** rejects `"12a"`. Stopping at the first bad character and
+  returning what you had is what `atoi` does, and is the habit the problem is
+  there to break.
+- **Reverse a Linked List** wants the nodes relinked, not the values copied
+  into an array and written back. It declares `struct node` in both your file
+  and the harness — separate translation units, same layout, which is what a
+  shared header would have given you.
+
 ## Writing a problem
 
 One JSON file under `problems/`. Subdirectories are searched recursively and
@@ -403,7 +455,7 @@ crucible/
     editor.py          editor widget: gutter, highlighting, indentation
     theme.py           palettes and ttk styling
 problems/
-  c/                   8 problems
+  c/                   18 problems
   python/              3 problems
 tests/
   test_crucible.py

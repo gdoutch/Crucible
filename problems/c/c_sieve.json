@@ -1,0 +1,49 @@
+{
+  "id": "c_sieve",
+  "title": "Primes up to N",
+  "language": "c",
+  "difficulty": "medium",
+  "topics": [
+    "arrays",
+    "loops"
+  ],
+  "timeout_seconds": 5,
+  "statement": "List every prime number up to and including `n`.\n\n## Your function\n\n```\nint primes_up_to(int n, int *out);\n```\n\nWrite the primes in ascending order into `out` and return how many there\nwere. The caller has made `out` big enough.\n\n## Watch out\n\n- `1` is not prime, and neither is anything below it. `2` is, and it is the\n  only even prime.\n- `n` may be `0` or negative: return `0` and write nothing.\n- The sieve of Eratosthenes is the point. Mark a scratch array of `n + 1`\n  flags: walk up from 2, and each time you meet an unmarked value, record it\n  and mark all of its multiples. Testing every number against every smaller\n  number also works, and is the thing the sieve exists to avoid.\n- Marking can start at `value * value` -- anything smaller has already been\n  marked by a smaller factor. Watch that product: it overflows an `int` long\n  before `n` does.\n- Whatever you allocate for the scratch flags, free it.\n",
+  "starter_code": "int primes_up_to(int n, int *out)\n{\n    /* your code here */\n    (void)n;\n    (void)out;\n    return 0;\n}\n",
+  "harness": "#include <stdio.h>\n#include <stdlib.h>\n\n/* Provided by the candidate in solution.c */\nint primes_up_to(int n, int *out);\n\nint main(void)\n{\n    int n;\n    if (scanf(\"%d\", &n) != 1) {\n        return 1;\n    }\n\n    /* One slot per candidate is a safe over-estimate of the prime count. */\n    size_t room = (n > 0) ? (size_t)n + 1 : 1;\n    int *out = malloc(room * sizeof *out);\n    if (out == NULL) {\n        return 1;\n    }\n\n    int found = primes_up_to(n, out);\n    printf(\"%d\\n\", found);\n    for (int i = 0; i < found; i++) {\n        printf(\"%d%s\", out[i], (i + 1 < found) ? \" \" : \"\");\n    }\n    printf(\"\\n\");\n\n    free(out);\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random limits for the sieve.\n\nThe primes below are a lookup table, not a calculation: a generator that\nworked out which numbers were prime would be solving the problem it is meant\nto be setting. Picking a limit *from* that table is how the \"the limit is\nitself prime\" case is guaranteed.\n\"\"\"\n\nPRIMES = (23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97,\n          101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151, 157, 163,\n          167, 173, 179, 181, 191, 193, 197, 199)\n\n\ndef generate(rng, count):\n    builders = (_small, _the_limit_is_prime, _just_below_a_prime, _larger)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, n, description=\"\"):\n    return {\"name\": name, \"stdin\": \"%d\\n\" % n, \"description\": description}\n\n\ndef _small(rng, index):\n    return _case(\"a small limit #%d\" % index, rng.randint(3, 20))\n\n\ndef _the_limit_is_prime(rng, index):\n    n = rng.choice(PRIMES)\n    return _case(\"the limit is itself prime #%d\" % index, n,\n                 \"%d is prime, so it belongs in the answer. A loop that stops \"\n                 \"one short leaves it out.\" % n)\n\n\ndef _just_below_a_prime(rng, index):\n    n = rng.choice(PRIMES) - 1\n    return _case(\"one below a prime #%d\" % index, n,\n                 \"The next number up is prime, so it must not appear.\")\n\n\ndef _larger(rng, index):\n    return _case(\"a larger limit #%d\" % index, rng.randint(120, 400))\n"
+  },
+  "tests": [
+    {
+      "name": "zero",
+      "stdin": "0\n",
+      "expected_stdout": "0",
+      "description": "No primes, and nothing printed after the count."
+    },
+    {
+      "name": "one",
+      "stdin": "1\n",
+      "expected_stdout": "0",
+      "description": "1 is not prime."
+    },
+    {
+      "name": "two",
+      "stdin": "2\n",
+      "expected_stdout": "1\n2",
+      "description": "The first prime, and the only even one."
+    },
+    {
+      "name": "up to ten",
+      "stdin": "10\n",
+      "expected_stdout": "4\n2 3 5 7"
+    },
+    {
+      "name": "negative",
+      "stdin": "-5\n",
+      "expected_stdout": "0"
+    }
+  ],
+  "reference_solution_b64": "I2luY2x1ZGUgPHN0ZGxpYi5oPgoKaW50IHByaW1lc191cF90byhpbnQgbiwgaW50ICpvdXQpCnsKICAgIGlmIChuIDwgMikgewogICAgICAgIHJldHVybiAwOwogICAgfQoKICAgIGNoYXIgKmNvbXBvc2l0ZSA9IGNhbGxvYygoc2l6ZV90KW4gKyAxLCBzaXplb2YgKmNvbXBvc2l0ZSk7CiAgICBpZiAoY29tcG9zaXRlID09IE5VTEwpIHsKICAgICAgICByZXR1cm4gMDsKICAgIH0KCiAgICBpbnQgZm91bmQgPSAwOwogICAgZm9yIChpbnQgdmFsdWUgPSAyOyB2YWx1ZSA8PSBuOyB2YWx1ZSsrKSB7CiAgICAgICAgaWYgKGNvbXBvc2l0ZVt2YWx1ZV0pIHsKICAgICAgICAgICAgY29udGludWU7CiAgICAgICAgfQogICAgICAgIG91dFtmb3VuZCsrXSA9IHZhbHVlOwogICAgICAgIGZvciAobG9uZyBsb25nIG11bHRpcGxlID0gKGxvbmcgbG9uZyl2YWx1ZSAqIHZhbHVlOwogICAgICAgICAgICAgbXVsdGlwbGUgPD0gbjsKICAgICAgICAgICAgIG11bHRpcGxlICs9IHZhbHVlKSB7CiAgICAgICAgICAgIGNvbXBvc2l0ZVttdWx0aXBsZV0gPSAxOwogICAgICAgIH0KICAgIH0KCiAgICBmcmVlKGNvbXBvc2l0ZSk7CiAgICByZXR1cm4gZm91bmQ7Cn0K"
+}

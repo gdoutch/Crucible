@@ -1,0 +1,42 @@
+{
+  "id": "c_count_words",
+  "title": "Count the Words",
+  "language": "c",
+  "difficulty": "easy",
+  "topics": [
+    "strings",
+    "state machines"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Count the words in a line of text.\n\n## Your function\n\n```\nint count_words(const char *s);\n```\n\nA word is any run of characters that are not spaces or tabs. Punctuation is\npart of whatever word it is attached to.\n\n## Watch out\n\n- Several spaces in a row separate *one* pair of words, not several.\n- Leading and trailing spaces do not start a word.\n- The empty string, and a string of nothing but spaces, both have no words.\n- This is the classic one-variable state machine: remember whether you are\n  currently inside a word, and count each time you step into one.\n",
+  "starter_code": "int count_words(const char *s)\n{\n    /* your code here */\n    return 0;\n}\n",
+  "harness": "#include <stdio.h>\n#include <string.h>\n\n/* Provided by the candidate in solution.c */\nint count_words(const char *s);\n\nstatic void read_line(char *buffer, size_t size)\n{\n    if (fgets(buffer, (int)size, stdin) == NULL) {\n        buffer[0] = '\\0';\n        return;\n    }\n    buffer[strcspn(buffer, \"\\r\\n\")] = '\\0';\n}\n\nint main(void)\n{\n    char buffer[1024];\n    read_line(buffer, sizeof buffer);\n    printf(\"%d\\n\", count_words(buffer));\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random lines for the word counter.\n\nThe word count of each line is fixed when the line is built -- the builders\njoin a known number of words with separators -- so the awkward shapes (runs of\nspaces, padding at the ends, a tab instead of a space) are guaranteed to turn\nup rather than being left to chance.\n\"\"\"\n\nLETTERS = \"abcdefghijklmnopqrstuvwxyz\"\nPUNCTUATION = \",.!?;:\"\n\n\ndef generate(rng, count):\n    builders = (_plain_sentence, _wide_gaps, _padded_ends, _one_word)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, text, description=\"\"):\n    return {\"name\": name, \"stdin\": text + \"\\n\", \"description\": description}\n\n\ndef _word(rng):\n    return \"\".join(rng.choice(LETTERS) for _ in range(rng.randint(1, 8)))\n\n\ndef _plain_sentence(rng, index):\n    words = [_word(rng) for _ in range(rng.randint(2, 6))]\n    words[-1] += rng.choice(PUNCTUATION)\n    return _case(\"a plain sentence #%d\" % index, \" \".join(words),\n                 \"Punctuation belongs to the word it is stuck to.\")\n\n\ndef _wide_gaps(rng, index):\n    words = [_word(rng) for _ in range(rng.randint(2, 5))]\n    text = words[0]\n    for word in words[1:]:\n        gap = \"\\t\" if rng.random() < 0.3 else \" \" * rng.randint(2, 5)\n        text += gap + word\n    return _case(\"wide gaps #%d\" % index, text,\n                 \"A run of spaces, or a tab, separates one pair of words.\")\n\n\ndef _padded_ends(rng, index):\n    words = [_word(rng) for _ in range(rng.randint(1, 4))]\n    text = \" \" * rng.randint(1, 3) + \" \".join(words) + \" \" * rng.randint(1, 3)\n    return _case(\"padded at both ends #%d\" % index, text,\n                 \"The spaces at either end are not words and do not start one.\")\n\n\ndef _one_word(rng, index):\n    return _case(\"a single word #%d\" % index, _word(rng))\n"
+  },
+  "tests": [
+    {
+      "name": "empty string",
+      "stdin": "\n",
+      "expected_stdout": "0"
+    },
+    {
+      "name": "spaces only",
+      "stdin": "     \n",
+      "expected_stdout": "0",
+      "description": "Never entering a word means never counting one."
+    },
+    {
+      "name": "one word",
+      "stdin": "hello\n",
+      "expected_stdout": "1"
+    },
+    {
+      "name": "two words",
+      "stdin": "hello world\n",
+      "expected_stdout": "2"
+    }
+  ],
+  "reference_solution_b64": "aW50IGNvdW50X3dvcmRzKGNvbnN0IGNoYXIgKnMpCnsKICAgIGludCB3b3JkcyA9IDA7CiAgICBpbnQgaW5zaWRlID0gMDsKCiAgICBmb3IgKDsgKnMgIT0gJ1wwJzsgcysrKSB7CiAgICAgICAgaWYgKCpzID09ICcgJyB8fCAqcyA9PSAnXHQnKSB7CiAgICAgICAgICAgIGluc2lkZSA9IDA7CiAgICAgICAgfSBlbHNlIGlmICghaW5zaWRlKSB7CiAgICAgICAgICAgIGluc2lkZSA9IDE7CiAgICAgICAgICAgIHdvcmRzKys7CiAgICAgICAgfQogICAgfQoKICAgIHJldHVybiB3b3JkczsKfQo="
+}

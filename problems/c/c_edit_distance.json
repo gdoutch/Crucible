@@ -1,0 +1,49 @@
+{
+  "id": "c_edit_distance",
+  "title": "Edit Distance",
+  "language": "c",
+  "difficulty": "hard",
+  "topics": [
+    "dynamic programming",
+    "strings"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Find the smallest number of single-character edits that turns\none string into another.\n\n## Your function\n\n```\nint edit_distance(const char *a, const char *b);\n```\n\nAn edit is inserting one character, deleting one character, or replacing one\ncharacter with another. `kitten` to `sitting` takes three.\n\n## Watch out\n\n- Trying edits greedily from the front does not work. The answer for a prefix\n  pair is what the next step is built on, so the whole table gets filled in:\n  `d[i][j]` is the distance between the first `i` characters of `a` and the\n  first `j` of `b`.\n- The first row and column are not zero. Turning an empty string into a\n  `j`-character one takes `j` insertions, so `d[0][j] == j` and\n  `d[i][0] == i`.\n- Each cell is the smallest of three: delete (`d[i-1][j] + 1`), insert\n  (`d[i][j-1] + 1`), and keep-or-replace (`d[i-1][j-1]`, plus one if the two\n  characters differ).\n- Either string may be empty, and they may be equal.\n- A full table is `(len(a) + 1) * (len(b) + 1)` ints. Two rows are enough,\n  since a cell only ever looks at the row above and its own left-hand\n  neighbour -- and whatever you allocate, free it.\n",
+  "starter_code": "int edit_distance(const char *a, const char *b)\n{\n    /* your code here */\n    (void)a;\n    (void)b;\n    return 0;\n}\n",
+  "harness": "#include <stdio.h>\n#include <string.h>\n\n/* Provided by the candidate in solution.c */\nint edit_distance(const char *a, const char *b);\n\nstatic void read_line(char *buffer, size_t size)\n{\n    if (fgets(buffer, (int)size, stdin) == NULL) {\n        buffer[0] = '\\0';\n        return;\n    }\n    buffer[strcspn(buffer, \"\\r\\n\")] = '\\0';\n}\n\nint main(void)\n{\n    char first[1024];\n    char second[1024];\n    read_line(first, sizeof first);\n    read_line(second, sizeof second);\n\n    printf(\"%d\\n\", edit_distance(first, second));\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random string pairs for the edit distance.\n\nNote what the \"a few edits apart\" case does *not* claim. Applying three edits\nto a word tells you the distance is at most three; it may be less, because two\nedits can undo each other. The description says at most, and the reference\nsolution settles what it actually is.\n\"\"\"\n\nLETTERS = \"abcdefghijklmnopqrstuvwxyz\"\n\n\ndef generate(rng, count):\n    builders = (_a_few_edits, _identical, _one_empty, _unrelated)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, a, b, description=\"\"):\n    return {\"name\": name, \"stdin\": \"%s\\n%s\\n\" % (a, b),\n            \"description\": description}\n\n\ndef _word(rng, length=None):\n    length = length if length is not None else rng.randint(4, 9)\n    return \"\".join(rng.choice(LETTERS) for _ in range(length))\n\n\ndef _a_few_edits(rng, index):\n    original = _word(rng)\n    edited = original\n    edits = rng.randint(1, 3)\n    for _ in range(edits):\n        choice = rng.randrange(3)\n        where = rng.randrange(len(edited) + 1)\n        if choice == 0 or not edited:\n            edited = edited[:where] + rng.choice(LETTERS) + edited[where:]\n        elif choice == 1:\n            where = min(where, len(edited) - 1)\n            edited = edited[:where] + edited[where + 1:]\n        else:\n            where = min(where, len(edited) - 1)\n            edited = (edited[:where] + rng.choice(LETTERS)\n                      + edited[where + 1:])\n    return _case(\"a few edits apart #%d\" % index, original, edited,\n                 \"The second string was built from the first with %d edit(s), \"\n                 \"so the answer is at most %d -- edits can cancel out.\"\n                 % (edits, edits))\n\n\ndef _identical(rng, index):\n    word = _word(rng)\n    return _case(\"the same string twice #%d\" % index, word, word)\n\n\ndef _one_empty(rng, index):\n    word = _word(rng)\n    empty_first = rng.random() < 0.5\n    return _case(\"one side empty #%d\" % index,\n                 \"\" if empty_first else word, word if empty_first else \"\",\n                 \"Every character has to be inserted, or every one deleted.\")\n\n\ndef _unrelated(rng, index):\n    return _case(\"unrelated words #%d\" % index,\n                 _word(rng, rng.randint(3, 8)), _word(rng, rng.randint(3, 8)))\n"
+  },
+  "tests": [
+    {
+      "name": "both empty",
+      "stdin": "\n\n",
+      "expected_stdout": "0"
+    },
+    {
+      "name": "identical",
+      "stdin": "hello\nhello\n",
+      "expected_stdout": "0",
+      "description": "Nothing to do, and the diagonal of the table has to cost nothing for that to come out."
+    },
+    {
+      "name": "first empty",
+      "stdin": "\nabcd\n",
+      "expected_stdout": "4",
+      "description": "Four insertions -- which is the first row of the table, and why it is not all zeros."
+    },
+    {
+      "name": "second empty",
+      "stdin": "abcde\n\n",
+      "expected_stdout": "5"
+    },
+    {
+      "name": "kitten to sitting",
+      "stdin": "kitten\nsitting\n",
+      "expected_stdout": "3",
+      "description": "The textbook example: two replacements and an insertion."
+    }
+  ],
+  "reference_solution_b64": "I2luY2x1ZGUgPHN0ZGxpYi5oPgojaW5jbHVkZSA8c3RyaW5nLmg+CgpzdGF0aWMgaW50IHNtYWxsZXN0X29mKGludCBhLCBpbnQgYiwgaW50IGMpCnsKICAgIGludCBzbWFsbGVzdCA9IChhIDwgYikgPyBhIDogYjsKICAgIHJldHVybiAoc21hbGxlc3QgPCBjKSA/IHNtYWxsZXN0IDogYzsKfQoKaW50IGVkaXRfZGlzdGFuY2UoY29uc3QgY2hhciAqYSwgY29uc3QgY2hhciAqYikKewogICAgc2l6ZV90IGxlbl9hID0gc3RybGVuKGEpOwogICAgc2l6ZV90IGxlbl9iID0gc3RybGVuKGIpOwoKICAgIGludCAqcHJldmlvdXMgPSBtYWxsb2MoKGxlbl9iICsgMSkgKiBzaXplb2YgKnByZXZpb3VzKTsKICAgIGludCAqY3VycmVudCA9IG1hbGxvYygobGVuX2IgKyAxKSAqIHNpemVvZiAqY3VycmVudCk7CiAgICBpZiAocHJldmlvdXMgPT0gTlVMTCB8fCBjdXJyZW50ID09IE5VTEwpIHsKICAgICAgICBmcmVlKHByZXZpb3VzKTsKICAgICAgICBmcmVlKGN1cnJlbnQpOwogICAgICAgIHJldHVybiAtMTsKICAgIH0KCiAgICBmb3IgKHNpemVfdCBqID0gMDsgaiA8PSBsZW5fYjsgaisrKSB7CiAgICAgICAgcHJldmlvdXNbal0gPSAoaW50KWo7CiAgICB9CgogICAgZm9yIChzaXplX3QgaSA9IDE7IGkgPD0gbGVuX2E7IGkrKykgewogICAgICAgIGN1cnJlbnRbMF0gPSAoaW50KWk7CiAgICAgICAgZm9yIChzaXplX3QgaiA9IDE7IGogPD0gbGVuX2I7IGorKykgewogICAgICAgICAgICBpbnQgcmVwbGFjZV9jb3N0ID0gKGFbaSAtIDFdID09IGJbaiAtIDFdKSA/IDAgOiAxOwogICAgICAgICAgICBjdXJyZW50W2pdID0gc21hbGxlc3Rfb2YocHJldmlvdXNbal0gKyAxLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgY3VycmVudFtqIC0gMV0gKyAxLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgcHJldmlvdXNbaiAtIDFdICsgcmVwbGFjZV9jb3N0KTsKICAgICAgICB9CiAgICAgICAgaW50ICpzd2FwID0gcHJldmlvdXM7CiAgICAgICAgcHJldmlvdXMgPSBjdXJyZW50OwogICAgICAgIGN1cnJlbnQgPSBzd2FwOwogICAgfQoKICAgIGludCByZXN1bHQgPSBwcmV2aW91c1tsZW5fYl07CiAgICBmcmVlKHByZXZpb3VzKTsKICAgIGZyZWUoY3VycmVudCk7CiAgICByZXR1cm4gcmVzdWx0Owp9Cg=="
+}
