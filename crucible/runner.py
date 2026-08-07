@@ -10,6 +10,11 @@ point: the reference solution is proven against the *exact* pipeline the
 candidate's code will face, so "the reference passes" is a meaningful claim
 about the tests rather than about a separate, friendlier code path.
 
+A third entry point, `capture_outputs`, runs a source against a list of inputs
+and hands back what it printed instead of judging it. `crucible.randomise` uses
+it to ask the reference solution what a randomly generated input should
+produce. Same build, same per-case process, same normalisation.
+
 Each test case runs as its own process. That costs a few milliseconds per case
 and buys two things that matter a lot when the language is C: a segfault in
 case 3 leaves cases 4..n perfectly runnable, and a hung loop can be timed out
@@ -214,6 +219,17 @@ def _judge(language: Language, test: TestCase, exec_result, timeout: float) -> T
     return outcome
 
 
+def _toolchain_failure(language: Language) -> BuildResult | None:
+    """A stand-in BuildResult when the compiler is missing, or None when it is
+    there. Kept in one place so `_execute` and `capture_outputs` cannot end up
+    describing an uninstalled compiler two different ways."""
+    status = language.toolchain()
+    if status.available:
+        return None
+    return BuildResult(ok=False,
+                       output=status.remedy or status.detail or status.summary)
+
+
 def _execute(
     problem: Problem,
     source: str,
@@ -222,13 +238,9 @@ def _execute(
 ) -> SubmissionResult:
     language = problem.language
 
-    status = language.toolchain()
-    if not status.available:
-        return SubmissionResult(
-            build=BuildResult(ok=False,
-                              output=status.remedy or status.detail or status.summary),
-            toolchain_missing=True,
-        )
+    missing = _toolchain_failure(language)
+    if missing is not None:
+        return SubmissionResult(build=missing, toolchain_missing=True)
 
     workdir = Path(tempfile.mkdtemp(prefix=f"crucible_{problem.id}_"))
     try:
@@ -269,3 +281,76 @@ def verify_library(problems: list[Problem]) -> dict[str, SubmissionResult]:
     """Pre-verify a whole set of problems. Used by the startup self-check and
     by `--verify` on the command line."""
     return {problem.id: verify_reference(problem) for problem in problems}
+
+
+# ---------------------------------------------------------------------------
+# capturing output rather than judging it
+# ---------------------------------------------------------------------------
+
+@dataclass
+class Capture:
+    """What the reference printed for one input.
+
+    `output` is only meaningful when `ok` -- a crash or a timeout means the
+    input fell outside what the problem accepts, and there is no defensible
+    expected output to be had from it. `reason` says which of those happened.
+    """
+
+    ok: bool
+    output: str = ""
+    reason: str = ""
+
+
+@dataclass
+class CaptureResult:
+    build: BuildResult
+    captures: list[Capture] = field(default_factory=list)
+    toolchain_missing: bool = False
+
+    @property
+    def ok(self) -> bool:
+        return self.build.ok and all(c.ok for c in self.captures)
+
+
+def capture_outputs(problem: Problem, stdins: list[str]) -> CaptureResult:
+    """Run the reference solution against each input and keep what it printed.
+
+    This is the oracle behind randomised test data. It builds once and runs
+    each input in its own process, exactly as a submission would be run, so a
+    generated input that makes the reference segfault or hang is reported as
+    such instead of quietly becoming a test case that expects a crash.
+    """
+    language = problem.language
+
+    missing = _toolchain_failure(language)
+    if missing is not None:
+        return CaptureResult(build=missing, toolchain_missing=True)
+
+    workdir = Path(tempfile.mkdtemp(prefix=f"crucible_oracle_{problem.id}_"))
+    try:
+        build = language.build(workdir, problem.reference.source, problem.harness)
+        if not build.ok:
+            return CaptureResult(build=build)
+
+        captures = []
+        for stdin_data in stdins:
+            result = language.run_test(workdir, build, stdin_data,
+                                       problem.timeout_seconds)
+            captures.append(_capture_one(result, problem.timeout_seconds))
+        return CaptureResult(build=build, captures=captures)
+    finally:
+        shutil.rmtree(workdir, ignore_errors=True)
+
+
+def _capture_one(exec_result, timeout: float) -> Capture:
+    if exec_result.launch_error:
+        return Capture(False, reason=exec_result.launch_error)
+    if exec_result.timed_out:
+        return Capture(False,
+                       reason=f"the reference did not finish in {timeout:g}s")
+    if exec_result.exit_code != 0:
+        detail = exec_result.stderr.strip().splitlines()
+        return Capture(False, reason=f"the reference exited with status "
+                                     f"{exec_result.exit_code}"
+                                     + (f": {detail[-1]}" if detail else ""))
+    return Capture(True, output=normalise(exec_result.stdout))

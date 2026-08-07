@@ -12,8 +12,9 @@ from pathlib import Path
 from tkinter import font as tkfont
 from tkinter import messagebox, ttk
 
-from .. import languages, runner, workspace
+from .. import languages, randomise, runner, workspace
 from ..problem import Library, Problem, TestCase, load_library
+from ..randomise import GeneratedSuite
 from ..runner import ERROR, FAIL, PASS, SKIPPED, TIMEOUT, SubmissionResult, TestOutcome
 from .editor import CodeEditor, mono_font
 from .theme import PALETTES, Palette, apply_theme
@@ -73,6 +74,7 @@ class CrucibleApp(tk.Tk):
 
         self.problems_root = problems_root
         self.settings = workspace.load_settings()
+        self.seeds = workspace.load_seeds()
         self.palette: Palette = PALETTES.get(self.settings["theme"], PALETTES["dark"])
 
         self.title(APP_NAME)
@@ -87,8 +89,11 @@ class CrucibleApp(tk.Tk):
         self._events: queue.Queue = queue.Queue()
         self._verify_queue: queue.PriorityQueue = queue.PriorityQueue()
         self._verify_seq = itertools.count()
-        self._verify_requested: set[str] = set()
+        #: (problem id, with_data) pairs already handed to the worker.
+        self._requested: set[tuple[str, bool]] = set()
         self._verification: dict[str, SubmissionResult | None] = {}
+        #: None while a data set is being built; a GeneratedSuite once it is.
+        self._generation: dict[str, GeneratedSuite | None] = {}
 
         self._library = Library()
         self._problem: Problem | None = None
@@ -108,6 +113,7 @@ class CrucibleApp(tk.Tk):
         self.bind("<F5>", lambda _e: self._on_go())
         self.bind("<Control-Return>", lambda _e: self._on_go())
         self.bind("<Control-s>", lambda _e: self._save_draft(force=True))
+        self.bind("<Control-r>", lambda _e: self._on_new_data())
 
         self._start_verify_worker()
         self.after(60, self._pump)
@@ -138,6 +144,8 @@ class CrucibleApp(tk.Tk):
         run_menu = tk.Menu(menubar, tearoff=0, **opts)
         run_menu.add_command(label="Go -- run all tests\tF5", command=self._on_go)
         run_menu.add_command(label="Stop", command=self._on_stop)
+        run_menu.add_separator()
+        run_menu.add_command(label="New data set\tCtrl+R", command=self._on_new_data)
         menubar.add_cascade(label="Run", menu=run_menu)
 
         view_menu = tk.Menu(menubar, tearoff=0, **opts)
@@ -198,6 +206,10 @@ class CrucibleApp(tk.Tk):
         self.go_button.pack(side="right")
         ttk.Button(bar, text="Reset", command=self._reset_to_starter).pack(
             side="right", padx=(0, 8))
+        self.new_data_button = ttk.Button(bar, text="New data",
+                                          command=self._on_new_data,
+                                          state="disabled")
+        self.new_data_button.pack(side="right", padx=(0, 8))
 
     def _build_body(self) -> None:
         outer = ttk.PanedWindow(self, orient="horizontal")
@@ -378,9 +390,15 @@ class CrucibleApp(tk.Tk):
     # ------------------------------------------------------------------
 
     def _load_library(self) -> None:
+        self._save_draft(force=True)
         self._library = load_library(self.problems_root)
         self._verification.clear()
-        self._verify_requested.clear()
+        self._requested.clear()
+        # Reloading re-reads the problem files, so the Problem objects holding
+        # the current data sets are gone. Seeds survive, so the same cases come
+        # straight back -- but they have to be built again.
+        self._generation.clear()
+        self._problem = None
 
         present = self._library.languages_present
         names = [languages.get(lid).display_name for lid in present]
@@ -392,7 +410,7 @@ class CrucibleApp(tk.Tk):
         self._populate_problem_tree()
 
         for problem in self._library.problems:
-            self._request_verification(problem, priority=5)
+            self._request_preparation(problem, priority=5, with_data=False)
 
         if self._library.errors:
             messagebox.showwarning(
@@ -490,10 +508,12 @@ class CrucibleApp(tk.Tk):
         self.editor.set_source(draft if draft is not None else problem.starter_code)
         self.editor.clear_error_marks()
 
-        self._show_test_cases(problem)
         self._clear_build_output()
         self.result_label.configure(text="")
-        self._request_verification(problem, priority=0)
+        # Queue first, so `_show_test_cases` can already see that a data set is
+        # on its way and say so rather than showing a suspiciously short list.
+        self._request_preparation(problem, priority=0, with_data=True)
+        self._show_test_cases(problem)
         self._refresh_banner()
         self._refresh_go_button()
         self.editor.focus_editor()
@@ -551,8 +571,14 @@ class CrucibleApp(tk.Tk):
                 "", "end", iid=row,
                 values=("not run", test.display_name, ""), tags=("pending",))
 
+        if self._data_pending(problem):
+            self.test_tree.insert(
+                "", "end", iid="generating",
+                values=("", f"building {problem.generator.count} randomised "
+                            f"case(s)…", ""), tags=("pending",))
+
         children = self.test_tree.get_children()
-        if children:
+        if children and children[0] != "generating":
             self.test_tree.selection_set(children[0])
         else:
             self._clear_detail()
@@ -565,6 +591,7 @@ class CrucibleApp(tk.Tk):
         outcome = self._outcome_rows.get(row)
         test = outcome.test if outcome else self._pending_tests.get(row)
         if test is None:
+            self._clear_detail()
             return
         self._render_detail(test, outcome)
 
@@ -579,6 +606,10 @@ class CrucibleApp(tk.Tk):
         def write() -> None:
             if test.description:
                 self.detail.insert("end", test.description + "\n\n", "hint")
+            if test.generated:
+                self.detail.insert(
+                    "end", "Randomised input. The expected output below is what "
+                           "the reference solution prints for it.\n\n", "hint")
 
             if outcome is not None:
                 tag = {PASS: "ok", FAIL: "bad", ERROR: "bad",
@@ -612,11 +643,16 @@ class CrucibleApp(tk.Tk):
     # ------------------------------------------------------------------
 
     def _refresh_go_button(self) -> None:
+        problem = self._problem
+        self.new_data_button.configure(
+            state="normal" if problem is not None and problem.randomised
+                              and not self._running else "disabled")
         if self._running:
             self.go_button.configure(text="■  Stop", state="normal")
             return
-        blocked = self._problem is not None and self._reference_blocks_run(self._problem)
-        state = "normal" if self._problem is not None and not blocked else "disabled"
+        blocked = problem is not None and (self._reference_blocks_run(problem)
+                                           or self._data_pending(problem))
+        state = "normal" if problem is not None and not blocked else "disabled"
         self.go_button.configure(text="▶  Go", state=state)
 
     def _reference_blocks_run(self, problem: Problem) -> bool:
@@ -639,6 +675,10 @@ class CrucibleApp(tk.Tk):
             return
         problem = self._problem
         if problem is None or self._reference_blocks_run(problem):
+            return
+        if self._data_pending(problem):
+            # Running now would report a pass over a suite that is about to
+            # grow. Better to wait the fraction of a second.
             return
 
         status = problem.language.toolchain()
@@ -730,42 +770,127 @@ class CrucibleApp(tk.Tk):
             self._render_detail(outcome.test, outcome)
 
     # ------------------------------------------------------------------
+    # randomised data sets
+    # ------------------------------------------------------------------
+
+    def _seed_for(self, problem_id: str) -> int:
+        """The data set this problem is on, minting one the first time.
+
+        Seeds are remembered on disk so that a problem you come back to
+        tomorrow still has the cases you were reading yesterday.
+        """
+        seed = self.seeds.get(problem_id)
+        if seed is None:
+            seed = randomise.new_seed()
+            self.seeds[problem_id] = seed
+            workspace.save_seeds(self.seeds)
+        return seed
+
+    def _data_pending(self, problem: Problem) -> bool:
+        """True while this problem's randomised cases are still being built."""
+        return problem.randomised and self._generation.get(problem.id) is None
+
+    def _on_new_data(self) -> None:
+        """Reshuffle: a new data set for the current problem.
+
+        The draft is left alone. The point of a new data set is to re-solve the
+        same problem against numbers you have not seen, not to start over.
+        """
+        problem = self._problem
+        if problem is None or not problem.randomised or self._running:
+            return
+
+        self.seeds[problem.id] = randomise.new_seed()
+        workspace.save_seeds(self.seeds)
+
+        problem.generated_tests = ()
+        problem.seed = None
+        self._generation.pop(problem.id, None)
+        self._verification.pop(problem.id, None)
+        self._requested.discard((problem.id, True))
+
+        self._request_preparation(problem, priority=0, with_data=True)
+        self._show_test_cases(problem)
+        self._update_badge(problem.id)
+        self._refresh_banner()
+        self._refresh_go_button()
+
+    def _on_generated(self, problem_id: str, suite: GeneratedSuite) -> None:
+        self._generation[problem_id] = suite
+        if self._problem is None or self._problem.id != problem_id:
+            return
+        if not self._running:
+            self._show_test_cases(self._problem)
+        self._refresh_banner()
+        self._refresh_go_button()
+
+    # ------------------------------------------------------------------
     # reference verification
     # ------------------------------------------------------------------
 
     def _start_verify_worker(self) -> None:
+        """One background thread prepares problems: build the data set, then
+        verify the reference against the suite that data set came out of.
+
+        Both steps belong to the same job because the second is a statement
+        about the first -- verifying a suite before its randomised half exists
+        would be verifying something nobody is going to be asked to solve.
+
+        `with_data` is what keeps the two apart. The background sweep that
+        badges the whole library asks for verification only: data sets are
+        built for the problem someone is actually looking at, not for ten
+        others they may never open. Building all of them up front would put a
+        compile-and-run of every problem in front of the one that matters.
+        """
         def worker() -> None:
             while True:
-                _priority, _seq, problem_id = self._verify_queue.get()
+                _priority, _seq, problem_id, with_data = self._verify_queue.get()
                 if problem_id is None:
                     return
-                if self._verification.get(problem_id) is not None:
-                    continue  # a higher-priority pass already did this one
                 problem = self._library.get(problem_id)
                 if problem is None:
                     continue
-                result = runner.verify_reference(problem)
-                self._events.put(("verified", problem_id, result))
+                if with_data and self._data_pending(problem):
+                    suite = randomise.generate(problem, self.seeds[problem_id])
+                    # Sole writer of these two fields; the UI thread only reads
+                    # them after the event below has been handed over.
+                    randomise.apply(problem, suite)
+                    self._events.put(("generated", problem_id, suite))
+                # A with_data job always re-verifies: the suite it just built
+                # is not the one any earlier pass looked at.
+                if with_data or self._verification.get(problem_id) is None:
+                    result = runner.verify_reference(problem)
+                    self._events.put(("verified", problem_id, result))
 
         self._verify_thread = threading.Thread(target=worker, daemon=True,
                                                name="crucible-verify")
         self._verify_thread.start()
 
-    def _request_verification(self, problem: Problem, priority: int) -> None:
-        """Queue a reference check. `priority` 0 is user-driven (the problem
-        just opened), higher numbers are the background sweep.
+    def _request_preparation(self, problem: Problem, priority: int,
+                             with_data: bool) -> None:
+        """Queue a problem for the worker. `priority` 0 is user-driven (the
+        problem just opened), higher numbers are the background sweep.
 
-        A problem already queued behind the sweep is re-queued at the front
-        when the candidate opens it -- otherwise its banner would sit on
-        "checking..." while unrelated problems compile ahead of it. The worker
-        drops the stale entry once a result exists.
+        The two kinds of request are tracked separately, so opening a problem
+        the sweep has already badged still gets its data set built -- and a
+        priority-0 entry jumps whatever the sweep has left to do, rather than
+        leaving the banner on "checking..." while unrelated problems compile.
         """
-        pending = self._verification.get(problem.id, "absent") is None
-        if problem.id in self._verify_requested and not (priority == 0 and pending):
+        if (problem.id, with_data) in self._requested:
             return
-        self._verify_requested.add(problem.id)
-        self._verification.setdefault(problem.id, None)
-        self._verify_queue.put((priority, next(self._verify_seq), problem.id))
+        self._requested.add((problem.id, with_data))
+
+        if with_data and problem.randomised:
+            self._generation.setdefault(problem.id, None)
+            self._seed_for(problem.id)  # minted here so only this thread writes
+            # Any earlier verdict was about a suite this problem is about to
+            # stop having, so the banner goes back to "checking".
+            self._verification[problem.id] = None
+        else:
+            self._verification.setdefault(problem.id, None)
+
+        self._verify_queue.put((priority, next(self._verify_seq),
+                                problem.id, with_data))
         self._update_badge(problem.id)
 
     def _on_verified(self, problem_id: str, result: SubmissionResult) -> None:
@@ -786,12 +911,34 @@ class CrucibleApp(tk.Tk):
         visible = len(problem.visible_tests)
         hidden = len(problem.tests) - visible
 
+        if self._data_pending(problem):
+            self.banner.configure(
+                text=f"Building data set #{self._seed_for(problem.id)} — "
+                     f"generating fresh inputs and asking the reference "
+                     f"solution what each one should produce…",
+                background=self.palette.panel_bg,
+                foreground=self.palette.text_muted)
+            return
+
         if result == "missing" or result is None:
             self.banner.configure(
                 text="Checking this problem's test suite against its reference "
                      "solution…",
                 background=self.palette.panel_bg,
                 foreground=self.palette.text_muted)
+            return
+
+        suite = self._generation.get(problem.id)
+        if suite is not None and suite.error:
+            # A broken generator is the author's problem, not the candidate's,
+            # and it does not disable anything: the hand-written cases are
+            # still perfectly good tests.
+            self.banner.configure(
+                text=f"⚠  Randomised data unavailable — {suite.error}. "
+                     f"The {len(problem.fixed_tests)} hand-written case(s) "
+                     f"still run.",
+                background=self.palette.panel_bg,
+                foreground=self.palette.warn)
             return
 
         suffix = f" ({hidden} hidden)" if hidden else ""
@@ -808,7 +955,8 @@ class CrucibleApp(tk.Tk):
             self.banner.configure(
                 text=f"{BADGE_OK}  Test suite verified — the reference solution "
                      f"passes all {result.total} cases{suffix}. "
-                     f"All {visible} case(s) below are shown in full.",
+                     f"All {visible} case(s) below are shown in full."
+                     + self._data_set_note(problem),
                 background=self.palette.panel_bg, foreground=self.palette.ok)
         else:
             detail = (result.build.output.splitlines()[0]
@@ -820,6 +968,13 @@ class CrucibleApp(tk.Tk):
                      f"The problem file needs fixing.",
                 background=self.palette.panel_bg, foreground=self.palette.fail)
             self.banner_button.pack(side="right", padx=(0, 4))
+
+    def _data_set_note(self, problem: Problem) -> str:
+        """The tail of the verified banner for a problem with random data."""
+        if not problem.generated_tests:
+            return ""
+        return (f"  {len(problem.generated_tests)} of them are randomised "
+                f"(data set #{problem.seed} — press Ctrl+R for another).")
 
     def _override_reference_gate(self) -> None:
         if self._problem is None:
@@ -835,10 +990,10 @@ class CrucibleApp(tk.Tk):
 
     def _verify_all(self) -> None:
         self._override_gate.clear()
-        self._verify_requested.clear()
+        self._requested.clear()
         self._verification.clear()
         for problem in self._library.problems:
-            self._request_verification(problem, priority=1)
+            self._request_preparation(problem, priority=1, with_data=True)
         self.result_label.configure(
             text=f"Verifying {len(self._library.problems)} problems…")
 
@@ -879,6 +1034,8 @@ class CrucibleApp(tk.Tk):
                     self._on_run_finished(message[1], message[2])
                 elif kind == "verified":
                     self._on_verified(message[1], message[2])
+                elif kind == "generated":
+                    self._on_generated(message[1], message[2])
         except queue.Empty:
             pass
         self.after(60, self._pump)
@@ -975,6 +1132,11 @@ class CrucibleApp(tk.Tk):
             "Each test is {name, stdin, expected_stdout, description}.\n\n"
             "Every reference solution is run against the full suite before the\n"
             "problem is offered -- a problem whose reference fails is disabled.\n\n"
+            "Optional 'generator' adds randomised cases:\n"
+            "  {\"count\": 4, \"source\": \"def generate(rng, count): ...\"}\n"
+            "It returns inputs only -- {name, stdin, description} -- and the\n"
+            "expected output is captured from the reference solution, so the\n"
+            "two can never disagree. Ctrl+R draws a new data set.\n\n"
             "See README.md for the full schema and a worked example.",
             parent=self)
 

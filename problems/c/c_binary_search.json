@@ -12,37 +12,16 @@
   "statement": "Find a value in a **sorted** array of integers and return its index.\n\n## Your function\n\n```\nint binary_search(const int *values, int count, int target);\n```\n\nReturn the index of `target`, or `-1` if it is not present. `values` is\nsorted in ascending order.\n\n## Watch out\n\n- Halve the search range each step. A linear scan passes these tests\n  but misses the point of the exercise.\n- `lo + (hi - lo) / 2` avoids the overflow that `(lo + hi) / 2` can hit\n  on large arrays.\n- Getting the loop condition wrong here usually means an infinite loop\n  rather than a wrong answer, so the tests have a time limit.\n- `count` may be `0`, in which case `values` may be `NULL`.\n",
   "starter_code": "/* Return the index of `target` in the ascending sorted array `values`,\n * or -1 if it is not there.\n *\n * `values` may be NULL when `count` is 0.\n */\nint binary_search(const int *values, int count, int target)\n{\n    /* your code here */\n    return -1;\n}\n",
   "harness": "#include <stdio.h>\n#include <stdlib.h>\n\n/* Provided by the candidate in solution.c */\nint binary_search(const int *values, int count, int target);\n\nstatic int read_int_array(int **out, int *count_out)\n{\n    int count;\n    if (scanf(\"%d\", &count) != 1 || count < 0) {\n        return 0;\n    }\n    int *values = NULL;\n    if (count > 0) {\n        values = malloc((size_t)count * sizeof *values);\n        if (values == NULL) {\n            return 0;\n        }\n        for (int i = 0; i < count; i++) {\n            if (scanf(\"%d\", &values[i]) != 1) {\n                free(values);\n                return 0;\n            }\n        }\n    }\n    *out = values;\n    *count_out = count;\n    return 1;\n}\n\nint main(void)\n{\n    int *values = NULL;\n    int count = 0;\n    if (!read_int_array(&values, &count)) {\n        return 1;\n    }\n    int target;\n    if (scanf(\"%d\", &target) != 1) {\n        free(values);\n        return 1;\n    }\n    printf(\"%d\\n\", binary_search(values, count, target));\n    free(values);\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random inputs for binary search: a count, a sorted array, then a target.\n\nValues are sampled without replacement and then sorted, so the array is always\nstrictly ascending -- the precondition the problem states. The absent targets\nare chosen from outside the sample, so \"not there\" is a fact about how the\ninput was built rather than a guess.\n\"\"\"\n\nLOW, HIGH = -60, 60\n\n\ndef generate(rng, count):\n    builders = (_present, _absent_inside, _below_range, _above_range)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, values, target, description=\"\"):\n    return {\n        \"name\": name,\n        \"stdin\": \"%d\\n%s\\n%d\\n\" % (len(values),\n                                   \" \".join(str(v) for v in values), target),\n        \"description\": description,\n    }\n\n\ndef _sorted_values(rng):\n    return sorted(rng.sample(range(LOW, HIGH), rng.randint(5, 12)))\n\n\ndef _present(rng, index):\n    values = _sorted_values(rng)\n    position = rng.randrange(len(values))\n    where = (\"the first element\" if position == 0 else\n             \"the last element\" if position == len(values) - 1 else\n             \"somewhere in the middle\")\n    return _case(\"target present #%d\" % index, values, values[position],\n                 \"The target is %s.\" % where)\n\n\ndef _absent_inside(rng, index):\n    # Take twice as many values as the array needs and keep every other one.\n    # What is left over sits in the gaps: inside the range, but not present.\n    pool = sorted(rng.sample(range(LOW, HIGH), 2 * rng.randint(5, 12)))\n    values, missing = pool[::2], pool[1::2]\n    return _case(\"target absent #%d\" % index, values, rng.choice(missing),\n                 \"The target falls between two elements, so the search must \"\n                 \"finish empty-handed rather than run off the end.\")\n\n\ndef _below_range(rng, index):\n    values = _sorted_values(rng)\n    return _case(\"below the range #%d\" % index, values,\n                 values[0] - rng.randint(1, 20))\n\n\ndef _above_range(rng, index):\n    values = _sorted_values(rng)\n    return _case(\"above the range #%d\" % index, values,\n                 values[-1] + rng.randint(1, 20))\n"
+  },
   "tests": [
-    {
-      "name": "found in the middle",
-      "stdin": "7\n1 3 5 7 9 11 13\n7\n",
-      "expected_stdout": "3"
-    },
-    {
-      "name": "first element",
-      "stdin": "7\n1 3 5 7 9 11 13\n1\n",
-      "expected_stdout": "0"
-    },
     {
       "name": "last element",
       "stdin": "7\n1 3 5 7 9 11 13\n13\n",
       "expected_stdout": "6",
       "description": "A common off-by-one: `high` must start at count-1 and the loop must still run when low == high."
-    },
-    {
-      "name": "missing value",
-      "stdin": "7\n1 3 5 7 9 11 13\n8\n",
-      "expected_stdout": "-1"
-    },
-    {
-      "name": "below the range",
-      "stdin": "3\n10 20 30\n5\n",
-      "expected_stdout": "-1"
-    },
-    {
-      "name": "above the range",
-      "stdin": "3\n10 20 30\n35\n",
-      "expected_stdout": "-1"
     },
     {
       "name": "empty array",

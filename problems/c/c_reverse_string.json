@@ -12,12 +12,11 @@
   "statement": "Reverse a C string **in place** -- modify the caller's buffer rather\nthan allocating a new one.\n\n## Your function\n\n```\nvoid reverse_string(char *s);\n```\n\nAfter it returns, `s` holds the same characters in the opposite order\nand is still terminated by `'\\0'`.\n\n## Watch out\n\n- The empty string is valid input. So is a single character.\n- Do not move the terminator. `strlen` still has to work afterwards.\n- Swapping from both ends towards the middle needs only one pass and\n  no extra memory.\n",
   "starter_code": "#include <string.h>\n\n/* Reverse the string `s` in place. */\nvoid reverse_string(char *s)\n{\n    /* your code here */\n}\n",
   "harness": "#include <stdio.h>\n#include <string.h>\n\n/* Provided by the candidate in solution.c */\nvoid reverse_string(char *s);\n\nstatic void read_line(char *buffer, size_t size)\n{\n    if (fgets(buffer, (int)size, stdin) == NULL) {\n        buffer[0] = '\\0';\n        return;\n    }\n    buffer[strcspn(buffer, \"\\r\\n\")] = '\\0';\n}\n\nint main(void)\n{\n    char buffer[1024];\n    read_line(buffer, sizeof buffer);\n    reverse_string(buffer);\n    printf(\"%s\\n\", buffer);\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random strings to reverse: one line of ASCII.\n\nBoth parities are covered on purpose. An odd-length string has a middle\ncharacter that stays put, and a swap loop that runs one step too far will\nundo itself there and look correct; an even-length one has no such cover.\n\"\"\"\n\nLETTERS = \"abcdefghijklmnopqrstuvwxyz\"\nPUNCTUATION = \",.!?-'\"\n\n\ndef generate(rng, count):\n    builders = (_odd_length, _even_length, _palindrome, _with_spaces)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, text, description=\"\"):\n    return {\"name\": name, \"stdin\": text + \"\\n\", \"description\": description}\n\n\ndef _letters(rng, length):\n    return \"\".join(rng.choice(LETTERS) for _ in range(length))\n\n\ndef _odd_length(rng, index):\n    return _case(\"odd length #%d\" % index, _letters(rng, rng.choice([5, 7, 9, 11])),\n                 \"The middle character has nowhere to go.\")\n\n\ndef _even_length(rng, index):\n    return _case(\"even length #%d\" % index, _letters(rng, rng.choice([4, 6, 8, 10])),\n                 \"No middle character to hide an off-by-one behind.\")\n\n\ndef _palindrome(rng, index):\n    half = _letters(rng, rng.randint(2, 5))\n    middle = _letters(rng, 1) if rng.random() < 0.5 else \"\"\n    return _case(\"already a palindrome #%d\" % index, half + middle + half[::-1],\n                 \"Reversing this changes nothing -- which does not mean doing \"\n                 \"nothing is correct.\")\n\n\ndef _with_spaces(rng, index):\n    words = [_letters(rng, rng.randint(2, 6)) for _ in range(rng.randint(2, 4))]\n    return _case(\"spaces and punctuation #%d\" % index,\n                 \" \".join(words) + rng.choice(PUNCTUATION),\n                 \"Every byte moves, spaces and punctuation included.\")\n"
+  },
   "tests": [
-    {
-      "name": "a word",
-      "stdin": "hello\n",
-      "expected_stdout": "olleh"
-    },
     {
       "name": "empty string",
       "stdin": "\n",
@@ -28,21 +27,6 @@
       "name": "single character",
       "stdin": "x\n",
       "expected_stdout": "x"
-    },
-    {
-      "name": "even length",
-      "stdin": "abcd\n",
-      "expected_stdout": "dcba"
-    },
-    {
-      "name": "already a palindrome",
-      "stdin": "racecar\n",
-      "expected_stdout": "racecar"
-    },
-    {
-      "name": "spaces and punctuation",
-      "stdin": "a man, a plan\n",
-      "expected_stdout": "nalp a ,nam a"
     }
   ],
   "reference_solution_b64": "I2luY2x1ZGUgPHN0cmluZy5oPgoKdm9pZCByZXZlcnNlX3N0cmluZyhjaGFyICpzKQp7CiAgICBzaXplX3QgbGVuZ3RoID0gc3RybGVuKHMpOwogICAgaWYgKGxlbmd0aCA8IDIpIHsKICAgICAgICByZXR1cm47CiAgICB9CiAgICBmb3IgKHNpemVfdCBpID0gMCwgaiA9IGxlbmd0aCAtIDE7IGkgPCBqOyBpKyssIGotLSkgewogICAgICAgIGNoYXIgc3dhcCA9IHNbaV07CiAgICAgICAgc1tpXSA9IHNbal07CiAgICAgICAgc1tqXSA9IHN3YXA7CiAgICB9Cn0K"

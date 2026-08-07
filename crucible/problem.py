@@ -11,6 +11,11 @@ completely differently by the application:
                    to satisfy it.
 
 See `ReferenceSolution` for what "hidden" does and does not mean here.
+
+A problem may also carry a `Generator`, which adds randomised cases to the
+authored ones so the same exercise can be practised more than once without the
+answers becoming a memory test. A generator writes *inputs only* -- see
+`crucible.randomise` for why that restriction is the whole trick.
 """
 
 from __future__ import annotations
@@ -25,6 +30,8 @@ from . import languages
 
 DIFFICULTIES = ("easy", "medium", "hard")
 DEFAULT_TIMEOUT = 5.0
+DEFAULT_GENERATED_CASES = 4
+MAX_GENERATED_CASES = 25
 
 
 class ProblemError(ValueError):
@@ -45,6 +52,11 @@ class TestCase:
     expected_stdout: str
     description: str = ""
     hidden: bool = False
+    #: True when the input was randomly generated and `expected_stdout` was
+    #: captured from the reference solution rather than written by hand. The
+    #: UI says so on the case, because "where did this expected output come
+    #: from" is a fair question to ask of a number that was not there before.
+    generated: bool = False
 
     @property
     def display_name(self) -> str:
@@ -68,6 +80,33 @@ class ReferenceSolution:
     encoded: bool = False
 
 
+@dataclass(frozen=True)
+class Generator:
+    """A recipe for randomised test *inputs*.
+
+    `source` is a Python program -- always Python, whatever language the
+    problem itself is in -- defining:
+
+        def generate(rng, count) -> list[dict]
+
+    `rng` is a `random.Random` seeded from the data set number, so the same
+    seed always yields the same cases. Each returned dict describes one case:
+    `stdin` (required) plus optional `name`, `description` and `hidden`.
+
+    Deliberately *not* in that dict: `expected_stdout`. A generator that also
+    stated the answer would be a second implementation of the problem, free to
+    drift out of step with the reference solution. Instead the expected output
+    is captured from the reference. See `crucible.randomise`.
+
+    The source is stored in plain text, not base64. Unlike the reference
+    solution there is nothing here to spoil: knowing the shape of the inputs
+    is knowing the specification, which the candidate is entitled to.
+    """
+
+    source: str
+    count: int = DEFAULT_GENERATED_CASES
+
+
 @dataclass
 class Problem:
     id: str
@@ -76,16 +115,36 @@ class Problem:
     statement: str
     starter_code: str
     harness: str
-    tests: tuple[TestCase, ...]
+    #: Cases written out by hand in the problem file. These are the edge cases
+    #: -- empty input, one element, the awkward semantics -- and they are the
+    #: same every time, because an edge case you might not meet this run is not
+    #: doing its job.
+    fixed_tests: tuple[TestCase, ...]
     reference: ReferenceSolution
+    generator: Generator | None = None
     difficulty: str = "easy"
     topics: tuple[str, ...] = ()
     timeout_seconds: float = DEFAULT_TIMEOUT
     source_path: Path | None = None
+    #: Filled in by `crucible.randomise.generate`. Empty until then, so a
+    #: problem is always usable -- just with fewer cases -- if generation has
+    #: not run or could not run.
+    generated_tests: tuple[TestCase, ...] = ()
+    #: Which data set `generated_tests` came from. None means "not generated".
+    seed: int | None = None
 
     @property
     def language(self) -> languages.Language:
         return languages.get(self.language_id)
+
+    @property
+    def tests(self) -> tuple[TestCase, ...]:
+        """Everything that will be run, hand-written cases first."""
+        return self.fixed_tests + self.generated_tests
+
+    @property
+    def randomised(self) -> bool:
+        return self.generator is not None
 
     @property
     def visible_tests(self) -> tuple[TestCase, ...]:
@@ -142,10 +201,52 @@ def _load_reference(data: dict, path: Path) -> ReferenceSolution:
     )
 
 
-def _load_tests(data: dict, path: Path) -> tuple[TestCase, ...]:
-    raw = data.get("tests")
-    if not isinstance(raw, list) or not raw:
-        raise ProblemError(f"{path.name}: 'tests' must be a non-empty list")
+def _load_generator(data: dict, path: Path) -> Generator | None:
+    raw = data.get("generator")
+    if raw is None:
+        return None
+    if not isinstance(raw, dict):
+        raise ProblemError(
+            f"{path.name}: 'generator' must be an object with a 'source' field"
+        )
+
+    source = raw.get("source")
+    if not isinstance(source, str) or not source.strip():
+        raise ProblemError(f"{path.name}: 'generator.source' must be Python source")
+    try:
+        compile(source, f"{path.name}:generator", "exec")
+    except SyntaxError as exc:
+        raise ProblemError(
+            f"{path.name}: 'generator.source' does not parse as Python "
+            f"(line {exc.lineno}: {exc.msg})"
+        ) from None
+    if "def generate" not in source:
+        raise ProblemError(
+            f"{path.name}: 'generator.source' must define generate(rng, count)"
+        )
+
+    count = raw.get("count", DEFAULT_GENERATED_CASES)
+    if not isinstance(count, int) or isinstance(count, bool):
+        raise ProblemError(f"{path.name}: 'generator.count' must be an integer")
+    if not 1 <= count <= MAX_GENERATED_CASES:
+        raise ProblemError(
+            f"{path.name}: 'generator.count' must be between 1 and "
+            f"{MAX_GENERATED_CASES}"
+        )
+
+    return Generator(source=source, count=count)
+
+
+def _load_tests(data: dict, path: Path,
+                generator: Generator | None) -> tuple[TestCase, ...]:
+    raw = data.get("tests", [])
+    if not isinstance(raw, list):
+        raise ProblemError(f"{path.name}: 'tests' must be a list")
+    if not raw and generator is None:
+        raise ProblemError(
+            f"{path.name}: 'tests' must be a non-empty list unless the problem "
+            f"has a 'generator' to supply cases"
+        )
 
     tests: list[TestCase] = []
     seen: set[str] = set()
@@ -210,6 +311,8 @@ def load_problem(path: Path) -> Problem:
     if not isinstance(topics, list):
         raise ProblemError(f"{path.name}: 'topics' must be a list")
 
+    generator = _load_generator(data, path)
+
     return Problem(
         id=str(data.get("id") or path.stem),
         title=str(_require(data, "title", path)),
@@ -217,8 +320,9 @@ def load_problem(path: Path) -> Problem:
         statement=str(_require(data, "statement", path)),
         starter_code=str(data.get("starter_code", "")),
         harness=str(_require(data, "harness", path)),
-        tests=_load_tests(data, path),
+        fixed_tests=_load_tests(data, path, generator),
         reference=_load_reference(data, path),
+        generator=generator,
         difficulty=difficulty,
         topics=tuple(str(t) for t in topics),
         timeout_seconds=timeout,

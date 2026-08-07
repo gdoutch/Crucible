@@ -12,25 +12,11 @@
   "statement": "Find the largest sum obtainable from any contiguous run of elements.\n\n## Your function\n\n```\nint max_subarray_sum(const int *values, int count);\n```\n\n## Rules\n\n- The run must be contiguous and must contain at least one element,\n  unless the array is empty.\n- For an empty array, return `0`.\n- If every value is negative, the answer is the single largest value --\n  not `0`, because you have to pick at least one element.\n\n## Watch out\n\nThe obvious approach checks every start and end point, which is\nO(n squared). There is a single-pass O(n) solution: walk the array\nkeeping the best sum ending at the current element, and the best sum\nseen anywhere.\n",
   "starter_code": "/* Return the largest sum of any contiguous, non-empty run of elements.\n * Return 0 if `count` is 0.\n *\n * `values` may be NULL when `count` is 0.\n */\nint max_subarray_sum(const int *values, int count)\n{\n    /* your code here */\n    return 0;\n}\n",
   "harness": "#include <stdio.h>\n#include <stdlib.h>\n\n/* Provided by the candidate in solution.c */\nint max_subarray_sum(const int *values, int count);\n\nstatic int read_int_array(int **out, int *count_out)\n{\n    int count;\n    if (scanf(\"%d\", &count) != 1 || count < 0) {\n        return 0;\n    }\n    int *values = NULL;\n    if (count > 0) {\n        values = malloc((size_t)count * sizeof *values);\n        if (values == NULL) {\n            return 0;\n        }\n        for (int i = 0; i < count; i++) {\n            if (scanf(\"%d\", &values[i]) != 1) {\n                free(values);\n                return 0;\n            }\n        }\n    }\n    *out = values;\n    *count_out = count;\n    return 1;\n}\n\nint main(void)\n{\n    int *values = NULL;\n    int count = 0;\n    if (!read_int_array(&values, &count)) {\n        return 1;\n    }\n    printf(\"%d\\n\", max_subarray_sum(values, count));\n    free(values);\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random arrays for maximum subarray sum: a count line, then the values.\n\nAt most a dozen values, none past a thousand, so no sum any solution might\nform -- correct or not -- can overflow a 32-bit int. An input whose answer\ndepended on undefined behaviour would have no expected output worth capturing.\n\"\"\"\n\n\ndef generate(rng, count):\n    builders = (_mixed, _all_positive, _all_negative, _two_peaks)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, values, description=\"\"):\n    return {\n        \"name\": name,\n        \"stdin\": \"%d\\n%s\\n\" % (len(values), \" \".join(str(v) for v in values)),\n        \"description\": description,\n    }\n\n\ndef _mixed(rng, index):\n    values = [rng.randint(-40, 40) for _ in range(rng.randint(6, 11))]\n    return _case(\"mixed values #%d\" % index, values)\n\n\ndef _all_positive(rng, index):\n    values = [rng.randint(1, 60) for _ in range(rng.randint(4, 8))]\n    return _case(\"all positive #%d\" % index, values,\n                 \"With nothing to lose by carrying on, the best run is the \"\n                 \"whole array.\")\n\n\ndef _all_negative(rng, index):\n    values = [rng.randint(-90, -1) for _ in range(rng.randint(4, 8))]\n    return _case(\"all negative #%d\" % index, values,\n                 \"At least one element must be chosen, so the answer is the \"\n                 \"largest single value -- not zero.\")\n\n\ndef _two_peaks(rng, index):\n    \"\"\"Two good runs with a dip between them, sized so that crossing it is\n    sometimes worth it and sometimes is not.\"\"\"\n    left = [rng.randint(3, 30) for _ in range(rng.randint(2, 4))]\n    right = [rng.randint(3, 30) for _ in range(rng.randint(2, 4))]\n    dip = [-rng.randint(2, 60) for _ in range(rng.randint(1, 2))]\n    return _case(\"two peaks and a dip #%d\" % index, left + dip + right,\n                 \"Whether to cross the dip depends on how deep it is.\")\n"
+  },
   "tests": [
-    {
-      "name": "classic mixed array",
-      "stdin": "9\n-2 1 -3 4 -1 2 1 -5 4\n",
-      "expected_stdout": "6",
-      "description": "The run [4, -1, 2, 1] sums to 6."
-    },
-    {
-      "name": "all positive",
-      "stdin": "4\n1 2 3 4\n",
-      "expected_stdout": "10",
-      "description": "The whole array is the best run."
-    },
-    {
-      "name": "all negative",
-      "stdin": "4\n-5 -2 -9 -4\n",
-      "expected_stdout": "-2",
-      "description": "You must pick at least one element, so the answer is the largest single value, not 0."
-    },
     {
       "name": "empty array",
       "stdin": "0\n",
@@ -40,12 +26,6 @@
       "name": "single negative element",
       "stdin": "1\n-7\n",
       "expected_stdout": "-7"
-    },
-    {
-      "name": "dip in the middle",
-      "stdin": "5\n5 -1 5 -100 4\n",
-      "expected_stdout": "9",
-      "description": "Crossing the small dip is worth it; crossing the big one is not."
     },
     {
       "name": "zeros only",

@@ -11,18 +11,11 @@
   "statement": "Compress a string by replacing each run of repeated characters with the\ncharacter followed by the length of the run.\n\n## Your function\n\n```\ndef encode(text):\n```\n\n`\"aaabbc\"` becomes `\"a3b2c1\"`. Every character gets a count, including\nruns of length one.\n\n## Watch out\n\n- The empty string encodes to the empty string.\n- Runs of ten or more are written as-is: `\"a\" * 12` becomes `\"a12\"`.\n- Case is significant: `\"aA\"` is two runs, not one.\n",
   "starter_code": "def encode(text):\n    \"\"\"Return the run-length encoding of `text`.\n\n    \"aaabbc\" -> \"a3b2c1\"\n    \"\"\"\n    # your code here\n    return \"\"\n",
   "harness": "\"\"\"Reads one line and prints its encoding.\"\"\"\nimport sys\n\nfrom solution import encode\n\n\ndef main():\n    line = sys.stdin.readline().rstrip(\"\\r\\n\")\n    print(encode(line))\n\n\nmain()\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random inputs for run-length encoding: one line of text.\n\nEverything is built out of runs, so the interesting shapes -- a count that\nneeds two digits, a letter that comes back later, upper and lower case sitting\nnext to each other -- are guaranteed rather than hoped for.\n\"\"\"\n\nLETTERS = \"abcdefghijklmnopqrstuvwxyz\"\n\n\ndef generate(rng, count):\n    builders = (_mixed_runs, _no_repeats, _long_run, _mixed_case)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, text, description=\"\"):\n    return {\"name\": name, \"stdin\": text + \"\\n\", \"description\": description}\n\n\ndef _runs(rng, alphabet, lengths):\n    \"\"\"Glue runs together, never letting one letter start the next run.\"\"\"\n    text = []\n    previous = \"\"\n    for length in lengths:\n        letter = rng.choice([c for c in alphabet if c != previous])\n        previous = letter\n        text.append(letter * length)\n    return \"\".join(text)\n\n\ndef _mixed_runs(rng, index):\n    lengths = [rng.randint(1, 4) for _ in range(rng.randint(3, 6))]\n    return _case(\"mixed runs #%d\" % index, _runs(rng, LETTERS[:8], lengths))\n\n\ndef _no_repeats(rng, index):\n    lengths = [1] * rng.randint(4, 8)\n    return _case(\"no repeats #%d\" % index, _runs(rng, LETTERS[:10], lengths),\n                 \"Every run is one character long, and each still gets a count.\")\n\n\ndef _long_run(rng, index):\n    lengths = [rng.randint(1, 3), rng.randint(10, 15), rng.randint(1, 3)]\n    return _case(\"a run past nine #%d\" % index, _runs(rng, LETTERS[:6], lengths),\n                 \"One run is longer than nine, so its count needs more than \"\n                 \"one digit and must not split into two runs.\")\n\n\ndef _mixed_case(rng, index):\n    lengths = [rng.randint(1, 3) for _ in range(rng.randint(4, 7))]\n    return _case(\"case is significant #%d\" % index, _runs(rng, \"aAbBcC\", lengths),\n                 \"Upper and lower case are different characters.\")\n"
+  },
   "tests": [
-    {
-      "name": "mixed runs",
-      "stdin": "aaabbc\n",
-      "expected_stdout": "a3b2c1"
-    },
-    {
-      "name": "no repeats",
-      "stdin": "abc\n",
-      "expected_stdout": "a1b1c1",
-      "description": "Single characters still get a count."
-    },
     {
       "name": "empty string",
       "stdin": "\n",
@@ -43,12 +36,6 @@
       "name": "case is significant",
       "stdin": "aAaa\n",
       "expected_stdout": "a1A1a2"
-    },
-    {
-      "name": "the run returns",
-      "stdin": "aabbaa\n",
-      "expected_stdout": "a2b2a2",
-      "description": "A character that comes back later starts a new run."
     }
   ],
   "reference_solution_b64": "ZGVmIGVuY29kZSh0ZXh0KToKICAgICIiIlJldHVybiB0aGUgcnVuLWxlbmd0aCBlbmNvZGluZyBvZiBgdGV4dGAuIiIiCiAgICBpZiBub3QgdGV4dDoKICAgICAgICByZXR1cm4gIiIKCiAgICBwYXJ0cyA9IFtdCiAgICBydW5fY2hhciA9IHRleHRbMF0KICAgIHJ1bl9sZW5ndGggPSAxCgogICAgZm9yIGNoYXIgaW4gdGV4dFsxOl06CiAgICAgICAgaWYgY2hhciA9PSBydW5fY2hhcjoKICAgICAgICAgICAgcnVuX2xlbmd0aCArPSAxCiAgICAgICAgZWxzZToKICAgICAgICAgICAgcGFydHMuYXBwZW5kKGYie3J1bl9jaGFyfXtydW5fbGVuZ3RofSIpCiAgICAgICAgICAgIHJ1bl9jaGFyID0gY2hhcgogICAgICAgICAgICBydW5fbGVuZ3RoID0gMQoKICAgIHBhcnRzLmFwcGVuZChmIntydW5fY2hhcn17cnVuX2xlbmd0aH0iKQogICAgcmV0dXJuICIiLmpvaW4ocGFydHMpCg=="

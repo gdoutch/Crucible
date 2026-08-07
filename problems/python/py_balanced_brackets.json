@@ -12,27 +12,16 @@
   "statement": "Decide whether the brackets in a string are balanced.\n\n## Your function\n\n```\ndef is_balanced(text):\n```\n\nReturn `True` if every `(`, `[` and `{` is closed by the matching\n`)`, `]` or `}` in the right order. Any other character is ignored.\n\n## Watch out\n\n- Order matters: `([)]` is **not** balanced.\n- A closing bracket with nothing open is not balanced.\n- Brackets left open at the end are not balanced.\n- The empty string is balanced.\n\nThis is the classic use for a stack: push on open, pop and check on\nclose.\n",
   "starter_code": "def is_balanced(text):\n    \"\"\"Return True if the brackets in `text` are balanced.\n\n    Characters other than ()[]{} are ignored.\n    \"\"\"\n    # your code here\n    return False\n",
   "harness": "\"\"\"Reads one line and prints true/false.\"\"\"\nimport sys\n\nfrom solution import is_balanced\n\n\ndef main():\n    line = sys.stdin.readline().rstrip(\"\\r\\n\")\n    print(\"true\" if is_balanced(line) else \"false\")\n\n\nmain()\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random inputs for the balanced brackets problem: one line of text.\n\nThe balanced strings are grown with a stack, so they are balanced by\nconstruction. The unbalanced ones are then made from those by an edit that\ncannot leave them balanced: remove a bracket and the counts no longer agree;\nsplice in `([)]` after a complete string and the first closer meets the wrong\nopener.\n\"\"\"\n\nOPENERS = \"([{\"\nCLOSERS = {\"(\": \")\", \"[\": \"]\", \"{\": \"}\"}\nFILLER = \"abcxyz0129 ;=+_\"\n\n\ndef generate(rng, count):\n    builders = (_balanced_case, _missing_bracket, _wrong_order, _with_filler)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, text, description=\"\"):\n    return {\"name\": name, \"stdin\": text + \"\\n\", \"description\": description}\n\n\ndef _balanced(rng, pairs):\n    text = []\n    stack = []\n    while pairs or stack:\n        if pairs and (not stack or rng.random() < 0.6):\n            opener = rng.choice(OPENERS)\n            stack.append(opener)\n            text.append(opener)\n            pairs -= 1\n        else:\n            text.append(CLOSERS[stack.pop()])\n    return \"\".join(text)\n\n\ndef _balanced_case(rng, index):\n    return _case(\"balanced #%d\" % index, _balanced(rng, rng.randint(3, 6)))\n\n\ndef _missing_bracket(rng, index):\n    text = _balanced(rng, rng.randint(3, 6))\n    cut = rng.randrange(len(text))\n    return _case(\"one bracket removed #%d\" % index, text[:cut] + text[cut + 1:],\n                 \"A balanced string with a single bracket deleted.\")\n\n\ndef _wrong_order(rng, index):\n    first, second = rng.sample(OPENERS, 2)\n    crossed = first + second + CLOSERS[first] + CLOSERS[second]\n    return _case(\"crossed, not nested #%d\" % index,\n                 _balanced(rng, rng.randint(1, 3)) + crossed,\n                 \"Every bracket is closed, but %s closes while %s is still \"\n                 \"open. Counting is not enough.\" % (CLOSERS[first], second))\n\n\ndef _with_filler(rng, index):\n    text = _balanced(rng, rng.randint(2, 5))\n    noisy = []\n    for char in text:\n        noisy.append(char)\n        if rng.random() < 0.5:\n            noisy.append(rng.choice(FILLER))\n    return _case(\"brackets among other text #%d\" % index, \"\".join(noisy),\n                 \"Anything that is not a bracket is ignored.\")\n"
+  },
   "tests": [
-    {
-      "name": "simple pair",
-      "stdin": "()\n",
-      "expected_stdout": "true"
-    },
-    {
-      "name": "nested",
-      "stdin": "{[()]}\n",
-      "expected_stdout": "true"
-    },
     {
       "name": "interleaved is not nested",
       "stdin": "([)]\n",
       "expected_stdout": "false",
       "description": "The ) tries to close a [ -- wrong order."
-    },
-    {
-      "name": "unclosed",
-      "stdin": "(((\n",
-      "expected_stdout": "false"
     },
     {
       "name": "unopened",
@@ -43,12 +32,6 @@
       "name": "empty string",
       "stdin": "\n",
       "expected_stdout": "true"
-    },
-    {
-      "name": "other characters ignored",
-      "stdin": "if (a[i] > 0) { x++; }\n",
-      "expected_stdout": "true",
-      "description": "Letters, digits and punctuation are not brackets."
     },
     {
       "name": "mismatched types",

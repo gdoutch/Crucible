@@ -11,33 +11,16 @@
   "statement": "Find two numbers in a list that add up to a target, and return their\npositions.\n\n## Your function\n\n```\ndef two_sum(numbers, target):\n```\n\nReturn a tuple `(i, j)` with `i < j` and\n`numbers[i] + numbers[j] == target`, or `None` if no such pair exists.\n\n## Watch out\n\n- If several pairs work, return the one whose second index is smallest.\n- The same element may not be used twice, but two equal values at\n  different positions are a valid pair.\n- The nested-loop version is O(n squared). A dictionary of\n  value to index gets you one pass.\n",
   "starter_code": "def two_sum(numbers, target):\n    \"\"\"Return (i, j) with i < j and numbers[i] + numbers[j] == target.\n\n    Return None when no pair adds up to target.\n    \"\"\"\n    # your code here\n    return None\n",
   "harness": "\"\"\"Reads: target on the first line, then the numbers.\"\"\"\nimport sys\n\nfrom solution import two_sum\n\n\ndef main():\n    data = sys.stdin.read().split()\n    if not data:\n        print(\"none\")\n        return\n    target = int(data[0])\n    numbers = [int(value) for value in data[1:]]\n\n    result = two_sum(numbers, target)\n    if result is None:\n        print(\"none\")\n    else:\n        first, second = result\n        print(f\"{first} {second}\")\n\n\nmain()\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random inputs for Two Sum: the target, then the numbers.\n\nEach builder guarantees its property by construction rather than by checking\nfor it, which is the difference between describing an input and solving the\nproblem. \"No pair\" is all-even values with an odd target; a pair that exists\nis one the builder added up itself.\n\"\"\"\n\n\ndef generate(rng, count):\n    builders = (_pair_inside, _no_pair, _repeated_value, _negatives)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, target, numbers, description=\"\"):\n    return {\n        \"name\": name,\n        \"stdin\": \"%d\\n%s\\n\" % (target, \" \".join(str(n) for n in numbers)),\n        \"description\": description,\n    }\n\n\ndef _pair_inside(rng, index):\n    numbers = rng.sample(range(1, 60), rng.randint(5, 9))\n    left, right = sorted(rng.sample(range(len(numbers)), 2))\n    return _case(\"random list #%d\" % index,\n                 numbers[left] + numbers[right], numbers,\n                 \"Two of these add up to the target.\")\n\n\ndef _no_pair(rng, index):\n    numbers = [rng.randrange(2, 80, 2) for _ in range(rng.randint(4, 8))]\n    return _case(\"no pair #%d\" % index, 2 * rng.randint(3, 40) + 1, numbers,\n                 \"Every value is even and the target is odd, so no two of \"\n                 \"them can reach it.\")\n\n\ndef _repeated_value(rng, index):\n    value = rng.randint(2, 40)\n    numbers = rng.sample(range(50, 99), rng.randint(3, 6)) + [value, value]\n    rng.shuffle(numbers)\n    return _case(\"repeated value #%d\" % index, value * 2, numbers,\n                 \"One value appears twice. Two equal values at different \"\n                 \"positions are a valid pair; one value used twice is not.\")\n\n\ndef _negatives(rng, index):\n    numbers = rng.sample(range(-45, 0), rng.randint(4, 7))\n    numbers += rng.sample(range(1, 45), rng.randint(1, 3))\n    rng.shuffle(numbers)\n    left, right = sorted(rng.sample(range(len(numbers)), 2))\n    return _case(\"negative values #%d\" % index,\n                 numbers[left] + numbers[right], numbers,\n                 \"The target can be smaller than the values that make it.\")\n"
+  },
   "tests": [
-    {
-      "name": "pair at the start",
-      "stdin": "9\n2 7 11 15\n",
-      "expected_stdout": "0 1"
-    },
-    {
-      "name": "pair further in",
-      "stdin": "26\n5 11 15 20 6\n",
-      "expected_stdout": "1 2",
-      "description": "numbers[1] + numbers[2] = 11 + 15 = 26. Indices are returned in ascending order."
-    },
-    {
-      "name": "no pair",
-      "stdin": "100\n1 2 3\n",
-      "expected_stdout": "none"
-    },
     {
       "name": "duplicate values",
       "stdin": "6\n3 3 4\n",
       "expected_stdout": "0 1",
       "description": "Two equal values at different positions are a valid pair."
-    },
-    {
-      "name": "negative numbers",
-      "stdin": "-8\n-3 4 -5 2\n",
-      "expected_stdout": "0 2"
     },
     {
       "name": "empty list",

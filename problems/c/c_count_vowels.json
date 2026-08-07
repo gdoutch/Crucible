@@ -12,18 +12,11 @@
   "statement": "Count how many vowels (`a`, `e`, `i`, `o`, `u`) appear in a string.\nBoth cases count -- `A` and `a` are both vowels. `y` is not.\n\n## Your function\n\n```\nint count_vowels(const char *s);\n```\n\n## Watch out\n\n- `s` may be the empty string.\n- If you use `tolower` from `<ctype.h>`, cast the argument to\n  `unsigned char` first. Passing a plain `char` is undefined behaviour\n  for negative values, and it bites on inputs with accented bytes.\n",
   "starter_code": "#include <ctype.h>\n\n/* Return the number of vowels (a, e, i, o, u -- either case) in `s`. */\nint count_vowels(const char *s)\n{\n    /* your code here */\n    return 0;\n}\n",
   "harness": "#include <stdio.h>\n#include <string.h>\n\n/* Provided by the candidate in solution.c */\nint count_vowels(const char *s);\n\nstatic void read_line(char *buffer, size_t size)\n{\n    if (fgets(buffer, (int)size, stdin) == NULL) {\n        buffer[0] = '\\0';\n        return;\n    }\n    buffer[strcspn(buffer, \"\\r\\n\")] = '\\0';\n}\n\nint main(void)\n{\n    char buffer[1024];\n    read_line(buffer, sizeof buffer);\n    printf(\"%d\\n\", count_vowels(buffer));\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random strings for the vowel counter: one line of ASCII.\n\nNothing here goes outside plain ASCII. The problem warns about passing a\nnegative `char` to `tolower`, but a generated case that only fails on some\nmachines would be a worse test than the warning is a hint.\n\"\"\"\n\nVOWELS = \"aeiou\"\nCONSONANTS = \"bcdfghjklmnpqrstvwxz\"\n\n\ndef generate(rng, count):\n    builders = (_word, _mixed_case, _no_vowels, _sentence)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, text, description=\"\"):\n    return {\"name\": name, \"stdin\": text + \"\\n\", \"description\": description}\n\n\ndef _letters(rng, length, alphabet=VOWELS + CONSONANTS):\n    return \"\".join(rng.choice(alphabet) for _ in range(length))\n\n\ndef _word(rng, index):\n    return _case(\"a word #%d\" % index, _letters(rng, rng.randint(6, 14)))\n\n\ndef _mixed_case(rng, index):\n    text = _letters(rng, rng.randint(8, 14))\n    shouted = \"\".join(c.upper() if rng.random() < 0.5 else c for c in text)\n    return _case(\"mixed case #%d\" % index, shouted,\n                 \"Upper and lower case both count.\")\n\n\ndef _no_vowels(rng, index):\n    return _case(\"no vowels #%d\" % index,\n                 _letters(rng, rng.randint(5, 10), CONSONANTS + \"y\"),\n                 \"Consonants only. 'y' is not a vowel here.\")\n\n\ndef _sentence(rng, index):\n    words = [_letters(rng, rng.randint(2, 7)) for _ in range(rng.randint(3, 5))]\n    return _case(\"a sentence #%d\" % index, \" \".join(words) + \".\",\n                 \"Spaces and punctuation are not vowels either.\")\n"
+  },
   "tests": [
-    {
-      "name": "lowercase word",
-      "stdin": "programming\n",
-      "expected_stdout": "3"
-    },
-    {
-      "name": "mixed case",
-      "stdin": "AEIOUaeiou\n",
-      "expected_stdout": "10",
-      "description": "Upper and lower case both count."
-    },
     {
       "name": "no vowels",
       "stdin": "rhythm\n",
@@ -34,11 +27,6 @@
       "name": "empty string",
       "stdin": "\n",
       "expected_stdout": "0"
-    },
-    {
-      "name": "a whole sentence",
-      "stdin": "The quick brown fox\n",
-      "expected_stdout": "5"
     }
   ],
   "reference_solution_b64": "I2luY2x1ZGUgPGN0eXBlLmg+CgppbnQgY291bnRfdm93ZWxzKGNvbnN0IGNoYXIgKnMpCnsKICAgIGludCBjb3VudCA9IDA7CiAgICBmb3IgKDsgKnMgIT0gJ1wwJzsgcysrKSB7CiAgICAgICAgc3dpdGNoICh0b2xvd2VyKCh1bnNpZ25lZCBjaGFyKSpzKSkgewogICAgICAgIGNhc2UgJ2EnOgogICAgICAgIGNhc2UgJ2UnOgogICAgICAgIGNhc2UgJ2knOgogICAgICAgIGNhc2UgJ28nOgogICAgICAgIGNhc2UgJ3UnOgogICAgICAgICAgICBjb3VudCsrOwogICAgICAgICAgICBicmVhazsKICAgICAgICBkZWZhdWx0OgogICAgICAgICAgICBicmVhazsKICAgICAgICB9CiAgICB9CiAgICByZXR1cm4gY291bnQ7Cn0K"

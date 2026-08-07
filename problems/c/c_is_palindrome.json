@@ -12,23 +12,11 @@
   "statement": "Decide whether a string reads the same forwards and backwards, ignoring\npunctuation, spaces and letter case.\n\n## Your function\n\n```\nint is_palindrome(const char *s);\n```\n\nReturn `1` if it is a palindrome, `0` if it is not.\n\n## Watch out\n\n- Only letters and digits are compared. Everything else is skipped,\n  which is why `A man, a plan, a canal: Panama` counts.\n- Comparison is case insensitive.\n- The empty string is a palindrome.\n- Walking one index in from each end is enough; you do not need to\n  build a cleaned-up copy of the string.\n",
   "starter_code": "#include <ctype.h>\n#include <string.h>\n\n/* Return 1 if `s` is a palindrome ignoring case and non-alphanumeric\n * characters, otherwise 0.\n */\nint is_palindrome(const char *s)\n{\n    /* your code here */\n    return 0;\n}\n",
   "harness": "#include <stdio.h>\n#include <string.h>\n\n/* Provided by the candidate in solution.c */\nint is_palindrome(const char *s);\n\nstatic void read_line(char *buffer, size_t size)\n{\n    if (fgets(buffer, (int)size, stdin) == NULL) {\n        buffer[0] = '\\0';\n        return;\n    }\n    buffer[strcspn(buffer, \"\\r\\n\")] = '\\0';\n}\n\nint main(void)\n{\n    char buffer[1024];\n    read_line(buffer, sizeof buffer);\n    printf(\"%s\\n\", is_palindrome(buffer) ? \"true\" : \"false\");\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random strings for the palindrome check: one line of ASCII.\n\nPalindromes are built by mirroring half a string, so they are palindromes\nbefore anything looks at them. The near-miss is one of those with a single\nletter changed somewhere off centre -- close enough that a solution comparing\nonly the first and last characters still gets it wrong.\n\"\"\"\n\nLETTERS = \"abcdefghijklmnopqrstuvwxyz\"\nPUNCTUATION = \" ,.:;!-'\"\n\n\ndef generate(rng, count):\n    builders = (_palindrome, _near_miss, _punctuated, _digits)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, text, description=\"\"):\n    return {\"name\": name, \"stdin\": text + \"\\n\", \"description\": description}\n\n\ndef _mirror(rng, half_length, alphabet=LETTERS):\n    half = \"\".join(rng.choice(alphabet) for _ in range(half_length))\n    middle = rng.choice(alphabet) if rng.random() < 0.5 else \"\"\n    return half + middle + half[::-1]\n\n\ndef _palindrome(rng, index):\n    return _case(\"a palindrome #%d\" % index, _mirror(rng, rng.randint(3, 6)))\n\n\ndef _near_miss(rng, index):\n    text = _mirror(rng, rng.randint(3, 6))\n    # Any position except the middle character of an odd-length string, which\n    # is its own mirror image and can be changed without breaking anything.\n    middle = len(text) // 2 if len(text) % 2 else -1\n    spoilt = rng.choice([i for i in range(len(text)) if i != middle])\n    swap = rng.choice([c for c in LETTERS if c != text[spoilt]])\n    return _case(\"one letter out #%d\" % index,\n                 text[:spoilt] + swap + text[spoilt + 1:],\n                 \"A palindrome with a single letter changed. The ends still \"\n                 \"match; somewhere inside, they stop matching.\")\n\n\ndef _punctuated(rng, index):\n    text = _mirror(rng, rng.randint(3, 6))\n    dressed = []\n    for char in text:\n        dressed.append(char.upper() if rng.random() < 0.5 else char)\n        if rng.random() < 0.4:\n            dressed.append(rng.choice(PUNCTUATION))\n    return _case(\"punctuation and case #%d\" % index, \"\".join(dressed).strip(),\n                 \"Skip anything that is not a letter or a digit, and compare \"\n                 \"without regard to case.\")\n\n\ndef _digits(rng, index):\n    return _case(\"digits #%d\" % index, _mirror(rng, rng.randint(2, 5), \"0123456789\"),\n                 \"Digits count as characters to compare, not as separators.\")\n"
+  },
   "tests": [
-    {
-      "name": "simple palindrome",
-      "stdin": "racecar\n",
-      "expected_stdout": "true"
-    },
-    {
-      "name": "not a palindrome",
-      "stdin": "hello\n",
-      "expected_stdout": "false"
-    },
-    {
-      "name": "punctuation and case ignored",
-      "stdin": "A man, a plan, a canal: Panama\n",
-      "expected_stdout": "true",
-      "description": "Skip anything that is not a letter or digit, and compare case insensitively."
-    },
     {
       "name": "empty string",
       "stdin": "\n",
@@ -38,16 +26,6 @@
       "name": "single character",
       "stdin": "z\n",
       "expected_stdout": "true"
-    },
-    {
-      "name": "digits count",
-      "stdin": "12321\n",
-      "expected_stdout": "true"
-    },
-    {
-      "name": "nearly a palindrome",
-      "stdin": "abca\n",
-      "expected_stdout": "false"
     }
   ],
   "reference_solution_b64": "I2luY2x1ZGUgPGN0eXBlLmg+CiNpbmNsdWRlIDxzdHJpbmcuaD4KCmludCBpc19wYWxpbmRyb21lKGNvbnN0IGNoYXIgKnMpCnsKICAgIHNpemVfdCBpID0gMDsKICAgIHNpemVfdCBqID0gc3RybGVuKHMpOwoKICAgIHdoaWxlIChpIDwgaikgewogICAgICAgIGlmICghaXNhbG51bSgodW5zaWduZWQgY2hhcilzW2ldKSkgewogICAgICAgICAgICBpKys7CiAgICAgICAgfSBlbHNlIGlmICghaXNhbG51bSgodW5zaWduZWQgY2hhcilzW2ogLSAxXSkpIHsKICAgICAgICAgICAgai0tOwogICAgICAgIH0gZWxzZSBpZiAodG9sb3dlcigodW5zaWduZWQgY2hhcilzW2ldKQogICAgICAgICAgICAgICAgICAgIT0gdG9sb3dlcigodW5zaWduZWQgY2hhcilzW2ogLSAxXSkpIHsKICAgICAgICAgICAgcmV0dXJuIDA7CiAgICAgICAgfSBlbHNlIHsKICAgICAgICAgICAgaSsrOwogICAgICAgICAgICBqLS07CiAgICAgICAgfQogICAgfQogICAgcmV0dXJuIDE7Cn0K"

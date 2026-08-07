@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import base64
 import json
+import os
 import sys
 import tempfile
 import textwrap
@@ -19,7 +20,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from crucible import languages, runner
+from crucible import languages, randomise, runner, workspace
 from crucible.languages.c_lang import CLanguage
 from crucible.problem import ProblemError, load_library, load_problem
 
@@ -189,20 +190,312 @@ class TestProblemLoading(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# randomised test data
+# ---------------------------------------------------------------------------
+
+#: A problem whose answer is a pure function of its input, so a test can assert
+#: the relationship between a generated input and its captured expected output
+#: without knowing what the generator happened to produce.
+SHOUTING = {
+    "id": "shout",
+    "title": "Shout",
+    "language": "python",
+    "statement": "Upper-case the line.",
+    "harness": "import sys\nfrom solution import shout\n"
+               "print(shout(sys.stdin.readline().rstrip('\\n')))\n",
+    "reference_solution": "def shout(text):\n    return text.upper()\n",
+    "tests": [{"name": "a word", "stdin": "abc\n", "expected_stdout": "ABC"}],
+}
+
+WORD_GENERATOR = textwrap.dedent("""\
+    def generate(rng, count):
+        return [{"name": "word %d" % i,
+                 "stdin": "".join(rng.choice("abcdef") for _ in range(6)),
+                 "description": "a random word"}
+                for i in range(count)]
+    """)
+
+
+def randomised_problem(directory: Path, source: str = WORD_GENERATOR, **overrides):
+    generator = {"count": 3, "source": source}
+    generator.update(overrides.pop("generator", {}))
+    return load_problem(write_problem(directory, generator=generator,
+                                      **{**SHOUTING, **overrides}))
+
+
+class TestGeneratorSchema(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self._tmp.name)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_a_problem_without_a_generator_is_not_randomised(self):
+        problem = load_problem(write_problem(self.dir))
+        self.assertFalse(problem.randomised)
+        self.assertEqual(problem.generated_tests, ())
+
+    def test_generator_is_loaded(self):
+        problem = randomised_problem(self.dir)
+        self.assertTrue(problem.randomised)
+        self.assertEqual(problem.generator.count, 3)
+
+    def test_generator_source_must_parse(self):
+        with self.assertRaises(ProblemError) as ctx:
+            randomised_problem(self.dir, source="def generate(rng, count)\n")
+        self.assertIn("does not parse", str(ctx.exception))
+
+    def test_generator_must_define_generate(self):
+        with self.assertRaises(ProblemError) as ctx:
+            randomised_problem(self.dir, source="x = 1\n")
+        self.assertIn("generate(rng, count)", str(ctx.exception))
+
+    def test_generator_count_is_bounded(self):
+        with self.assertRaises(ProblemError) as ctx:
+            randomised_problem(self.dir, generator={"count": 500})
+        self.assertIn("between 1 and", str(ctx.exception))
+
+    def test_generator_must_be_an_object(self):
+        with self.assertRaises(ProblemError):
+            load_problem(write_problem(self.dir, generator="def generate(): pass"))
+
+    def test_tests_may_be_empty_when_a_generator_supplies_them(self):
+        problem = randomised_problem(self.dir, tests=[])
+        self.assertEqual(problem.fixed_tests, ())
+
+    def test_tests_may_not_be_empty_without_a_generator(self):
+        with self.assertRaises(ProblemError) as ctx:
+            load_problem(write_problem(self.dir, tests=[]))
+        self.assertIn("generator", str(ctx.exception))
+
+
+class TestGeneration(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self._tmp.name)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_expected_output_comes_from_the_reference_solution(self):
+        problem = randomised_problem(self.dir)
+        suite = randomise.generate(problem, seed=1234)
+        self.assertTrue(suite.ok, suite.error)
+        self.assertEqual(len(suite.tests), 3)
+        for test in suite.tests:
+            # Nothing in the generator knows what the answer is; this is the
+            # reference solution's opinion, captured.
+            self.assertEqual(test.expected_stdout, test.stdin.strip().upper())
+            self.assertTrue(test.generated)
+
+    def test_the_same_seed_gives_the_same_data(self):
+        problem = randomised_problem(self.dir)
+        first = randomise.generate(problem, seed=77)
+        second = randomise.generate(problem, seed=77)
+        self.assertEqual(first.tests, second.tests)
+
+    def test_a_different_seed_gives_different_data(self):
+        problem = randomised_problem(self.dir)
+        first = randomise.generate(problem, seed=1)
+        second = randomise.generate(problem, seed=2)
+        self.assertNotEqual([t.stdin for t in first.tests],
+                            [t.stdin for t in second.tests])
+
+    def test_generated_cases_are_appended_to_the_hand_written_ones(self):
+        problem = randomised_problem(self.dir)
+        randomise.apply(problem, randomise.generate(problem, seed=5))
+        self.assertEqual(len(problem.tests), 4)
+        self.assertEqual(problem.tests[0], problem.fixed_tests[0])
+        self.assertEqual(problem.seed, 5)
+
+    def test_a_generator_may_not_state_the_expected_output(self):
+        """The one rule: generators describe inputs. A generator that also
+        answered the problem could disagree with the reference, and the
+        disagreement would land on the candidate as an impossible case."""
+        problem = randomised_problem(self.dir, source=textwrap.dedent("""\
+            def generate(rng, count):
+                return [{"stdin": "abc", "expected_stdout": "WRONG"}]
+            """))
+        suite = randomise.generate(problem, seed=1)
+        self.assertFalse(suite.ok)
+        self.assertIn("expected_stdout", suite.error)
+
+    def test_a_generator_that_raises_is_reported_not_propagated(self):
+        problem = randomised_problem(self.dir, source=textwrap.dedent("""\
+            def generate(rng, count):
+                raise ValueError("no data today")
+            """))
+        suite = randomise.generate(problem, seed=1)
+        self.assertFalse(suite.ok)
+        self.assertIn("no data today", suite.error)
+        self.assertEqual(suite.tests, ())
+
+    def test_a_generator_that_never_returns_is_timed_out(self):
+        problem = randomised_problem(self.dir, source=textwrap.dedent("""\
+            def generate(rng, count):
+                while True:
+                    pass
+            """))
+        original = randomise.GENERATOR_TIMEOUT
+        randomise.GENERATOR_TIMEOUT = 1.0
+        try:
+            suite = randomise.generate(problem, seed=1)
+        finally:
+            randomise.GENERATOR_TIMEOUT = original
+        self.assertFalse(suite.ok)
+        self.assertIn("endless loop", suite.error)
+
+    def test_a_generator_that_returns_rubbish_is_rejected(self):
+        problem = randomised_problem(self.dir, source=textwrap.dedent("""\
+            def generate(rng, count):
+                return ["not a case"]
+            """))
+        self.assertIn("not an object", randomise.generate(problem, seed=1).error)
+
+    def test_a_case_without_stdin_is_rejected(self):
+        problem = randomised_problem(self.dir, source=textwrap.dedent("""\
+            def generate(rng, count):
+                return [{"name": "nameless"}]
+            """))
+        self.assertIn("stdin", randomise.generate(problem, seed=1).error)
+
+    def test_stray_printing_in_a_generator_does_not_corrupt_the_cases(self):
+        problem = randomised_problem(self.dir, source=textwrap.dedent("""\
+            def generate(rng, count):
+                print("left-over debugging")
+                return [{"stdin": "abc"}]
+            """))
+        suite = randomise.generate(problem, seed=1)
+        self.assertTrue(suite.ok, suite.error)
+        self.assertEqual(suite.tests[0].expected_stdout, "ABC")
+
+    def test_an_input_the_reference_cannot_run_is_dropped_and_reported(self):
+        """A generator can wander outside the problem's own contract. When it
+        does, there is no trustworthy expected output, so the case must not
+        become a test -- and the author has to be told which one."""
+        problem = randomised_problem(
+            self.dir,
+            reference_solution="def shout(text):\n"
+                               "    if text == 'boom':\n"
+                               "        raise RuntimeError('bang')\n"
+                               "    return text.upper()\n",
+            source=textwrap.dedent("""\
+                def generate(rng, count):
+                    return [{"name": "fine", "stdin": "abc"},
+                            {"name": "poison", "stdin": "boom"}]
+                """))
+        suite = randomise.generate(problem, seed=1)
+        self.assertFalse(suite.ok)
+        self.assertIn("poison", suite.error)
+        self.assertEqual([t.name for t in suite.tests], ["fine"])
+
+    def test_generated_names_never_collide_with_hand_written_ones(self):
+        problem = randomised_problem(self.dir, source=textwrap.dedent("""\
+            def generate(rng, count):
+                return [{"name": "a word", "stdin": "xyz"}]
+            """))
+        randomise.apply(problem, randomise.generate(problem, seed=1))
+        names = [t.name for t in problem.tests]
+        self.assertEqual(len(names), len(set(names)))
+
+    def test_a_problem_with_no_generator_generates_nothing_and_is_happy(self):
+        problem = load_problem(write_problem(self.dir))
+        suite = randomise.generate(problem, seed=1)
+        self.assertTrue(suite.ok)
+        self.assertEqual(suite.tests, ())
+
+    def test_seeds_are_four_digit_numbers(self):
+        for _ in range(50):
+            self.assertRegex(str(randomise.new_seed()), r"^\d{4}$")
+
+
+class TestSeedStorage(unittest.TestCase):
+    """Data set numbers live beside the drafts: pick a problem back up
+    tomorrow and the cases you were reading are still the ones you get."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self._home = os.environ.get("CRUCIBLE_HOME")
+        os.environ["CRUCIBLE_HOME"] = self._tmp.name
+
+    def tearDown(self):
+        if self._home is None:
+            del os.environ["CRUCIBLE_HOME"]
+        else:
+            os.environ["CRUCIBLE_HOME"] = self._home
+        self._tmp.cleanup()
+
+    def test_seeds_survive_a_round_trip(self):
+        workspace.save_seeds({"py_two_sum": 4321})
+        self.assertEqual(workspace.load_seeds(), {"py_two_sum": 4321})
+
+    def test_missing_file_is_not_an_error(self):
+        self.assertEqual(workspace.load_seeds(), {})
+
+    def test_corrupt_file_is_ignored(self):
+        (Path(self._tmp.name) / "seeds.json").write_text("{ nonsense")
+        self.assertEqual(workspace.load_seeds(), {})
+
+    def test_non_integer_seeds_are_discarded(self):
+        (Path(self._tmp.name) / "seeds.json").write_text(
+            '{"good": 1234, "bad": "banana"}')
+        self.assertEqual(workspace.load_seeds(), {"good": 1234})
+
+
+# ---------------------------------------------------------------------------
 # the shipped problem library
 # ---------------------------------------------------------------------------
 
 class TestShippedProblems(unittest.TestCase):
     """The spec's headline requirement: every reference solution must pass
-    every one of its own test cases before the problem is offered."""
+    every one of its own test cases before the problem is offered.
+
+    The suite is built the way the app builds it -- randomised cases included
+    -- so this covers the generators too. A generator that emits input the
+    reference cannot handle fails here, and so does one whose input makes the
+    reference give a different answer on the second run than it gave when the
+    expected output was captured.
+    """
+
+    #: Not a round number, and not one of the shipped data sets, so a
+    #: generator that only works on the seeds it was written against has
+    #: nowhere to hide.
+    SEED = 8317
 
     @classmethod
     def setUpClass(cls):
         cls.library = load_library(PROBLEMS_ROOT)
+        cls.generation = {}
+        for problem in cls.library.problems:
+            suite = randomise.generate(problem, cls.SEED)
+            randomise.apply(problem, suite)
+            cls.generation[problem.id] = suite
 
     def test_library_loads_without_errors(self):
         self.assertEqual(self.library.errors, [])
         self.assertGreater(len(self.library.problems), 0)
+
+    def test_every_generator_produces_a_full_data_set(self):
+        for problem in self.library.problems:
+            if not problem.randomised:
+                continue
+            with self.subTest(problem=problem.id):
+                suite = self.generation[problem.id]
+                if suite.toolchain_missing:
+                    self.skipTest(f"no toolchain for {problem.language_id}")
+                self.assertEqual(suite.error, "")
+                self.assertEqual(len(suite.tests), problem.generator.count)
+
+    def test_generated_cases_carry_a_captured_expected_output(self):
+        for problem in self.library.problems:
+            for test in problem.generated_tests:
+                with self.subTest(problem=problem.id, case=test.name):
+                    self.assertTrue(test.generated)
+                    self.assertTrue(test.stdin)
+                    # FizzBuzz with n = 0 would legitimately print nothing, but
+                    # no generator here produces an input that empty.
+                    self.assertTrue(test.expected_stdout)
 
     def test_every_problem_has_a_hidden_reference(self):
         for problem in self.library.problems:

@@ -7,6 +7,12 @@ Built around one rule: **the test cases are always visible, the reference
 solution never is.** Every problem's suite is proved satisfiable by running the
 hidden reference against it *before* the problem is offered to anyone.
 
+That same reference is what makes the data safe to randomise. Most problems mix
+fixed edge cases with cases generated fresh from a seed, and the expected output
+for a generated case is captured from the reference rather than written down —
+so the data and the results it is checked against cannot drift apart. Press
+**Ctrl+R** for a new set and solve the problem again.
+
 ```sh
 python -m crucible
 ```
@@ -19,6 +25,7 @@ python -m crucible
 - [Installing a C compiler](#installing-a-c-compiler)
 - [How a submission is run](#how-a-submission-is-run)
 - [The reference-solution gate](#the-reference-solution-gate)
+- [Randomised test data](#randomised-test-data)
 - [Writing a problem](#writing-a-problem)
 - [Adding a language](#adding-a-language)
 - [Command line](#command-line)
@@ -60,8 +67,9 @@ The window is four panes:
 └───────────┴────────────────────────────────────────────────┘
 ```
 
-Keys: **F5** or **Ctrl+Enter** runs the suite. **Ctrl+S** saves a draft.
-**Tab** / **Shift+Tab** indent and dedent the selection.
+Keys: **F5** or **Ctrl+Enter** runs the suite. **Ctrl+R** draws a new
+randomised data set. **Ctrl+S** saves a draft. **Tab** / **Shift+Tab** indent
+and dedent the selection.
 
 Your work is autosaved per problem to `~/.crucible/drafts/`, so closing the
 window mid-problem loses nothing. *File → Reset to starter code* discards it.
@@ -148,7 +156,9 @@ non-zero if anything is broken, which makes it a usable CI check:
 
 ```console
 $ python -m crucible --verify
-  OK    Binary Search  (9 tests)
+Randomised data sets use seed 5209  (--seed 5209 to repeat)
+
+  OK    Binary Search  (8 tests, 4 randomised)
   BROKEN Two Sum  -- 6/7 tests passed
            FAIL     pair further in  first difference on line 1
              expected: '2 1'
@@ -157,6 +167,88 @@ $ python -m crucible --verify
 
 That example is real: it is the gate catching a test case whose expected output
 had the indices the wrong way round.
+
+## Randomised test data
+
+Most problems ship a **generator** as well as hand-written cases. The
+hand-written ones never change — they are the edge cases, and an edge case you
+might not meet this run is not doing its job. The generated ones are new every
+time you ask for them, so coming back to a problem next week is solving it
+again rather than remembering what came out last time.
+
+**Ctrl+R** (or *Run → New data set*) draws a fresh set. Your code is left
+alone; the numbers change, not the exercise.
+
+One rule makes the whole thing work:
+
+> A generator produces **inputs**. It never states the expected output.
+
+The expected output for a generated case is captured from the problem's own
+reference solution, run through the same build-and-run pipeline your code goes
+through:
+
+```text
+generator ──► stdin ──► reference solution ──► stdout ──► expected_stdout
+                            (same compile, same per-case process)
+```
+
+So there is no "keeping the tests in sync with the data" problem to get wrong.
+The data and the expected results cannot drift apart, because only one thing in
+the system ever decides what an input should produce, and it is the same thing
+that decided it before randomisation existed. A generator that also computed
+the answer would be a second implementation of the problem, free to disagree
+with the first — and the disagreement would land on you as a case nobody can
+pass.
+
+Two consequences fall out of that, and both are visible in the UI:
+
+- Generation runs the reference, so it **needs a working toolchain**. With no C
+  compiler installed, C problems keep their hand-written cases and say so.
+- An input the reference **cannot** handle — it crashes, or never returns — is
+  dropped rather than turned into a test case, and the author is told which
+  one. The generator wandered outside the problem's own contract, and there is
+  no defensible expected output to be had from it.
+
+Each data set has a four-digit number shown in the banner. `--seed` replays
+one, which is what makes a generated failure reproducible:
+
+```sh
+python -m crucible --verify --seed 8317
+```
+
+Data set numbers are remembered per problem in `~/.crucible/seeds.json`,
+alongside the drafts and for the same reason: a half-written solution and the
+cases it was being written against belong together.
+
+### Writing a generator
+
+Always Python, whatever language the problem is in — a generator describes
+data, not solutions. It defines one function:
+
+```python
+def generate(rng, count):
+    """rng is a random.Random seeded from the data set number."""
+    return [{"name": "...", "stdin": "...", "description": "..."}
+            for _ in range(count)]
+```
+
+`stdin` is the only required key; `name`, `description` and `hidden` are
+optional. Setting `expected_stdout` is an error, not an override.
+
+Two things worth doing, both visible in `problems/`:
+
+- **Guarantee properties by construction, not by checking.** Two Sum's "no
+  pair" case is all-even values with an odd target, so no two of them can
+  reach it. That is a statement about the input; brute-forcing the array to
+  confirm no pair exists would be solving the problem in the generator.
+- **Keep the arithmetic inside the language's range.** The C array problems
+  cap at a dozen values under a thousand, so no correct solution can overflow
+  an `int`. An input whose answer depends on undefined behaviour has no
+  expected output worth capturing.
+
+A generator runs in its own process with a ten-second limit, so one with an
+endless loop is reported rather than hanging the app, and a stray `print` left
+in it turns up as a diagnostic instead of corrupting the data.
 
 ## Writing a problem
 
@@ -180,6 +272,11 @@ carry no meaning — group them however you like.
   "reference_solution": "...",     // plain, or:
   "reference_solution_b64": "...", // base64 — keeps it out of casual view
 
+  "generator": {                 // optional; see Randomised test data
+    "count": 4,                  // how many cases to add
+    "source": "def generate(rng, count): ..."
+  },
+
   "tests": [
     {
       "name": "empty array",
@@ -191,6 +288,10 @@ carry no meaning — group them however you like.
   ]
 }
 ```
+
+`tests` may be omitted entirely if a `generator` supplies the cases, though
+most problems want at least the empty and single-element cases pinned down by
+hand.
 
 `statement` supports `# heading`, `## subheading`, `- bullet`,
 `` `inline code` `` and ``` fenced blocks ```.
@@ -253,10 +354,11 @@ tracebacks.
 | Command | Does |
 | --- | --- |
 | `python -m crucible` | Open the GUI |
-| `--verify` | Run every reference solution against its suite; exit 1 if any fail |
+| `--verify` | Build a data set for every problem, then run every reference solution against its suite; exit 1 if any fail |
 | `--list` | List loaded problems and their test counts |
 | `--toolchains` | Report which compilers were found and where |
 | `--problems DIR` | Use a different problem directory |
+| `--seed N` | Replay a particular data set instead of drawing a new one |
 
 ## Tests
 
@@ -264,15 +366,22 @@ tracebacks.
 python -m unittest discover -s tests -v
 ```
 
-46 tests covering output normalisation and diff hints, problem-schema
+74 tests covering output normalisation and diff hints, problem-schema
 validation (missing fields, bad base64, duplicate test names, unknown
 languages, malformed JSON), the run pipeline (correct, wrong, syntax error,
-runtime exception, timeout, progress callbacks), the language registry, and the
-C diagnostic/exit-code helpers that can be checked without a compiler.
+runtime exception, timeout, progress callbacks), randomised data (determinism
+per seed, expected output actually coming from the reference, generators that
+raise, loop, print, return rubbish, or try to state the answer), data-set
+storage, the language registry, and the C diagnostic/exit-code helpers that can
+be checked without a compiler.
 
 The suite also asserts that every shipped reference solution passes its own
-tests. Problems whose toolchain is missing are skipped *individually*, so one
-uninstalled compiler cannot silently skip the rest.
+tests — including a freshly generated data set, which is what covers the
+generators: one that emits input the reference cannot handle fails here, and so
+does one whose input makes the reference answer differently on the second run
+than it did when the expected output was captured. Problems whose toolchain is
+missing are skipped *individually*, so one uninstalled compiler cannot silently
+skip the rest.
 
 ## Layout
 
@@ -282,7 +391,8 @@ crucible/
   __main__.py          entry point and CLI  (python -m crucible)
   problem.py           schema, loading, validation
   runner.py            build + execute + judge        (no UI)
-  workspace.py         drafts and settings
+  randomise.py         generators, and the reference-as-oracle
+  workspace.py         drafts, data set numbers, settings
   languages/
     __init__.py        registry
     base.py            Language ABC, process runner, result types

@@ -10,7 +10,9 @@
 On Windows, Crucible.cmd double-clicks straight into the GUI.
 
 `--verify` is the authoring workflow: it is the same pre-flight the GUI runs
-before offering a problem, just without a window.
+before offering a problem, just without a window. For a problem with randomised
+data it builds a data set first, so the seed it used is printed -- pass it back
+with `--seed` to reproduce a failure exactly.
 """
 
 from __future__ import annotations
@@ -19,8 +21,8 @@ import argparse
 import sys
 from pathlib import Path
 
-from . import languages, runner
-from .problem import load_library
+from . import languages, randomise, runner
+from .problem import Problem, load_library
 
 #: Repository root -- the package lives one level below it.
 ROOT = Path(__file__).resolve().parent.parent
@@ -63,14 +65,36 @@ def cmd_list(root: Path) -> int:
         visible = len(problem.visible_tests)
         hidden = len(problem.tests) - visible
         extra = f" (+{hidden} hidden)" if hidden else ""
+        random_note = (f" + {problem.generator.count} randomised"
+                       if problem.generator else "")
         print(f"  [{problem.language_id:<6}] {problem.title}")
-        print(f"           {problem.difficulty}, {visible} visible test(s){extra}"
-              f"  id={problem.id}")
+        print(f"           {problem.difficulty}, {visible} visible test(s)"
+              f"{extra}{random_note}  id={problem.id}")
     return 0
 
 
-def cmd_verify(root: Path) -> int:
-    """Pre-test every problem's suite against its reference solution."""
+def _build_data_set(problem: Problem, seed: int) -> str:
+    """Attach a randomised data set, returning "" or why it is incomplete.
+
+    Only called once the toolchain is known to be present, so a missing
+    compiler is the caller's SKIP rather than anything reported here.
+    """
+    if not problem.randomised:
+        return ""
+    suite = randomise.generate(problem, seed)
+    randomise.apply(problem, suite)
+    return suite.error
+
+
+def cmd_verify(root: Path, seed: int | None) -> int:
+    """Pre-test every problem's suite against its reference solution.
+
+    Randomised problems get a data set built first, so this covers the
+    generators too: it catches one that emits inputs the reference cannot
+    handle, and -- because the expected output is captured and then checked by
+    running the reference a second time -- one whose inputs make the reference
+    behave differently from one run to the next.
+    """
     library = load_library(root)
     for error in library.errors:
         print(f"  ! {error}")
@@ -78,8 +102,12 @@ def cmd_verify(root: Path) -> int:
         print(f"No problems found under {root}")
         return 1
 
+    if seed is None:
+        seed = randomise.new_seed()
+
     print(f"Verifying {len(library.problems)} problem(s) against their "
-          f"reference solutions\n")
+          f"reference solutions")
+    print(f"Randomised data sets use seed {seed}  (--seed {seed} to repeat)\n")
 
     broken = 0
     skipped = 0
@@ -90,9 +118,17 @@ def cmd_verify(root: Path) -> int:
             skipped += 1
             continue
 
+        generator_error = _build_data_set(problem, seed)
+        if generator_error:
+            broken += 1
+            print(f"  BROKEN {problem.title}  -- {generator_error}")
+            continue
+
         result = runner.verify_reference(problem)
         if result.all_passed:
-            print(f"  OK    {problem.title}  ({result.total} tests)")
+            random_note = (f", {len(problem.generated_tests)} randomised"
+                           if problem.generated_tests else "")
+            print(f"  OK    {problem.title}  ({result.total} tests{random_note})")
             continue
 
         broken += 1
@@ -125,6 +161,9 @@ def main(argv: list[str] | None = None) -> int:
                     "(and other languages).")
     parser.add_argument("--problems", type=Path, default=_default_problems_dir(),
                         metavar="DIR", help="problem directory (default: ./problems)")
+    parser.add_argument("--seed", type=int, metavar="N",
+                        help="data set number for randomised cases "
+                             "(default: a new one each run)")
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--verify", action="store_true",
                        help="verify every reference solution and exit")
@@ -141,7 +180,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.list:
         return cmd_list(root)
     if args.verify:
-        return cmd_verify(root)
+        return cmd_verify(root, args.seed)
 
     try:
         import tkinter  # noqa: F401
