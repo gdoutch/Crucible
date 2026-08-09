@@ -94,7 +94,9 @@ def cmd_guides(root: Path) -> int:
     for problem in library.problems:
         absent = guides.missing(problem)
         if not absent:
-            print(f"  OK    {problem.title}")
+            extra = ("  (+diagram)"
+                     if guides.find(problem, guides.DIAGRAM) else "")
+            print(f"  OK    {problem.title}{extra}")
             continue
         incomplete += 1
         print(f"  MISSING {problem.title}  -- no "

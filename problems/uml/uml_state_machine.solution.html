@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — State Machine From a Diagram · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>State Machine From a Diagram</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The idea</h2>
+
+<p>Transcribe the diagram as data, then write one loop that searches it. Six
+  arrows become six rows; every pair that matches no row is a refusal. The
+  code ends up structurally identical to the picture, which is the property
+  worth having — you can check it arrow by arrow, and so can a reviewer.</p>
+
+<h2>The code</h2>
+
+<pre><code>#include &lt;stddef.h&gt;
+#include &lt;string.h&gt;
+
+enum doc_state { DRAFT, REVIEW, APPROVED, PUBLISHED, ARCHIVED };
+
+struct arrow {
+    int from;
+    const char *event;
+    int to;
+};
+
+/* One row per arrow on the diagram, in the order the diagram draws them. */
+static const struct arrow ARROWS[] = {
+    { DRAFT,     "submit",  REVIEW    },
+    { REVIEW,    "reject",  DRAFT     },
+    { REVIEW,    "approve", APPROVED  },
+    { APPROVED,  "revise",  DRAFT     },
+    { APPROVED,  "publish", PUBLISHED },
+    { PUBLISHED, "archive", ARCHIVED  },
+};
+
+int transition(int state, const char *event)
+{
+    size_t count = sizeof ARROWS / sizeof ARROWS[0];
+
+    for (size_t i = 0; i &lt; count; i++) {
+        if (ARROWS[i].from == state
+            &amp;&amp; strcmp(ARROWS[i].event, event) == 0) {
+            return ARROWS[i].to;
+        }
+    }
+    return -1;
+}</code></pre>
+
+<h2>Why the table is the answer and not just an answer</h2>
+
+<p>The <code>if</code>-chain version works. It is also longer, and it has a
+  property the table does not:</p>
+
+<pre><code>if (state == DRAFT &amp;&amp; strcmp(event, "submit") == 0)   return REVIEW;
+if (state == REVIEW &amp;&amp; strcmp(event, "reject") == 0)  return DRAFT;
+/* ... */
+return -1;</code></pre>
+
+<p>Nothing stops a seventh line appearing that no arrow authorises, and nothing
+  makes the omission of a sixth visible. With the table, the reviewer's job is
+  to count rows and read three columns. That is a check someone can actually
+  finish, and finishing it is the difference between a review and a
+  glance.</p>
+
+<div class="note">
+<p>The same argument scales. A production state machine is often a
+  two-dimensional array indexed by <code>[state][event]</code>, generated from
+  the model rather than typed. The reason is identical: the artefact under
+  review should have the same shape as the specification.</p>
+</div>
+
+<h2>The refusal is the default, not a case</h2>
+
+<p>Thirty state–event pairs; six arrows. The single <code>return -1</code>
+  after the loop covers all twenty-four of the rest — including
+  combinations nobody enumerated and combinations that do not exist, like
+  <code>frobnicate</code>.</p>
+
+<p>That is a real safety property in miniature: an unlisted input takes the
+  <em>refusing</em> path rather than an undefined one. The alternative shape,
+  where each refusal is written out, fails open the moment someone adds a
+  state and forgets a row.</p>
+
+<h2><code>Archived</code> costs nothing</h2>
+
+<p>The diagram draws <code>Archived --&gt; [*]</code> and nothing else. There
+  is no row in the table whose <code>from</code> is <code>ARCHIVED</code>, so
+  every lookup from there falls through to <code>-1</code>. The terminal state
+  needed no code, because "no outgoing arrows" is exactly "no rows".</p>
+
+<h2>Walking a case</h2>
+
+<p><em>Archived is terminal</em>:
+  <code>submit approve publish archive submit revise</code></p>
+
+<table class="trace">
+  <tr><th>State before</th><th>Event</th><th>Row matched</th><th>Printed</th></tr>
+  <tr><td>Draft</td><td><code>submit</code></td><td>1</td><td><code>Review</code></td></tr>
+  <tr><td>Review</td><td><code>approve</code></td><td>3</td><td><code>Approved</code></td></tr>
+  <tr><td>Approved</td><td><code>publish</code></td><td>5</td><td><code>Published</code></td></tr>
+  <tr><td>Published</td><td><code>archive</code></td><td>6</td><td><code>Archived</code></td></tr>
+  <tr><td>Archived</td><td><code>submit</code></td><td>none</td><td><code>REFUSED</code></td></tr>
+  <tr><td>Archived</td><td><code>revise</code></td><td>none</td><td><code>REFUSED</code></td></tr>
+</table>
+
+<p>Row 1 exists but its <code>from</code> is <code>DRAFT</code>, so
+  <code>submit</code> in Archived matches nothing. The event name alone never
+  identifies an arrow.</p>
+
+<h2>The C details</h2>
+
+<h3><code>strcmp</code>, and its return value</h3>
+
+<p><code>event == "submit"</code> compares a pointer with the address of a
+  string literal. It is legal C, it compiles without a warning on most
+  settings, and it is false for every input the harness can produce.
+  <code>strcmp</code> returns <strong>zero</strong> when the strings are equal
+  — it answers "how do these order", not "are these the same" — so the
+  <code>== 0</code> is load-bearing. Dropping it inverts the test.</p>
+
+<h3>The array-length idiom</h3>
+
+<p><code>sizeof ARROWS / sizeof ARROWS[0]</code> is the total byte size divided
+  by the size of one element, computed at compile time. It is safe here
+  because <code>ARROWS</code> is a real array in scope. Pass an array to a
+  function and the parameter is a <em>pointer</em>, where the same expression
+  silently becomes "pointer size divided by element size" — usually 8/16, so
+  <code>0</code>. That is why the count is computed here and not somewhere
+  else.</p>
+
+<h3>Sharing the enum</h3>
+
+<p>Your file and the harness are separate translation units. They agree that
+  <code>APPROVED</code> is <code>2</code> only because both declare the same
+  enum in the same order — the same arrangement as <code>struct node</code> in
+  <em>Reverse a Linked List</em>. Reorder your copy and the code compiles,
+  links, and prints the wrong state names.</p>
+
+<p>The harness appends <code>STATE_COUNT</code> to its copy, which does not
+  disturb the other five values because it comes last. It uses it to bounds-check
+  what you return, so a nonsense state is reported as
+  <code>INVALID</code> rather than read off the end of the name table.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(rows)</strong> per event — six string comparisons at worst, which
+  for a diagram this size is not worth improving. A machine with hundreds of
+  transitions would index a <code>[state][event]</code> array after mapping the
+  event name to an integer once, turning the lookup into O(1). The shape of the
+  answer would not change; only the search would.</p>
+
+<h2>Wrong turns worth recognising</h2>
+
+<div class="trap">
+<p><strong>Returning <code>state</code> on a refusal.</strong> It reads as
+  "stay where you are", which is what the machine does — but the harness
+  cannot then tell a refusal from a self-transition, and it prints
+  <code>Draft</code> where <code>REFUSED</code> belongs. Worse, the diagram has
+  no self-transitions at all, so the two are genuinely different facts.</p>
+</div>
+
+<div class="trap">
+<p><strong>Switching on the event first.</strong> A <code>switch</code> over
+  event names with a nested check on the state works, and it is organised
+  against the wrong axis: the diagram is drawn as states with arrows leaving
+  them, so a reader comparing the two has to transpose it in their head.</p>
+</div>
+
+<div class="trap">
+<p><strong>Reading the arrows backwards.</strong>
+  <code>Approved --&gt; Draft: revise</code> means <em>from</em> Approved
+  <em>to</em> Draft. It is the one arrow on the diagram that points back up the
+  page, and it is the one most often entered the wrong way round.</p>
+</div>
+
+<footer>
+  <p><a href="uml_state_machine.hint.html">← Back to the hint</a> ·
+     <a href="uml_state_machine.diagram.html">The diagram</a> ·
+     Press <strong>Ctrl+R</strong> for a fresh data set.</p>
+</footer>
+
+</main>
+</body>
+</html>

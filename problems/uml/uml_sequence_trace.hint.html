@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Trace From a Sequence Diagram · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · Python · medium</p>
+  <h1>Trace From a Sequence Diagram</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>Read the diagram top to bottom and emit the messages it would send, in
+  order, for the scenario you are given. Nothing is returned — you call
+  <code>send</code> and <code>reply</code>, and the harness prints what you
+  recorded.</p>
+
+<p>Open <a href="uml_sequence_trace.diagram.html">the diagram</a> first. There
+  is no puzzle here beyond reading it accurately.</p>
+
+<h2>The translation is mechanical</h2>
+
+<table>
+  <tr><th>Diagram</th><th>Code</th></tr>
+  <tr><td>solid arrow <code>A-&gt;&gt;B: m</code></td>
+      <td><code>send("A", "B", "m")</code></td></tr>
+  <tr><td>dashed arrow <code>A--&gt;&gt;B: m</code></td>
+      <td><code>reply("A", "B", "m")</code></td></tr>
+  <tr><td><code>alt</code> / <code>else</code></td><td><code>if</code> / <code>else</code></td></tr>
+  <tr><td><code>loop</code></td><td><code>for</code> … <code>break</code></td></tr>
+  <tr><td>nesting</td><td>indentation</td></tr>
+</table>
+
+<p>That last row is the one to take seriously. <strong>A fragment's boundary is
+  a scope.</strong> If the diagram draws the payment exchange inside the
+  <em>in stock</em> branch, then your code puts it inside the corresponding
+  <code>if</code> — and a request with nothing in stock never reaches the
+  gateway, whatever the decline count happens to be.</p>
+
+<h2>Three things to get right</h2>
+
+<h3>1. Solid and dashed are different</h3>
+
+<p>A call is not a return. They print differently, so mixing them up fails
+  loudly rather than subtly — but it is easy to do when you are transcribing
+  quickly, because the <em>direction</em> of a reply is back the way the call
+  came, and it is tempting to write the participants in the order you read
+  them on the call.</p>
+
+<h3>2. The loop stops early</h3>
+
+<p>The label says "at most 3 attempts, stopping at the first acceptance". So it
+  is not three iterations; it is up to three. With <code>declines = 0</code>
+  there is exactly one <code>charge</code> in the trace.</p>
+
+<p>Which means you also need to know, after the loop, <em>how it ended</em> —
+  by acceptance or by exhaustion — because the fragment below the loop branches
+  on that.</p>
+
+<h3>3. The unwind is part of the diagram</h3>
+
+<p>When all three attempts fail, the reservation made at the top has to be
+  released before the client is told. It is easy to read a diagram for its
+  happy path and miss the arrow that puts things back.</p>
+
+<div class="note">
+<p>Python's <code>for</code> has an <code>else</code> clause that runs only if
+  the loop finished without a <code>break</code> — which is exactly "the loop
+  exhausted its attempts". It is an option, though a plain flag is clearer to
+  most readers.</p>
+</div>
+
+<h2>Work out one trace by hand first</h2>
+
+<p>Take <code>in_stock = True, declines = 1</code> and write down the messages
+  on paper before you write any code. You should get nine, and the fourth and
+  sixth should both be <code>charge</code>. If your count differs, the mistake
+  is in your reading of the diagram and no amount of coding will fix it.</p>
+
+<details>
+<summary>Still stuck? A bigger nudge</summary>
+
+<pre><code>def place_order(send, reply, in_stock, declines):
+    send("Client", "OrderService", "place")
+    send("OrderService", "Inventory", "reserve")
+
+    if not in_stock:
+        # two messages, then nothing else happens at all
+        return
+
+    reply("Inventory", "OrderService", "reserved")
+
+    accepted = False
+    for attempt in range(3):
+        send("OrderService", "PaymentGateway", "charge")
+        if attempt &lt; declines:
+            ...        # declined; go round again
+        else:
+            ...        # accepted; record it and stop
+            break
+
+    if accepted:
+        ...
+    else:
+        ...</code></pre>
+
+<p><code>attempt &lt; declines</code> is the whole of the gateway's behaviour:
+  attempts <code>0 .. declines-1</code> are declined and the next one is
+  accepted. With <code>declines = 3</code> that condition is true for all three
+  attempts, the <code>break</code> never runs, and <code>accepted</code> is
+  still <code>False</code> at the bottom.</p>
+
+</details>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li><code>no 0</code> and <code>no 3</code> produce <strong>identical</strong>
+    output — four lines.</li>
+  <li><code>yes 0</code> has exactly one <code>charge</code>.</li>
+  <li><code>yes 3</code> has three <code>charge</code> lines and a
+    <code>release</code>.</li>
+  <li>Every trace ends with a message <em>to</em> <code>Client</code>.</li>
+  <li>Participant names spelled exactly as the diagram spells them —
+    <code>PaymentGateway</code>, one word.</li>
+</ul>
+
+<footer>
+  <p><a href="uml_sequence_trace.diagram.html">← The diagram</a> ·
+     <a href="uml_sequence_trace.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

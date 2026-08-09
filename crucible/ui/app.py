@@ -118,6 +118,7 @@ class CrucibleApp(tk.Tk):
         self.bind("<Control-s>", lambda _e: self._save_draft(force=True))
         self.bind("<Control-r>", lambda _e: self._on_new_data())
         self.bind("<F1>", lambda _e: self._open_guide(guides.HINT))
+        self.bind("<F2>", lambda _e: self._open_guide(guides.DIAGRAM))
 
         self._start_verify_worker()
         self.after(60, self._pump)
@@ -156,6 +157,12 @@ class CrucibleApp(tk.Tk):
         # and the point of reading one is to have it beside the editor rather
         # than on top of it.
         self.guides_menu = tk.Menu(menubar, tearoff=0, **opts)
+        #: Menu order, and the order `_refresh_guides_menu` walks to set each
+        #: entry's state -- one list so the two cannot drift apart.
+        self._guide_order = (guides.DIAGRAM, guides.HINT, guides.SOLUTION)
+        self.guides_menu.add_command(
+            label="Diagram for this problem\tF2",
+            command=lambda: self._open_guide(guides.DIAGRAM))
         self.guides_menu.add_command(
             label="Hint for this problem\tF1",
             command=lambda: self._open_guide(guides.HINT))
@@ -1176,7 +1183,7 @@ class CrucibleApp(tk.Tk):
         that the pages are a thing that could exist here.
         """
         available = guides.find_all(self._problem) if self._problem else {}
-        for index, kind in enumerate((guides.HINT, guides.SOLUTION)):
+        for index, kind in enumerate(self._guide_order):
             self.guides_menu.entryconfigure(
                 index, state="normal" if kind in available else "disabled")
 
@@ -1233,7 +1240,9 @@ class CrucibleApp(tk.Tk):
     def _show_guides_help(self) -> None:
         messagebox.showinfo(
             "About the guides",
-            "Each problem can ship two pages, opened in your browser:\n\n"
+            "Pages that open in your browser rather than in the app:\n\n"
+            "  Diagram          the problem's specification, drawn. Only the\n"
+            "                   problems whose spec IS a diagram have one\n"
             "  Hint             the idea, the traps, and the cases to think\n"
             "                   about -- no answer in it\n"
             "  Worked solution  the whole answer, a trace of it running, and\n"
@@ -1244,8 +1253,12 @@ class CrucibleApp(tk.Tk):
             "  c_sum_array.solution.html\n\n"
             "There is nothing to register -- drop the files next to the JSON\n"
             "and this menu picks them up. They share problems/guides.css.\n\n"
-            "'python -m crucible --guides' lists which problems are missing "
-            "one.",
+            "A diagram page renders its Mermaid source with a script fetched\n"
+            "from a CDN. With no network it shows the source instead, which\n"
+            "is the same specification in text -- and that text is in the\n"
+            "problem statement too, so the app never needs the network.\n\n"
+            "'python -m crucible --guides' lists which problems are missing\n"
+            "a hint or a worked solution.",
             parent=self)
 
     def _show_about(self) -> None:

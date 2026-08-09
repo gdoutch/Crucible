@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — State Machine From a Diagram · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>State Machine From a Diagram</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>Turn a picture into a function. Given a state and an event name, return the
+  state the diagram's arrow leads to — or <code>-1</code> if the diagram draws
+  no arrow for that pair.</p>
+
+<p>Open <a href="uml_state_machine.diagram.html">the diagram</a> first. This
+  problem is comprehension before it is coding.</p>
+
+<h2>Count before you write</h2>
+
+<p>Five states, six event names: <strong>thirty</strong> possible pairs. The
+  diagram draws <strong>six</strong> arrows. So four fifths of your function's
+  behaviour is "no", and only a fifth is "yes".</p>
+
+<p>That ratio should decide the shape of your code. Anything that enumerates
+  the noes is going to be four times longer than it needs to be, and every one
+  of those branches is a place to make a mistake that the diagram cannot help
+  you spot.</p>
+
+<h2>A diagram is a table</h2>
+
+<p>Every arrow is three facts — where it starts, what it is labelled, where it
+  ends. Six arrows is six rows:</p>
+
+<pre><code>from        event      to
+---------   --------   ---------
+Draft       submit     Review
+Review      reject     Draft
+...</code></pre>
+
+<p>Write that table down as data — an array of small structs — and let one
+  loop search it. Then the function has exactly one <code>return -1</code>, at
+  the bottom, meaning "no row matched", and the code can be read side by side
+  with the picture, row against arrow.</p>
+
+<div class="note">
+<p>This is the habit the problem exists to build. Under review — and under
+  certification — "here is the table, check it against the diagram" is an
+  argument someone can actually complete. "Here are twenty-four nested
+  <code>if</code>s, convince yourself" is not.</p>
+</div>
+
+<h2>Three things C will trip you on</h2>
+
+<ul>
+  <li><strong><code>event</code> is a <code>const char *</code>.</strong> So
+    <code>event == "submit"</code> compares two <em>pointers</em> and is
+    essentially always false. You want
+    <code>strcmp(event, "submit") == 0</code> — and note that
+    <code>strcmp</code> returns <code>0</code> for equal, so the
+    <code>== 0</code> is not optional.</li>
+  <li><strong>The enum is shared with the harness.</strong> Copy it exactly.
+    The two files are compiled separately and only agree because both
+    declarations say the same thing, so reordering the states silently
+    renumbers them.</li>
+  <li><strong><code>-1</code> is the refusal.</strong> Not <code>state</code>,
+    not <code>0</code>. Returning <code>state</code> unchanged looks
+    reasonable and is wrong: <code>DRAFT</code> is <code>0</code>, so a
+    refusal in Draft would be reported as a successful move to Draft.</li>
+</ul>
+
+<h2>The cases that catch people</h2>
+
+<ul>
+  <li><strong><code>Archived</code> is a dead end.</strong> No arrow leaves it,
+    so every event there is refused. If your table has no row starting at
+    Archived, you get this for free.</li>
+  <li><strong>An event name that is not on the diagram at all</strong> —
+    <code>frobnicate</code> — is refused like any other unmatched pair. It is
+    not an error and it must not disturb the state.</li>
+  <li><strong>The same event can appear on more than one arrow.</strong> There
+    is no arrow labelled <code>submit</code> out of Review, but there is one
+    out of Draft. Matching on the event alone is not enough; the pair is what
+    identifies an arrow.</li>
+</ul>
+
+<details>
+<summary>Still stuck? A bigger nudge</summary>
+
+<pre><code>struct arrow {
+    int from;
+    const char *event;
+    int to;
+};
+
+static const struct arrow ARROWS[] = {
+    { DRAFT, "submit", REVIEW },
+    /* ...the other five, straight off the diagram... */
+};
+
+int transition(int state, const char *event)
+{
+    size_t count = sizeof ARROWS / sizeof ARROWS[0];
+
+    for (size_t i = 0; i &lt; count; i++) {
+        if (/* this row's from and event both match */) {
+            return ARROWS[i].to;
+        }
+    }
+    return -1;
+}</code></pre>
+
+<p><code>sizeof ARROWS / sizeof ARROWS[0]</code> is the array's length,
+  computed by the compiler. It only works where the array's real type is
+  visible — inside this file, on a real array. Passed to another function it
+  would decay to a pointer and the same expression would quietly give you
+  nonsense.</p>
+
+</details>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li>No events at all → no output.</li>
+  <li><code>approve</code> from Draft → <code>REFUSED</code>, and the state is
+    still Draft afterwards.</li>
+  <li>The full happy path reaches <code>Archived</code>.</li>
+  <li>Anything after <code>archive</code> is refused.</li>
+  <li>Count your table's rows. Six?</li>
+</ul>
+
+<footer>
+  <p><a href="uml_state_machine.diagram.html">← The diagram</a> ·
+     <a href="uml_state_machine.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

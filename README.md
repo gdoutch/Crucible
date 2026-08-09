@@ -72,8 +72,8 @@ The window is four panes:
 
 Keys: **F5** or **Ctrl+Enter** runs the suite. **Ctrl+R** draws a new
 randomised data set. **Ctrl+S** saves a draft. **F1** opens the hint for the
-current problem in your browser. **Tab** / **Shift+Tab** indent and dedent the
-selection.
+current problem in your browser and **F2** its diagram, where it has one.
+**Tab** / **Shift+Tab** indent and dedent the selection.
 
 Your work is autosaved per problem to `~/.crucible/drafts/`, so closing the
 window mid-problem loses nothing. *File → Reset to starter code* discards it.
@@ -258,12 +258,14 @@ in it turns up as a diagnostic instead of corrupting the data.
 
 ## Hints and worked solutions
 
-Every problem ships two guide pages, opened from the **Guides** menu:
+Every problem ships two guide pages, opened from the **Guides** menu, and some
+ship a third:
 
 | | |
 | --- | --- |
 | **Hint** (`F1`) | The idea, the traps, the cases to think about — and a `Still stuck?` block that folds open into a stronger nudge. No finished answer in it. |
 | **Worked solution** | The whole answer: the code, a table tracing it running on a real test case, why each edge case comes out right, the complexity, and the wrong turns worth recognising. |
+| **Diagram** (`F2`) | Only for problems whose specification *is* a diagram. Renders the statement's Mermaid source as a picture. |
 
 They are HTML files opened in your browser rather than rendered in the app,
 which is not laziness. A guide is a document — headings, tables, a trace of the
@@ -281,7 +283,17 @@ problems/
     c_sum_array.json
     c_sum_array.hint.html
     c_sum_array.solution.html
+  uml/
+    uml_state_machine.json
+    uml_state_machine.diagram.html      optional -- most problems have none
+    ...
 ```
+
+A diagram page holds the Mermaid source in a `<pre class="mermaid">` and pulls
+the renderer from a CDN. With no network the source shows through as text,
+which is the same specification — and it is in the problem statement as well,
+so the app itself never needs the network. One `<script>` tag to delete if you
+would rather it did not try.
 
 Two things follow from keeping them in separate files rather than in the problem
 JSON:
@@ -308,7 +320,7 @@ the stylesheet does not load the pages are still ordinary readable HTML.
 
 ## What is in the box
 
-21 problems — 18 in C, 3 in Python. Every one of them mixes hand-written edge
+26 problems — 22 in C, 4 in Python. Every one of them mixes hand-written edge
 cases with four randomised ones, and ships a hint and a worked solution.
 
 The C set is deliberately weighted towards the things C makes you think about
@@ -354,6 +366,61 @@ A few are worth calling out for what they are really testing:
   into an array and written back. It declares `struct node` in both your file
   and the harness — separate translation units, same layout, which is what a
   shared header would have given you.
+
+### Beyond writing algorithms
+
+Five problems sit next to programming rather than in it — reading a UML
+diagram, and the mechanical parts of safety engineering. They are ordinary
+Crucible problems: same pipeline, same visible test cases, same reference
+solution proving the suite before you see it.
+
+| | Language | Problem | Topics |
+| --- | --- | --- | --- |
+| **easy** | C | ASIL Determination | safety, ISO 26262, tables |
+| **medium** | C | State Machine From a Diagram | UML, state machines, tables |
+| | Python | Trace From a Sequence Diagram | UML, sequence diagrams, control flow |
+| **hard** | C | Smallest Cut Set of a Fault Tree | safety, fault trees, recursion |
+| | C | Level Crossing Interlock | safety, interlocks, invariants |
+
+That they fit at all comes down to one question: **can the reference answer be
+run?** Where it can, nothing in the app has to change. Where it cannot — "is
+this a good abstraction", "did you find the right hazards" — no amount of
+harness makes it checkable, and those problems are deliberately absent rather
+than faked with an answer key the gate cannot test.
+
+The two UML problems put a **Mermaid diagram** in the statement and draw it on
+a [diagram page](#hints-and-worked-solutions). The specification is the
+picture; the tests check that your code agrees with it.
+
+- **State Machine From a Diagram** gives you five states and six events —
+  thirty pairs, of which the diagram draws six. The other twenty-four are
+  refusals, which is what makes a transition *table* the answer and a nest of
+  `if`s merely a passing one.
+- **Trace From a Sequence Diagram** asks for the message trace, replies
+  included. Nested `alt` and `loop` fragments are scopes: with nothing in
+  stock the payment gateway is never reached, whatever else the scenario says.
+
+The safety three are chosen for having exactly one right answer:
+
+- **ASIL Determination** is a lookup the standard specifies completely. Its
+  worked solution argues the interesting bit — the table has a two-line closed
+  form, and you should still write the table, because a reviewer can check
+  thirty-six cells against the standard and cannot check an argument as
+  easily.
+- **Smallest Cut Set of a Fault Tree** is `min` at an OR and `sum` at an AND.
+  An answer of `1` is a single point of failure. The sum is only valid because
+  no basic event is shared — the guide is explicit about what that assumption
+  buys and what it costs.
+- **Level Crossing Interlock** is the one to look at if you look at one. The
+  candidate writes a pure controller; the **harness owns the safety monitor**,
+  the same way it owns `main`, and checks after every decision that no train
+  was ever in the crossing without the barrier down and the signal never
+  showed green over a barrier that was not up. Randomised event sequences are
+  generated with enough warning time by construction, so a correct controller
+  is always safe and an incomplete one meets an arrival it did not picture.
+  One fixed case is deliberately unsurvivable — proving the monitor can fire,
+  because a check that has never failed is indistinguishable from one that is
+  wired up wrong.
 
 ## Writing a problem
 
@@ -477,7 +544,7 @@ tracebacks.
 python -m unittest discover -s tests -v
 ```
 
-86 tests covering output normalisation and diff hints, problem-schema
+89 tests covering output normalisation and diff hints, problem-schema
 validation (missing fields, bad base64, duplicate test names, unknown
 languages, malformed JSON), the run pipeline (correct, wrong, syntax error,
 runtime exception, timeout, progress callbacks), randomised data (determinism
@@ -487,9 +554,11 @@ storage, the language registry, and the C diagnostic/exit-code helpers that can
 be checked without a compiler.
 
 The guides are covered too: the lookup convention on its own, and then every
-shipped page — both exist, each names its problem, each links to its
-counterpart, every relative link resolves off the disk, and a hint never
-contains the whole reference solution.
+shipped page — both required ones exist, each names its problem, each links to
+its counterpart, every relative link resolves off the disk, and a hint never
+contains the whole reference solution. A diagram page must carry exactly one
+Mermaid block, and that block must appear verbatim in the problem statement,
+so the picture and the specification cannot drift apart.
 
 The suite also asserts that every shipped reference solution passes its own
 tests — including a freshly generated data set, which is what covers the
@@ -523,6 +592,8 @@ problems/
   guides.css           shared by every guide page
   c/                   18 problems, each with .json + .hint.html
   python/              3 problems,             + .solution.html
+  uml/                 2 problems,             + .diagram.html
+  safety/              3 problems
 tests/
   test_crucible.py
 ```

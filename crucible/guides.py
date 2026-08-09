@@ -1,10 +1,11 @@
-"""Hint and worked-solution pages, and how they are found.
+"""Hint, worked-solution and diagram pages, and how they are found.
 
-Each problem may ship two HTML guides beside its JSON file:
+Each problem ships HTML guides beside its JSON file:
 
     problems/c/c_sum_array.json
     problems/c/c_sum_array.hint.html        a nudge -- no answer in it
     problems/c/c_sum_array.solution.html    the whole answer, explained
+    problems/uml/uml_state_machine.diagram.html   the spec, drawn (optional)
 
 They are plain files opened in the user's browser rather than rendered in the
 app. That is deliberate. A guide is a document -- headings, tables, code
@@ -35,13 +36,21 @@ from .problem import Problem
 
 HINT = "hint"
 SOLUTION = "solution"
+DIAGRAM = "diagram"
 
 #: Menu labels and dialog wording, so the UI has no strings of its own to
-#: drift out of step with these.
+#: drift out of step with these. Order is menu order.
 KINDS = {
+    DIAGRAM: "Diagram",
     HINT: "Hint",
     SOLUTION: "Worked solution",
 }
+
+#: The two every problem is expected to have. A diagram is only meaningful for
+#: a problem whose specification *is* a diagram, so it is optional -- and
+#: `missing` reports against this rather than against `KINDS`, which is what
+#: keeps `--guides` from nagging about a diagram FizzBuzz has no use for.
+REQUIRED = (HINT, SOLUTION)
 
 
 @dataclass(frozen=True)
@@ -82,8 +91,12 @@ def find_all(problem: Problem) -> dict[str, Guide]:
 
 
 def missing(problem: Problem) -> list[str]:
-    """Which kinds this problem is short of -- for `--guides` and the tests."""
-    return [kind for kind in KINDS if find(problem, kind) is None]
+    """Which *required* kinds this problem is short of.
+
+    Used by `--guides` and by the tests. A missing diagram is not a gap --
+    most problems have no diagram to draw.
+    """
+    return [kind for kind in REQUIRED if find(problem, kind) is None]
 
 
 def open_in_browser(guide: Guide) -> bool:

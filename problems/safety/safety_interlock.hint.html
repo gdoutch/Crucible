@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Level Crossing Interlock · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · hard</p>
+  <h1>Level Crossing Interlock</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>A pure function. Given what the sensors say right now — trains approaching,
+  trains in the crossing, where the barrier is — decide two outputs: the road
+  signal, and where the barrier should be heading.</p>
+
+<p>You have no memory between calls and you do not need any. Everything you
+  need is in the three arguments.</p>
+
+<h2>Read the two safety properties as your specification</h2>
+
+<p>They are not a checklist to satisfy afterwards. They <em>are</em> the
+  problem, and each one tells you about one output.</p>
+
+<table>
+  <tr><th></th><th>Property</th><th>What it constrains</th></tr>
+  <tr><td><strong>S1</strong></td>
+      <td>a train is in the crossing only while the barrier is fully down</td>
+      <td>when you must command the barrier down — and how early</td></tr>
+  <tr><td><strong>S2</strong></td>
+      <td>the signal is green only while the barrier is fully up</td>
+      <td>when you may show green</td></tr>
+</table>
+
+<h2>S1 is the easy half</h2>
+
+<p>The barrier takes two ticks to fall, so it must start falling the moment
+  anything is detected — not when a train reaches the crossing, by which point
+  it is far too late. So: <em>any</em> train anywhere, approaching or already
+  in the crossing, means target <code>BARRIER_DOWN</code>.</p>
+
+<p>Note what that single condition also handles for free: a train appearing
+  while the barrier is halfway back up. There is nothing special about
+  reversing — it is the same decision as lowering was in the first place.</p>
+
+<h2>S2 is the half people get wrong</h2>
+
+<div class="trap">
+<p>Here is the tempting one-liner:</p>
+<pre><code>*signal_out = (approaching &gt; 0 || in_crossing &gt; 0) ? SIGNAL_RED : SIGNAL_GREEN;</code></pre>
+<p>Read S2 again and find the hole. The last train leaves; there is now no
+  train anywhere; this line turns the signal green — and the barrier is still
+  fully down, because it has not had a single tick to move yet.</p>
+</div>
+
+<p>The lesson is worth more than the problem: <strong>the signal must follow
+  where the barrier actually is, not where you have told it to go.</strong>
+  Commanding a change and observing one are different things, and the gap
+  between them is exactly where interlocks fail.</p>
+
+<p>So the green condition is not "no trains". It is "no trains <em>and</em> the
+  barrier has arrived". One of your three arguments answers the second half.</p>
+
+<h2>The two outputs are not symmetrical</h2>
+
+<p>When the crossing is clear you can start raising the barrier
+  <strong>immediately</strong>, but you cannot show green until it gets there.
+  So there is a window of two ticks where your answer is "target
+  <code>BARRIER_UP</code>, signal <code>SIGNAL_RED</code>" — the trace prints
+  <code>RED UP</code>, which looks contradictory the first time you see it and
+  is the correct behaviour.</p>
+
+<p>Going the other way there is no such window: the moment a train is detected
+  both outputs change together.</p>
+
+<h2>Details</h2>
+
+<ul>
+  <li><code>approaching</code> and <code>in_crossing</code> are
+    <strong>counts</strong>. Two trains can be in the approach section at once,
+    and one of them entering the crossing does not clear the other. Test
+    <code>&gt; 0</code>, not <code>== 1</code>.</li>
+  <li>Write <code>BARRIER_UP</code> or <code>BARRIER_DOWN</code> through
+    <code>target_out</code> — never <code>BARRIER_MOVING</code>. That is a
+    place the barrier can be, not a place you can send it, and the harness
+    rejects it.</li>
+  <li>Write to <strong>both</strong> out-parameters on every path. The harness
+    clears them before each call, so a path that forgets one is reported as
+    <code>INVALID</code> rather than quietly reusing the last value.</li>
+  <li>Some scenarios are unsurvivable — the <em>barrier cannot teleport</em>
+    case gives you no ticks between seeing the train and it arriving. Its
+    expected output is <code>UNSAFE</code>, and matching that is the correct
+    behaviour, not a failure.</li>
+</ul>
+
+<details>
+<summary>Still stuck? A bigger nudge</summary>
+
+<pre><code>void crossing_command(int approaching, int in_crossing, int barrier,
+                      int *signal_out, int *target_out)
+{
+    if (/* any train anywhere */) {
+        *signal_out = SIGNAL_RED;
+        *target_out = BARRIER_DOWN;
+        return;
+    }
+
+    *target_out = BARRIER_UP;
+    *signal_out = /* green only if the barrier has actually got there */;
+}</code></pre>
+
+<p>Six lines. If yours is much longer, you are probably enumerating the twelve
+  combinations of the three inputs rather than expressing the two rules.</p>
+
+</details>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li>The very first line of every run is <code>GREEN UP</code> — nothing is
+    coming and the barrier starts up.</li>
+  <li>After the last <code>exit</code> there are <strong>two</strong>
+    <code>RED UP</code> lines before any <code>GREEN UP</code>.</li>
+  <li>A second <code>approach</code> during the raise flips straight back to
+    <code>RED DOWN</code>.</li>
+  <li>With two trains approaching, one entering does not release the
+    barrier.</li>
+  <li>Every run that had enough warning ends <code>SAFE</code>.</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="safety_interlock.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

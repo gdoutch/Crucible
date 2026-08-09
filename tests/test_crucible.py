@@ -10,6 +10,7 @@ compiler (diagnostic cleanup, exit-code description) is tested directly.
 from __future__ import annotations
 
 import base64
+import html
 import json
 import os
 import re
@@ -551,7 +552,16 @@ class TestGuideLookup(unittest.TestCase):
         self.assertIsNone(guides.find(self.problem, guides.HINT))
         self.assertEqual(guides.find_all(self.problem), {})
         self.assertEqual(sorted(guides.missing(self.problem)),
-                         sorted(guides.KINDS))
+                         sorted(guides.REQUIRED))
+
+    def test_a_missing_diagram_is_not_a_gap(self):
+        """Most problems have no diagram to draw, so `missing` must not nag
+        about one -- otherwise --guides is noise and nobody reads it."""
+        for kind in guides.REQUIRED:
+            (self.dir / f"demo.{kind}.html").write_text("x", encoding="utf-8")
+        self.assertEqual(guides.missing(self.problem), [])
+        self.assertNotIn(guides.DIAGRAM, guides.find_all(self.problem))
+        self.assertIn(guides.DIAGRAM, guides.KINDS)
 
     def test_a_guide_is_found_once_the_file_exists(self):
         (self.dir / "demo.hint.html").write_text("<h1>Demo</h1>",
@@ -622,8 +632,8 @@ class TestShippedGuides(unittest.TestCase):
                 if kind == guides.SOLUTION:
                     self.assertIn("<pre><code>", page)
                 else:
-                    # A hint may show a skeleton, but never the finished
-                    # function -- so it must not carry the whole reference.
+                    # A hint may show a skeleton, and a diagram page shows the
+                    # spec -- but neither may carry the finished function.
                     escaped = (problem.reference.source
                                .replace("&", "&amp;")
                                .replace("<", "&lt;")
@@ -631,12 +641,48 @@ class TestShippedGuides(unittest.TestCase):
                                .strip())
                     self.assertNotIn(escaped, page)
 
-    def test_the_two_pages_link_to_each_other(self):
+    def test_the_hint_and_the_solution_link_to_each_other(self):
         for problem, kind, page in self.each_page():
+            if kind not in guides.REQUIRED:
+                continue
             other = guides.SOLUTION if kind == guides.HINT else guides.HINT
             target = guides.guide_path(problem, other)
             with self.subTest(problem=problem.id, kind=kind):
                 self.assertIn(f'href="{target.name}"', page)
+
+    def test_a_diagram_page_matches_the_statement_it_illustrates(self):
+        """The Mermaid source lives twice -- in the statement, where the app
+        can always show it, and in the diagram page, where a browser can draw
+        it. Two copies drift; this is what stops them."""
+        seen = 0
+        for problem, kind, page in self.each_page():
+            if kind != guides.DIAGRAM:
+                continue
+            seen += 1
+            with self.subTest(problem=problem.id):
+                blocks = re.findall(
+                    r'<pre class="mermaid">(.*?)</pre>', page, re.DOTALL)
+                self.assertEqual(len(blocks), 1,
+                                 "expected exactly one Mermaid block")
+                source = html.unescape(blocks[0]).strip()
+                self.assertRegex(source, r"^(stateDiagram|sequenceDiagram|"
+                                         r"classDiagram|flowchart|graph)")
+                self.assertIn(source, problem.statement,
+                              "the diagram page and the problem statement "
+                              "have drifted apart")
+        self.assertGreater(seen, 0, "no diagram pages found to check")
+
+    def test_a_diagram_page_degrades_without_its_renderer(self):
+        """Mermaid is fetched from a CDN, so the offline reader gets the
+        <pre> as written. It has to say so rather than look broken."""
+        for problem, kind, page in self.each_page():
+            if kind != guides.DIAGRAM:
+                continue
+            with self.subTest(problem=problem.id):
+                self.assertIn("mermaid-note", page)
+                self.assertIn("window.mermaid", page,
+                              "the init must be guarded so a failed CDN "
+                              "fetch does not throw")
 
     def test_every_local_link_resolves(self):
         for problem, kind, page in self.each_page():

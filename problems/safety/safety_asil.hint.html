@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — ASIL Determination · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · easy</p>
+  <h1>ASIL Determination</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>Three small integers in, one of five strings out. There is no algorithm to
+  find — the rule is stated in full in the problem. The exercise is turning a
+  stated rule into code that someone else could check against the rule.</p>
+
+<h2>Understand the rule before you type</h2>
+
+<p>Read it again:</p>
+
+<ul>
+  <li><code>S3 E4 C3</code> is <strong>ASIL D</strong>.</li>
+  <li>Dropping any one axis by one class drops the ASIL by one step down
+    <code>D, C, B, A, QM</code>.</li>
+  <li>The ladder stops at <code>QM</code>.</li>
+</ul>
+
+<p>Work out three cells by hand right now: <code>S3 E4 C1</code>,
+  <code>S2 E2 C2</code>, <code>S1 E4 C3</code>. If you can do those, you
+  understand the rule completely, and everything left is transcription.</p>
+
+<details>
+<summary>Check your three</summary>
+<p><code>S3 E4 C1</code> is two steps down from D, so <strong>B</strong>.
+  <code>S2 E2 C2</code> is four steps down, which is past A, so
+  <strong>QM</strong>. <code>S1 E4 C3</code> is two steps down, so
+  <strong>B</strong>.</p>
+</details>
+
+<h2>Two shapes of answer, and both are correct</h2>
+
+<p><strong>Write out the table.</strong> Thirty-six cells in a
+  <code>[3][4][3]</code> array of strings, indexed by
+  <code>[severity-1][exposure-1][controllability-1]</code>. Verbose, and a
+  reviewer can check it one cell at a time against the standard.</p>
+
+<p><strong>Or compute it.</strong> "One step per class" is an invitation to
+  count classes. Notice that each of the three axes contributes equally and
+  additively — so some function of <code>severity + exposure +
+  controllability</code> is going to give you the rung of the ladder directly.
+  Work out the offset from the anchor cell and you have a two-line
+  function.</p>
+
+<p>Which one you should write is a genuinely interesting question, and the
+  worked solution argues it out. For now: write whichever you can get right,
+  then read the other.</p>
+
+<h2>The details that will fail a test</h2>
+
+<div class="trap">
+<p><strong>Return a string literal.</strong>
+  <code>return "B";</code> is fine — literals live for the whole program. A
+  local array is not:</p>
+<pre><code>char result[4];        /* stops existing when the function returns */
+strcpy(result, "B");
+return result;         /* the harness reads freed stack */</code></pre>
+<p>It will often appear to work, which is the worst outcome. If your compiler
+  warns about returning the address of a local variable, believe it.</p>
+</div>
+
+<div class="trap">
+<p><strong>The floor is not decoration.</strong> Half the table is
+  <code>QM</code>. If you compute a rung and index a ladder array with it, ten
+  of the thirty-six inputs give you a <em>negative</em> index — as low as
+  <code>-3</code> — and C will happily read whatever is in front of the array.
+  Clamp before you index.</p>
+</div>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li><code>S3 E4 C3</code> → <code>ASIL D</code>.</li>
+  <li><code>S1 E1 C1</code> → <code>QM</code>.</li>
+  <li><code>S2 E4 C3</code>, <code>S3 E3 C3</code> and <code>S3 E4 C2</code>
+    are all <code>ASIL C</code> — the axes are interchangeable.</li>
+  <li><code>S1 E3 C2</code> is <code>QM</code> but <code>S1 E3 C3</code> is
+    <code>ASIL A</code>.</li>
+  <li>Does anything below A come out as <code>QM</code> rather than as a
+    crash?</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="safety_asil.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

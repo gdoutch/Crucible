@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Level Crossing Interlock · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · hard</p>
+  <h1>Level Crossing Interlock</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The idea</h2>
+
+<p>Two safety properties, two outputs, and each output is derived from the
+  property that constrains it rather than from a picture of the scenarios. Done
+  that way the controller is six lines and has no cases in it — every scenario
+  in the test suite, including the awkward ones, falls out of the same two
+  rules.</p>
+
+<h2>The code</h2>
+
+<pre><code>enum signal_aspect    { SIGNAL_GREEN, SIGNAL_RED };
+enum barrier_position { BARRIER_UP, BARRIER_MOVING, BARRIER_DOWN };
+
+void crossing_command(int approaching, int in_crossing, int barrier,
+                      int *signal_out, int *target_out)
+{
+    if (approaching &gt; 0 || in_crossing &gt; 0) {
+        /* Any train anywhere: stop the road and get the barrier down. This
+         * one branch also covers a train arriving mid-raise. */
+        *signal_out = SIGNAL_RED;
+        *target_out = BARRIER_DOWN;
+        return;
+    }
+
+    /* Clear. Start raising -- but the signal follows where the barrier
+     * actually is, not where it is going, which is the whole of S2. */
+    *target_out = BARRIER_UP;
+    *signal_out = (barrier == BARRIER_UP) ? SIGNAL_GREEN : SIGNAL_RED;
+}</code></pre>
+
+<h2>The one line that matters</h2>
+
+<div class="note">
+<p><code>*signal_out = (barrier == BARRIER_UP) ? SIGNAL_GREEN : SIGNAL_RED;</code></p>
+</div>
+
+<p>The signal is keyed off the barrier's <strong>observed position</strong>,
+  not off the absence of trains and not off the target that was just
+  commanded. Replace it with the obvious version —</p>
+
+<pre><code>*signal_out = SIGNAL_GREEN;      /* wrong: no trains, so green */</code></pre>
+
+<p>— and the run fails the moment the last train leaves, because at that instant
+  the barrier is still fully down. The monitor reports <em>the road signal is
+  green with the barrier not up</em>, and it reports it on the very event where
+  the controller became complacent.</p>
+
+<p>This is the difference between commanding a state and observing one. A
+  controller that believes its own outputs is a controller with no feedback,
+  and in a real crossing the barrier can also jam, be struck, or lose power
+  halfway. Reading the position rather than assuming it is what makes the rule
+  survive all of those.</p>
+
+<h2>Why the danger branch needs no cases</h2>
+
+<p><code>approaching &gt; 0 || in_crossing &gt; 0</code> is doing more work
+  than it looks:</p>
+
+<ul>
+  <li><strong>A train is approaching</strong> — start lowering, two ticks
+    before it can possibly arrive.</li>
+  <li><strong>A train is in the crossing</strong> — keep it down.</li>
+  <li><strong>A train appears while the barrier is rising</strong> — the
+    condition is true again, the target flips back to
+    <code>BARRIER_DOWN</code>, and the next tick reverses the barrier from
+    wherever it had got to. No code was written for this.</li>
+  <li><strong>Two trains, one entering</strong> — <code>approaching</code>
+    drops to 1, not 0, so the condition is still true. Counts rather than flags
+    is what buys this.</li>
+</ul>
+
+<p>Enumerating scenarios instead would mean twelve combinations of three
+  inputs, several of which are unreachable, and any of which can be got wrong
+  individually. Deriving from the properties gives one branch.</p>
+
+<h2>Walking the case that exposes the bug</h2>
+
+<p><em>The signal must wait for the barrier</em>:
+  <code>approach tick tick enter exit tick</code></p>
+
+<table class="trace">
+  <tr><th>#</th><th>Event</th><th>appr</th><th>cross</th><th>barrier</th><th>Command</th></tr>
+  <tr><td>0</td><td>start</td><td>0</td><td>0</td><td>UP</td><td><code>GREEN UP</code></td></tr>
+  <tr><td>1</td><td>approach</td><td>1</td><td>0</td><td>UP</td><td><code>RED DOWN</code></td></tr>
+  <tr><td>2</td><td>tick</td><td>1</td><td>0</td><td>MOVING</td><td><code>RED DOWN</code></td></tr>
+  <tr><td>3</td><td>tick</td><td>1</td><td>0</td><td>DOWN</td><td><code>RED DOWN</code></td></tr>
+  <tr><td>4</td><td>enter</td><td>0</td><td>1</td><td>DOWN</td><td><code>RED DOWN</code></td></tr>
+  <tr><td>5</td><td>exit</td><td>0</td><td>0</td><td>DOWN</td><td><code>RED UP</code></td></tr>
+  <tr><td>6</td><td>tick</td><td>0</td><td>0</td><td>MOVING</td><td><code>RED UP</code></td></tr>
+</table>
+
+<p>Rows 5 and 6 are the whole point. The crossing is clear, so the barrier is
+  commanded up — but it is at <code>DOWN</code> and then <code>MOVING</code>,
+  so the signal stays red. The naive controller emits <code>GREEN UP</code> at
+  row 5 and is caught immediately.</p>
+
+<p>Row 4 is the other one to notice: <code>enter</code> moves the train from
+  the approach section into the crossing, so <code>approaching</code> falls to
+  0 while <code>in_crossing</code> rises to 1. A condition that tested only
+  <code>approaching</code> would release the barrier with a train on it.</p>
+
+<h2>Where the safety monitor lives</h2>
+
+<p>S1 and S2 are checked in <code>harness.c</code>, after every decision, and
+  nothing in <code>solution.c</code> can reach them. That is the same
+  arrangement as the harness owning <code>main</code>, and for a stronger
+  reason: a controller that also grades itself is not being tested.</p>
+
+<p>It is worth noticing what kind of check this is. The expected output does
+  not merely assert that a particular scenario produces particular commands —
+  it asserts that a <em>property held over the whole run</em>. That is
+  model-based testing, and it is the technique this domain actually uses:
+  generate traces, drive the implementation, and have an independent monitor
+  decide whether an invariant ever broke.</p>
+
+<p>The randomised cases are where it earns its keep. Every generated scenario
+  guarantees at least two ticks between a train being seen and it arriving, so
+  a correct controller is always safe — and any train arriving at a moment the
+  author did not picture is exactly the case that catches an incomplete
+  controller.</p>
+
+<h2>The unsurvivable case, and why it is in the suite</h2>
+
+<p><em>The barrier cannot teleport</em> is <code>approach enter</code> — a
+  train in the crossing two events after it was first seen, with no tick in
+  between. The barrier is physically incapable of moving, so the run is unsafe
+  whatever is commanded, and the expected output ends:</p>
+
+<pre><code>UNSAFE at event 2 (enter): a train is in the crossing with the barrier not down</code></pre>
+
+<p>It discriminates nothing about the controller's safety, and it is in the
+  suite for a different reason: <strong>it proves the monitor can fire.</strong>
+  A safety check that has never been observed to fail is indistinguishable from
+  one that is wired up wrong, and a suite where every case passes tells you
+  nothing about which of the two you have. In certified work this is a required
+  activity — you inject the fault and demonstrate the detection.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(1)</strong> per event: two comparisons and two writes, no
+  allocation, no state. Worth stating because for an interlock it is a safety
+  property in its own right — the response time is bounded and identical on
+  every path, which is what lets a real system guarantee it will decide before
+  the next scan.</p>
+
+<h2>Wrong turns worth recognising</h2>
+
+<div class="trap">
+<p><strong>Keying the signal off the trains.</strong> Covered above. It is the
+  bug the problem is built around, and it fails on the first raise of every
+  scenario.</p>
+</div>
+
+<div class="trap">
+<p><strong>Keying the signal off the target instead of the position.</strong>
+  A subtler version: <code>green if target == BARRIER_UP</code>. It is wrong
+  for the same reason and fails in the same place, because the target becomes
+  <code>UP</code> two ticks before the barrier does.</p>
+</div>
+
+<div class="trap">
+<p><strong>Waiting for confirmation before lowering.</strong> Some designs
+  refuse to lower until the signal has been red for a tick, to warn drivers
+  first. Reasonable in general, and here it costs a tick the barrier does not
+  have — the generated scenarios allow exactly two, which is the full lowering
+  time and no more.</p>
+</div>
+
+<div class="trap">
+<p><strong>Treating the counts as booleans.</strong>
+  <code>in_crossing == 1</code> instead of <code>&gt; 0</code>, or decrementing
+  something yourself. The world's state belongs to the harness; you are handed
+  a reading of it and asked for a decision.</p>
+</div>
+
+<div class="trap">
+<p><strong>Leaving an output unwritten on some path.</strong> The harness sets
+  both to <code>-1</code> before calling you, so a missed assignment surfaces
+  as <code>INVALID signal -1</code> rather than as a stale value that happens
+  to be right most of the time.</p>
+</div>
+
+<footer>
+  <p><a href="safety_interlock.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> for a fresh data set.</p>
+</footer>
+
+</main>
+</body>
+</html>

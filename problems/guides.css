@@ -28,6 +28,8 @@
     --sol-wash:    #e6f6ef;
     --warn-wash:   #fdeef0;
     --warn-tint:   #a52a3c;
+    --dia-tint:    #2f6fd0;
+    --dia-wash:    #e8f0fd;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -46,6 +48,8 @@
         --sol-wash:  #162b25;
         --warn-wash: #2f1d22;
         --warn-tint: #f7768e;
+        --dia-tint:  #7aa2f7;
+        --dia-wash:  #1c2740;
     }
 }
 
@@ -93,6 +97,7 @@ h1 {
 
 .hint .kind     { background: var(--hint-wash); color: var(--hint-tint); }
 .solution .kind { background: var(--sol-wash);  color: var(--sol-tint);  }
+.diagram .kind  { background: var(--dia-wash);  color: var(--dia-tint);  }
 
 .lede {
     margin: 1.4rem 0 0;
@@ -151,6 +156,31 @@ pre code {
     padding: 0;
     background: none;
     font-size: .875rem;
+}
+
+/* -------------------------------------------------------------- diagrams */
+
+/* A Mermaid block starts life as its own source in a <pre>, and is replaced
+ * in place by an <svg> if the renderer loads. Both states have to look
+ * deliberate, because the un-rendered one is what an offline reader gets --
+ * and it is still the complete specification.
+ */
+pre.mermaid {
+    margin: 1.6rem 0 .8rem;
+    padding: 1.2rem;
+    text-align: center;
+    background: var(--card);
+}
+
+pre.mermaid svg {
+    max-width: 100%;
+    height: auto;
+}
+
+.mermaid-note {
+    margin: 0 0 1.5rem;
+    font-size: .85rem;
+    color: var(--ink-muted);
 }
 
 /* --------------------------------------------------------------- callouts */

@@ -1,0 +1,59 @@
+{
+  "id": "safety_interlock",
+  "title": "Level Crossing Interlock",
+  "language": "c",
+  "difficulty": "hard",
+  "topics": [
+    "safety",
+    "interlocks",
+    "state",
+    "invariants"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Write the controller for a level crossing, and keep it safe.\n\nThe crossing has a **road signal** and a **barrier**. Trains are detected in an\napproach section before they reach the crossing itself.\n\n## The physics, which the harness simulates\n\n- The barrier is at `BARRIER_UP`, `BARRIER_MOVING` or `BARRIER_DOWN`. You do\n  not move it directly: you name a **target**, and on every `tick` the barrier\n  takes one step towards it. So a full raise or lower takes two ticks.\n- The signal changes the instant you command it.\n- Events arriving on stdin: `approach` (a train enters the approach section),\n  `enter` (a train moves into the crossing), `exit` (a train leaves the\n  crossing), `tick` (time passes).\n\n## Your function\n\n```\nenum signal_aspect   { SIGNAL_GREEN, SIGNAL_RED };\nenum barrier_position { BARRIER_UP, BARRIER_MOVING, BARRIER_DOWN };\n\nvoid crossing_command(int approaching, int in_crossing, int barrier,\n                      int *signal_out, int *target_out);\n```\n\nYou are called once at start-up and once after every event, with the counts\nof trains approaching and in the crossing and the barrier's current position.\nWrite the signal you want through `signal_out` and the barrier position you\nwant through `target_out` -- `BARRIER_UP` or `BARRIER_DOWN`, never\n`BARRIER_MOVING`.\n\n## The two safety properties\n\nThe harness checks these after every one of your decisions. It owns them, the\nsame way it owns `main` -- nothing in your file can weaken them.\n\n- **S1** -- a train is in the crossing only while the barrier is fully down.\n- **S2** -- the signal is green only while the barrier is fully up.\n\nThe run prints your `signal target` pair after each event, then `SAFE`, or the\nfirst violation and nothing after it.\n\n## Watch out\n\n- **S2 is the one that catches people.** When the last train leaves you may\n  start raising the barrier, but the signal must stay red until the barrier\n  has actually arrived at `BARRIER_UP` -- two ticks later. A controller that\n  keys the signal off \"is there a train?\" alone shows green over a\n  half-raised barrier.\n- A train can appear while the barrier is on its way up. Going back down is\n  the same decision as going down in the first place, so this should need no\n  extra code.\n- `approaching` and `in_crossing` are counts, not flags. Two trains can be in\n  the approach section at once, and the crossing is not clear until the count\n  reaches zero.\n- Some sequences are unsurvivable -- a train that enters the crossing two\n  events after it was first seen gives the barrier no time to fall, and the\n  run is reported unsafe whatever you command. That is the monitor working,\n  not your controller failing.",
+  "starter_code": "enum signal_aspect    { SIGNAL_GREEN, SIGNAL_RED };\nenum barrier_position { BARRIER_UP, BARRIER_MOVING, BARRIER_DOWN };\n\n/* Decide the road signal and the barrier's target position.\n *\n * `barrier` is where the barrier is now; write BARRIER_UP or BARRIER_DOWN\n * through `target_out` to say where it should be heading.\n */\nvoid crossing_command(int approaching, int in_crossing, int barrier,\n                      int *signal_out, int *target_out)\n{\n    /* your code here */\n    (void)approaching;\n    (void)in_crossing;\n    (void)barrier;\n    *signal_out = SIGNAL_RED;\n    *target_out = BARRIER_DOWN;\n}\n",
+  "harness": "#include <stdio.h>\n#include <string.h>\n\n/* Same enums as the candidate's file. */\nenum signal_aspect    { SIGNAL_GREEN, SIGNAL_RED };\nenum barrier_position { BARRIER_UP, BARRIER_MOVING, BARRIER_DOWN };\n\n/* Provided by the candidate in solution.c */\nvoid crossing_command(int approaching, int in_crossing, int barrier,\n                      int *signal_out, int *target_out);\n\nint main(void)\n{\n    int approaching = 0;\n    int in_crossing = 0;\n    int barrier = BARRIER_UP;\n    int target = BARRIER_UP;\n    int signal = SIGNAL_RED;\n\n    char event[32];\n    int step = 0;\n\n    strcpy(event, \"start\");\n\n    for (;;) {\n        /* 1. the world moves, using the target commanded last time round */\n        if (step > 0) {\n            if (strcmp(event, \"approach\") == 0) {\n                approaching++;\n            } else if (strcmp(event, \"enter\") == 0) {\n                if (approaching > 0) {\n                    approaching--;\n                }\n                in_crossing++;\n            } else if (strcmp(event, \"exit\") == 0) {\n                if (in_crossing > 0) {\n                    in_crossing--;\n                }\n            } else if (strcmp(event, \"tick\") == 0) {\n                if (target == BARRIER_DOWN && barrier < BARRIER_DOWN) {\n                    barrier++;\n                } else if (target == BARRIER_UP && barrier > BARRIER_UP) {\n                    barrier--;\n                }\n            } else {\n                printf(\"UNKNOWN EVENT %s\\n\", event);\n                return 1;\n            }\n        }\n\n        /* 2. the controller decides */\n        signal = -1;\n        target = -1;\n        crossing_command(approaching, in_crossing, barrier, &signal, &target);\n\n        if (signal != SIGNAL_GREEN && signal != SIGNAL_RED) {\n            printf(\"INVALID signal %d\\n\", signal);\n            return 1;\n        }\n        if (target != BARRIER_UP && target != BARRIER_DOWN) {\n            printf(\"INVALID barrier target %d\\n\", target);\n            return 1;\n        }\n\n        printf(\"%s %s\\n\",\n               signal == SIGNAL_RED ? \"RED\" : \"GREEN\",\n               target == BARRIER_DOWN ? \"DOWN\" : \"UP\");\n\n        /* 3. the safety monitor. It lives here, out of reach of solution.c,\n              for the same reason main() does. */\n        if (in_crossing > 0 && barrier != BARRIER_DOWN) {\n            printf(\"UNSAFE at event %d (%s): a train is in the crossing with \"\n                   \"the barrier not down\\n\", step, event);\n            return 0;\n        }\n        if (signal == SIGNAL_GREEN && barrier != BARRIER_UP) {\n            printf(\"UNSAFE at event %d (%s): the road signal is green with \"\n                   \"the barrier not up\\n\", step, event);\n            return 0;\n        }\n\n        /* 4. the next event, if there is one */\n        if (scanf(\"%31s\", event) != 1) {\n            break;\n        }\n        step++;\n    }\n\n    printf(\"SAFE\\n\");\n    return 0;\n}\n",
+  "reference_solution_b64": "ZW51bSBzaWduYWxfYXNwZWN0ICAgIHsgU0lHTkFMX0dSRUVOLCBTSUdOQUxfUkVEIH07CmVudW0gYmFycmllcl9wb3NpdGlvbiB7IEJBUlJJRVJfVVAsIEJBUlJJRVJfTU9WSU5HLCBCQVJSSUVSX0RPV04gfTsKCnZvaWQgY3Jvc3NpbmdfY29tbWFuZChpbnQgYXBwcm9hY2hpbmcsIGludCBpbl9jcm9zc2luZywgaW50IGJhcnJpZXIsCiAgICAgICAgICAgICAgICAgICAgICBpbnQgKnNpZ25hbF9vdXQsIGludCAqdGFyZ2V0X291dCkKewogICAgaWYgKGFwcHJvYWNoaW5nID4gMCB8fCBpbl9jcm9zc2luZyA+IDApIHsKICAgICAgICAvKiBBbnkgdHJhaW4gYW55d2hlcmU6IHN0b3AgdGhlIHJvYWQgYW5kIGdldCB0aGUgYmFycmllciBkb3duLiBUaGlzCiAgICAgICAgICogb25lIGJyYW5jaCBhbHNvIGNvdmVycyBhIHRyYWluIGFycml2aW5nIG1pZC1yYWlzZS4gKi8KICAgICAgICAqc2lnbmFsX291dCA9IFNJR05BTF9SRUQ7CiAgICAgICAgKnRhcmdldF9vdXQgPSBCQVJSSUVSX0RPV047CiAgICAgICAgcmV0dXJuOwogICAgfQoKICAgIC8qIENsZWFyLiBTdGFydCByYWlzaW5nIC0tIGJ1dCB0aGUgc2lnbmFsIGZvbGxvd3Mgd2hlcmUgdGhlIGJhcnJpZXIKICAgICAqIGFjdHVhbGx5IGlzLCBub3Qgd2hlcmUgaXQgaXMgZ29pbmcsIHdoaWNoIGlzIHRoZSB3aG9sZSBvZiBTMi4gKi8KICAgICp0YXJnZXRfb3V0ID0gQkFSUklFUl9VUDsKICAgICpzaWduYWxfb3V0ID0gKGJhcnJpZXIgPT0gQkFSUklFUl9VUCkgPyBTSUdOQUxfR1JFRU4gOiBTSUdOQUxfUkVEOwp9Cg==",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random level-crossing scenarios.\n\nEvery scenario gives the barrier enough warning by construction: at least two\nticks separate a train being seen from it reaching the crossing, which is\nexactly the time a full lower takes. That is a statement about the input.\nWorking out whether a particular controller survives it would be solving the\nproblem here, and the reference solution is what answers that.\n\"\"\"\n\n\ndef generate(rng, count):\n    return [_case(rng, index + 1) for index in range(count)]\n\n\ndef _case(rng, index):\n    events = []\n    for _ in range(rng.randint(1, 3)):\n        events.append(\"approach\")\n        events += [\"tick\"] * rng.randint(2, 4)\n        events.append(\"enter\")\n        events += [\"tick\"] * rng.randint(1, 3)\n        events.append(\"exit\")\n        events += [\"tick\"] * rng.randint(0, 4)\n    events += [\"tick\"] * 3\n    return {\n        \"name\": \"random traffic #%d\" % index,\n        \"stdin\": \"\".join(event + \"\\n\" for event in events),\n        \"description\": \"%d events. Every train is seen at least two ticks \"\n                       \"before it reaches the crossing, so a correct \"\n                       \"controller keeps this run safe.\" % len(events),\n    }\n"
+  },
+  "tests": [
+    {
+      "name": "no events at all",
+      "stdin": "",
+      "expected_stdout": "GREEN UP\nSAFE",
+      "description": "The start-up decision on its own: nothing is coming, the barrier is already up, so the road may have green."
+    },
+    {
+      "name": "one train, with time to prepare",
+      "stdin": "approach\ntick\ntick\nenter\nexit\ntick\ntick\n",
+      "expected_stdout": "GREEN UP\nRED DOWN\nRED DOWN\nRED DOWN\nRED DOWN\nRED UP\nRED UP\nGREEN UP\nSAFE",
+      "description": "The whole cycle. Note the two RED UP lines after the train has gone: the barrier is on its way up and the signal is not allowed to follow it yet."
+    },
+    {
+      "name": "the signal must wait for the barrier",
+      "stdin": "approach\ntick\ntick\nenter\nexit\ntick\n",
+      "expected_stdout": "GREEN UP\nRED DOWN\nRED DOWN\nRED DOWN\nRED DOWN\nRED UP\nRED UP\nSAFE",
+      "description": "One tick short of a full raise. The last line must still be RED -- a controller that keys the signal off `is there a train` shows green here, over a half-raised barrier."
+    },
+    {
+      "name": "a second train arrives during the raise",
+      "stdin": "approach\ntick\ntick\nenter\nexit\ntick\napproach\ntick\ntick\nenter\nexit\ntick\ntick\n",
+      "expected_stdout": "GREEN UP\nRED DOWN\nRED DOWN\nRED DOWN\nRED DOWN\nRED UP\nRED UP\nRED DOWN\nRED DOWN\nRED DOWN\nRED DOWN\nRED UP\nRED UP\nGREEN UP\nSAFE",
+      "description": "The barrier is halfway up when the next train is seen. Going back down is the same decision as going down was, so this needs no code of its own."
+    },
+    {
+      "name": "two trains in the section at once",
+      "stdin": "approach\napproach\ntick\ntick\nenter\nexit\ntick\nenter\nexit\ntick\ntick\n",
+      "expected_stdout": "GREEN UP\nRED DOWN\nRED DOWN\nRED DOWN\nRED DOWN\nRED DOWN\nRED DOWN\nRED DOWN\nRED DOWN\nRED UP\nRED UP\nGREEN UP\nSAFE",
+      "description": "`approaching` is a count. After the first train enters, one is still out there, so the crossing is not clear and the barrier stays down."
+    },
+    {
+      "name": "the barrier cannot teleport",
+      "stdin": "approach\nenter\n",
+      "expected_stdout": "GREEN UP\nRED DOWN\nRED DOWN\nUNSAFE at event 2 (enter): a train is in the crossing with the barrier not down",
+      "description": "A train in the crossing two events after it was first seen. The barrier has had no tick to fall, so the run is unsafe whatever the controller commands -- which is the monitor proving it can fire."
+    }
+  ]
+}

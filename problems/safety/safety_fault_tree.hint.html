@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Smallest Cut Set of a Fault Tree · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · hard</p>
+  <h1>Smallest Cut Set of a Fault Tree</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What the number means</h2>
+
+<p>Before the code, be sure what you are computing. A <strong>cut set</strong>
+  is a set of basic events that together cause the top event. The
+  <em>smallest</em> one is the fewest simultaneous failures the system can be
+  destroyed by.</p>
+
+<p>If that number is <strong>1</strong>, some single component takes the whole
+  system down on its own — a single point of failure, and the finding that
+  stops a design review. If it is 2, you have genuine dual redundancy
+  somewhere. This is the headline number of a fault tree analysis, and it is
+  the reason anyone draws one.</p>
+
+<h2>The recursion writes itself from the semantics</h2>
+
+<p>Ask, for each kind of node: <em>what is the cheapest way to make this node
+  fail?</em></p>
+
+<table>
+  <tr><th>Node</th><th>Fails when</th><th>Cheapest way</th></tr>
+  <tr><td><code>GATE_BASIC</code></td><td>this component fails</td>
+      <td>one event — itself</td></tr>
+  <tr><td><code>GATE_OR</code></td><td><em>any</em> input fails</td>
+      <td>pick the cheapest child, and ignore the others</td></tr>
+  <tr><td><code>GATE_AND</code></td><td><em>all</em> inputs fail</td>
+      <td>you have to pay for every child</td></tr>
+</table>
+
+<p>Three cases, one line each. The base case is the basic event — it has no
+  children, so the recursion cannot go past it, and every branch of the tree
+  ends in one.</p>
+
+<h2>Sanity-check the arithmetic on paper</h2>
+
+<p>Draw these four and work out the answer before you write code:</p>
+
+<ul>
+  <li><code>OR(basic, basic)</code> — two components, either one kills you.
+    <strong>1.</strong></li>
+  <li><code>AND(basic, basic)</code> — both must fail together.
+    <strong>2.</strong></li>
+  <li><code>AND(OR(a,b), OR(c,d))</code> — two channels in series, each with
+    two ways to fail. <strong>1 + 1 = 2.</strong></li>
+  <li><code>OR(AND(a,b), c)</code> — this is the interesting one. Work it
+    out.</li>
+</ul>
+
+<div class="note">
+<p>That last one comes to <strong>1</strong>, and it is why the exercise
+  exists. All the redundancy in the <code>AND</code> branch counts for nothing
+  while <code>c</code> sits beside it and can fail alone. A great many real
+  designs look exactly like this — a redundant subsystem with a single shared
+  power supply, sensor or connector next to it.</p>
+</div>
+
+<h2>Reading the input structure</h2>
+
+<p>The harness parses stdin and hands you an array. You never touch stdin
+  yourself.</p>
+
+<pre><code>struct gate {
+    int kind;          /* GATE_BASIC, GATE_AND or GATE_OR */
+    int input_count;   /* how many of `inputs` are used */
+    int inputs[8];     /* indices into the same array */
+};</code></pre>
+
+<p><code>inputs[i]</code> is an <strong>index</strong>, not a pointer. To visit
+  a child you recurse on <code>gates[node-&gt;inputs[i]]</code> — or, more
+  neatly, pass the index down and let the callee do the lookup, which is why
+  the signature takes <code>top</code> rather than a node.</p>
+
+<p>Copy the enum and the struct exactly as the problem gives them. Your file
+  and the harness are compiled separately and agree on the layout only because
+  the two declarations match.</p>
+
+<h2>Why the recursion is guaranteed to stop</h2>
+
+<p>Two promises in the statement do the work, and it is worth knowing which
+  does what:</p>
+
+<ul>
+  <li><strong>Every child's index is greater than its parent's.</strong> So you
+    can never come back to a node you are already inside — no cycles, no
+    infinite descent.</li>
+  <li><strong>No basic event appears twice.</strong> This one is not about
+    termination; it is what makes <code>AND</code> allowed to simply
+    <em>add</em>. If two branches shared an event, their cut sets would overlap
+    and the sum would count it twice.</li>
+</ul>
+
+<details>
+<summary>Still stuck? A bigger nudge</summary>
+
+<pre><code>int smallest_cut_set(const struct gate *gates, int top)
+{
+    const struct gate *node = &amp;gates[top];
+
+    if (node-&gt;kind == GATE_BASIC) {
+        return /* ? */;
+    }
+
+    if (node-&gt;kind == GATE_AND) {
+        /* accumulate over every child */
+    }
+
+    /* GATE_OR: keep the smallest child */
+}</code></pre>
+
+<p>For the OR, seed your running minimum with the <em>first</em> child rather
+  than with some large sentinel and loop from the second. Every gate has at
+  least one input, so the first child always exists — and a sentinel like
+  <code>INT_MAX</code> that never gets replaced is a bug waiting for an empty
+  gate.</p>
+
+</details>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li>A tree that is one basic event → <code>1</code>.</li>
+  <li><code>AND</code> of three basics → <code>3</code>.</li>
+  <li>The <code>OR(AND(a,b), c)</code> shape → <code>1</code>, with
+    <code>SINGLE POINT OF FAILURE</code> after it.</li>
+  <li>Does your OR handle a gate with one input?</li>
+  <li>Does anything overflow or recurse forever on the deepest random
+    tree?</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="safety_fault_tree.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>
