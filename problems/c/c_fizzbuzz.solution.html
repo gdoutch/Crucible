@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — FizzBuzz · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · easy</p>
+  <h1>FizzBuzz</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The idea</h2>
+
+<p>Count from 1 to <em>n</em> and, for each number, pick exactly one of four
+  things to print. The only real content is the <em>order</em> of the tests:
+  the overlapping case has to be decided before the cases it overlaps
+  with.</p>
+
+<h2>The code</h2>
+
+<pre><code>#include &lt;stdio.h&gt;
+
+void fizzbuzz(int n)
+{
+    for (int i = 1; i &lt;= n; i++) {
+        if (i % 15 == 0) {
+            printf("FizzBuzz\n");
+        } else if (i % 3 == 0) {
+            printf("Fizz\n");
+        } else if (i % 5 == 0) {
+            printf("Buzz\n");
+        } else {
+            printf("%d\n", i);
+        }
+    }
+}</code></pre>
+
+<h2>Why <code>% 15</code> works</h2>
+
+<p>A number divisible by both 3 and 5 is divisible by their least common
+  multiple. 3 and 5 are coprime, so that is simply 3 × 5 = 15. Writing
+  <code>i % 3 == 0 &amp;&amp; i % 5 == 0</code> is equally correct and arguably
+  states the intent more plainly; <code>% 15</code> is the more common idiom and
+  one modulo cheaper.</p>
+
+<p>Do not generalise the shortcut carelessly. For 4 and 6 the equivalent
+  constant is 12, not 24 — the LCM, not the product. It only collapses to the
+  product when the two divisors share no factors.</p>
+
+<h2>Why the order is forced</h2>
+
+<p>The <code>else if</code> chain evaluates top to bottom and stops at the first
+  match, so each arm implicitly carries "and nothing above matched". Reversing
+  the first two arms breaks every multiple of 15:</p>
+
+<table>
+  <tr><th>i</th><th>Correct</th><th>With <code>% 3</code> tested first</th></tr>
+  <tr><td>3</td><td><code>Fizz</code></td><td><code>Fizz</code></td></tr>
+  <tr><td>5</td><td><code>Buzz</code></td><td><code>Buzz</code></td></tr>
+  <tr><td>15</td><td><code>FizzBuzz</code></td><td><code>Fizz</code> ✗</td></tr>
+  <tr><td>30</td><td><code>FizzBuzz</code></td><td><code>Fizz</code> ✗</td></tr>
+</table>
+
+<p>If a randomised case gives you an <em>n</em> below 15, that bug hides
+  completely — which is precisely why Crucible reshuffles the data. Press
+  <strong>Ctrl+R</strong> and the bug surfaces the first time <em>n</em> reaches
+  15.</p>
+
+<h2>The composition alternative</h2>
+
+<p>If the ordering rule feels like something you have to remember rather than
+  something the code enforces, build the answer instead of choosing it:</p>
+
+<pre><code>for (int i = 1; i &lt;= n; i++) {
+    char line[16] = "";
+    if (i % 3 == 0) { strcat(line, "Fizz"); }
+    if (i % 5 == 0) { strcat(line, "Buzz"); }
+    if (line[0] == '\0') {
+        printf("%d\n", i);
+    } else {
+        printf("%s\n", line);
+    }
+}</code></pre>
+
+<p>Two independent tests, no precedence, and the <code>FizzBuzz</code> case is
+  produced rather than special-cased. It also extends to a third rule without
+  touching the existing ones — with the <code>else if</code> chain, adding
+  "multiples of 7 print Bazz" means writing arms for 21, 35 and 105 as well.
+  That is the interesting property of this version, and the reason FizzBuzz is
+  still worth writing.</p>
+
+<h2>The <code>n = 0</code> case</h2>
+
+<p>The loop condition <code>1 &lt;= 0</code> is false immediately, so nothing is
+  printed and the function returns. Same for any negative <em>n</em>. No guard
+  needed — but check what your code does, because a <code>do…while</code> or a
+  loop written from <code>0</code> to <code>n - 1</code> with an offset can
+  easily emit one line here.</p>
+
+<div class="note">
+<p>The expected output for that case is the empty string. Crucible strips
+  trailing blank lines before comparing, so a stray final <code>\n</code> would
+  not fail you — but an actual printed line would.</p>
+</div>
+
+<h2>Cost</h2>
+
+<p><strong>O(n)</strong> time, <strong>O(1)</strong> space. The
+  <code>printf</code> calls dominate everything else; if this ever mattered you
+  would build a buffer and write once, and it has never mattered.</p>
+
+<h2>Wrong turns worth recognising</h2>
+
+<div class="trap">
+<p><strong>Off-by-one at the top.</strong> <code>i &lt; n</code> instead of
+  <code>i &lt;= n</code> silently drops the last line. With <em>n</em> = 15 that
+  is the <code>FizzBuzz</code> line specifically — two bugs that mask each
+  other on exactly one input.</p>
+</div>
+
+<div class="trap">
+<p><strong>Printing with <code>puts</code> and then adding <code>\n</code>.</strong>
+  <code>puts</code> appends a newline of its own, so
+  <code>puts("Fizz\n")</code> emits a blank line after every Fizz. Crucible
+  reports this as "expected 15 line(s), got 20".</p>
+</div>
+
+<footer>
+  <p><a href="c_fizzbuzz.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

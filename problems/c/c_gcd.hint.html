@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Greatest Common Divisor · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · easy</p>
+  <h1>Greatest Common Divisor</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>The largest integer that divides both <code>a</code> and <code>b</code>
+  exactly. Both are zero or positive.</p>
+
+<h2>The obvious way, and why not</h2>
+
+<p>You could count down from <code>min(a, b)</code> and return the first value
+  that divides both. That is correct, and it will pass. It also takes up to two
+  billion iterations for a pair of large primes, and it needs a special case
+  for zero because <code>x % 0</code> is undefined — a crash, not a wrong
+  answer.</p>
+
+<p>There is a two-thousand-year-old alternative that is three lines long.</p>
+
+<h2>Euclid's observation</h2>
+
+<p>Any number that divides both <code>a</code> and <code>b</code> also divides
+  their remainder <code>a % b</code>. So the pair <code>(a, b)</code> and the
+  pair <code>(b, a % b)</code> have <strong>exactly the same set of common
+  divisors</strong> — and therefore the same greatest one.</p>
+
+<p>That is a licence to shrink the problem. Replace the pair with the smaller
+  pair, over and over. The second number strictly decreases every step, so you
+  must eventually reach zero, and when <code>b</code> is <code>0</code> the
+  answer is sitting in <code>a</code>: every number divides zero, so the
+  greatest common divisor of <code>a</code> and <code>0</code> is
+  <code>a</code>.</p>
+
+<p>Try it by hand on <code>(48, 18)</code> before you write anything. You should
+  reach the answer in four steps.</p>
+
+<h2>Why the zero cases fall out for free</h2>
+
+<ul>
+  <li><code>gcd(0, 18)</code> — <code>b</code> is not zero, so one step runs:
+    the pair becomes <code>(18, 0 % 18)</code> = <code>(18, 0)</code>, and
+    <code>18</code> is returned. The arguments swapping themselves round is a
+    pleasant accident of the algorithm, not something you have to arrange.</li>
+  <li><code>gcd(0, 0)</code> — the loop never runs at all and <code>a</code>
+    comes back as <code>0</code>, which is the answer the tests want.</li>
+</ul>
+
+<p>So if you find yourself writing <code>if (a == 0) return b;</code>, delete
+  it and check whether the loop already did that for you.</p>
+
+<details>
+<summary>Still stuck? A bigger nudge</summary>
+
+<pre><code>while (b != 0) {
+    int remainder = /* the remainder of a divided by b */;
+    a = b;
+    b = remainder;
+}
+return a;</code></pre>
+
+<p>The temporary is needed because both assignments happen at once
+  conceptually, but one at a time in C. Overwrite <code>a</code> first and the
+  old value is gone before you compute the remainder from it.</p>
+
+</details>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li><code>gcd(0, 0)</code> → <code>0</code>, and no division by zero on the
+    way.</li>
+  <li><code>gcd(0, 18)</code> → <code>18</code>.</li>
+  <li><code>gcd(24, 24)</code> → <code>24</code>.</li>
+  <li><code>gcd(1, 97)</code> → <code>1</code> — coprime numbers.</li>
+  <li>Does it terminate for every input? An infinite loop here shows up as a
+    <code>TIMEOUT</code>, not a wrong answer.</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_gcd.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

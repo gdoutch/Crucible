@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Reverse a String In Place · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · easy</p>
+  <h1>Reverse a String In Place</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The idea</h2>
+
+<p>Swap the ends inwards. Index <code>0</code> trades places with the last
+  character, <code>1</code> with the second-last, and so on until the two
+  indices meet in the middle. Half as many swaps as there are characters, no
+  extra memory, and the terminator never moves because it is never one of the
+  characters you touch.</p>
+
+<h2>The code</h2>
+
+<pre><code>#include &lt;string.h&gt;
+
+void reverse_string(char *s)
+{
+    size_t length = strlen(s);
+    if (length &lt; 2) {
+        return;
+    }
+    for (size_t i = 0, j = length - 1; i &lt; j; i++, j--) {
+        char swap = s[i];
+        s[i] = s[j];
+        s[j] = swap;
+    }
+}</code></pre>
+
+<h2>The guard is not politeness, it is necessity</h2>
+
+<div class="trap">
+<p><code>strlen</code> returns <code>size_t</code>, which is
+  <strong>unsigned</strong>. When <code>length</code> is <code>0</code>, the
+  expression <code>length - 1</code> does not evaluate to <code>-1</code> —
+  unsigned arithmetic wraps, so it evaluates to <code>SIZE_MAX</code>
+  (18446744073709551615 on a 64-bit build).</p>
+</div>
+
+<p>Without the guard, the empty string sets <code>j</code> to that value, the
+  condition <code>0 &lt; SIZE_MAX</code> is true, and the first swap reads and
+  writes <code>s[SIZE_MAX]</code>. That is not a subtle off-by-one; it is a
+  wild pointer, and it is why the <em>empty string</em> test case exists.</p>
+
+<p>The <code>length &lt; 2</code> form covers the one-character case at the
+  same time. A single character is already its own reverse, so returning early
+  is correct as well as convenient — though note that with
+  <code>length == 1</code> the loop would have been harmless anyway
+  (<code>i</code> and <code>j</code> both <code>0</code>, condition false
+  immediately). Only the zero case is dangerous.</p>
+
+<p>If you prefer to avoid the special case altogether, walking pointers works
+  and never forms the dangerous subtraction:</p>
+
+<pre><code>char *front = s;
+char *back = s + strlen(s);
+while (front &lt; back--) {          /* back moves before the body runs */
+    char swap = *front;
+    *front++ = *back;
+    *back = swap;
+}</code></pre>
+
+<p>That version is cleverer and harder to read. The explicit guard is the
+  better answer in code anyone else has to maintain.</p>
+
+<h2>Why <code>i &lt; j</code> and not <code>i &lt;= j</code></h2>
+
+<p>For an odd length the two indices land on the same middle character, and
+  <code>i &lt;= j</code> would swap it with itself — correct but pointless. For
+  an even length they never coincide; they cross. So the strict comparison is
+  the one that terminates correctly in both cases, and it happens to skip the
+  useless self-swap for free.</p>
+
+<p>Continuing <em>past</em> the crossing point would undo the work: every pair
+  gets swapped a second time and you get the original string back.</p>
+
+<h2>Walking a case</h2>
+
+<p><code>hello</code>, length 5:</p>
+
+<table class="trace">
+  <tr><th>i, j</th><th>Swap</th><th>Buffer after</th></tr>
+  <tr><td>0, 4</td><td><code>h</code> ↔ <code>o</code></td><td><code>oellh</code></td></tr>
+  <tr><td>1, 3</td><td><code>e</code> ↔ <code>l</code></td><td><code>olleh</code></td></tr>
+  <tr><td>2, 2</td><td>—</td><td>loop ends, <code>2 &lt; 2</code> is false</td></tr>
+</table>
+
+<p>The <code>'\0'</code> sat at index 5 throughout and was never a candidate
+  for either index, so <code>strlen</code> still returns 5 afterwards.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(n)</strong> time — <code>strlen</code> is one pass and the swap
+  loop is half a pass — and <strong>O(1)</strong> space: one
+  <code>char</code> temporary, whatever the string's length.</p>
+
+<h2>Wrong turns worth recognising</h2>
+
+<div class="trap">
+<p><strong>Including the terminator in the reversal.</strong> Setting
+  <code>j = strlen(s)</code> puts the <code>'\0'</code> at the front on the
+  first swap. Everything printed afterwards is an empty string, and the real
+  characters are still sitting in the buffer where nothing will ever read
+  them.</p>
+</div>
+
+<div class="trap">
+<p><strong>Building the answer somewhere else.</strong>
+  <code>char *out = malloc(...)</code>, fill it backwards, then… what? You
+  cannot make the caller's <code>char *</code> point at your new buffer —
+  the pointer was passed by value. You would have to copy it back and free it,
+  which is more code, slower, and can fail. "In place" is in the title for a
+  reason.</p>
+</div>
+
+<div class="trap">
+<p><strong>Reversing a string literal.</strong> Not something this harness can
+  do to you, but worth knowing: <code>char *s = "hello"; reverse_string(s);</code>
+  is undefined behaviour, because string literals live in read-only memory.
+  <code>char s[] = "hello"</code> gives you a writable array instead.</p>
+</div>
+
+<footer>
+  <p><a href="c_reverse_string.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

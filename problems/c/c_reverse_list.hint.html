@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Reverse a Linked List · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · hard</p>
+  <h1>Reverse a Linked List</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>Turn every <code>next</code> pointer round and return the node that is now at
+  the front. <strong>Relink the nodes</strong> — copying the values into an
+  array, reversing it, and writing them back produces the right output and
+  avoids the entire exercise.</p>
+
+<h2>The one hard fact about singly linked lists</h2>
+
+<p>A node knows what comes after it and nothing about what came before. So the
+  instant you write <code>node-&gt;next = something_else</code>, the rest of the
+  list is unreachable — unless you saved that pointer first.</p>
+
+<div class="trap">
+<p>This is the whole problem in one sentence: <strong>save
+  <code>next</code> before you overwrite it.</strong> There is no recovery. The
+  nodes still exist, nothing has been freed, and no pointer in your program
+  refers to them any more.</p>
+</div>
+
+<h2>Three pointers</h2>
+
+<p>Picture yourself standing on one node, mid-reversal:</p>
+
+<pre><code>already reversed          not yet touched
+   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐
+   │ a │◄──│ b │   │ c │──►│ d │──►│ e │──► NULL
+   └───┘   └───┘   └───┘   └───┘   └───┘
+             ▲       ▲       ▲
+          previous  head    next</code></pre>
+
+<ul>
+  <li><strong><code>previous</code></strong> — the head of the part already
+    reversed. Starts as <code>NULL</code>, because the first node's
+    <code>next</code> must end up null.</li>
+  <li><strong><code>head</code></strong> — the node being turned round right
+    now.</li>
+  <li><strong><code>next</code></strong> — a copy of <code>head-&gt;next</code>,
+    taken before the damage, so you can still get to the rest of the list.</li>
+</ul>
+
+<p>Work out the four steps of one iteration yourself: save, relink, then shuffle
+  the two names along. Getting them in the wrong order is what the exercise
+  tests.</p>
+
+<h2>Where does the loop stop, and what do you return?</h2>
+
+<p>The loop ends when <code>head</code> becomes <code>NULL</code> — you have
+  walked off the end. At that moment <code>head</code> is null and useless, and
+  <code>previous</code> is sitting on the last node you processed, which is the
+  original tail. That is your new head.</p>
+
+<p>So the return value is <strong>not</strong> <code>head</code>.</p>
+
+<h2>The edge cases fall out</h2>
+
+<ul>
+  <li><strong>Empty list.</strong> <code>head</code> is <code>NULL</code>, the
+    loop never runs, and <code>previous</code> is still <code>NULL</code> —
+    which is exactly what should be returned.</li>
+  <li><strong>One node.</strong> One iteration. Its <code>next</code> is set to
+    <code>previous</code>, which is <code>NULL</code> — it was already null, so
+    nothing changes, and the node comes back as its own head.</li>
+  <li><strong>The old head becomes the tail</strong>, so its <code>next</code>
+    must finish as <code>NULL</code>. That is what initialising
+    <code>previous = NULL</code> arranges.</li>
+</ul>
+
+<p>If you find yourself writing <code>if (head == NULL) return NULL;</code>,
+  check whether the loop already handles it.</p>
+
+<h2>Memory</h2>
+
+<p>Do not <code>malloc</code> and do not <code>free</code>. The caller owns the
+  nodes, and will free the list you hand back. Allocating new nodes leaks the
+  old ones; freeing them hands the caller a list of dangling pointers.</p>
+
+<details>
+<summary>Still stuck? A bigger nudge</summary>
+
+<pre><code>struct node *previous = NULL;
+
+while (head != NULL) {
+    struct node *next = head-&gt;next;   /* 1. save */
+    head-&gt;next = previous;            /* 2. turn this link round */
+    previous = head;                  /* 3. advance previous */
+    head = next;                      /* 4. advance head */
+}
+
+return previous;</code></pre>
+
+<p>Four lines, and each one must come after the one above it. Try reordering any
+  pair on paper and watch the list fall apart.</p>
+
+</details>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li>Empty list → <code>NULL</code>, no dereference.</li>
+  <li>One node → the same node, <code>next</code> still <code>NULL</code>.</li>
+  <li>Two nodes <code>1 2</code> → <code>2 1</code>. The smallest list where the
+    links really move.</li>
+  <li>Did you allocate anything? You should not have.</li>
+  <li>A crash here is almost always a <code>next</code> that was overwritten
+    before it was saved.</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_reverse_list.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

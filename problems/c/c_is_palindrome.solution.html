@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Palindrome Check · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>Palindrome Check</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The idea</h2>
+
+<p>Two indices, one at each end, walking towards each other. Characters that do
+  not participate in the comparison — spaces, commas, colons — are stepped over
+  rather than removed, so the string is never copied or modified. The filtering
+  and the comparing happen in the same pass.</p>
+
+<h2>The code</h2>
+
+<pre><code>#include &lt;ctype.h&gt;
+#include &lt;string.h&gt;
+
+int is_palindrome(const char *s)
+{
+    size_t i = 0;
+    size_t j = strlen(s);
+
+    while (i &lt; j) {
+        if (!isalnum((unsigned char)s[i])) {
+            i++;
+        } else if (!isalnum((unsigned char)s[j - 1])) {
+            j--;
+        } else if (tolower((unsigned char)s[i])
+                   != tolower((unsigned char)s[j - 1])) {
+            return 0;
+        } else {
+            i++;
+            j--;
+        }
+    }
+    return 1;
+}</code></pre>
+
+<h2>Why <code>j</code> is one past the end</h2>
+
+<p><code>j</code> is an exclusive bound: the window under consideration is
+  <code>[i, j)</code>, and the rightmost live character is <code>s[j - 1]</code>.
+  Two things fall out of that choice.</p>
+
+<p>First, <strong>the empty string needs no special case</strong>.
+  <code>strlen("")</code> is <code>0</code>, the condition <code>0 &lt; 0</code>
+  is false, and the function returns <code>1</code> without reading anything.
+  Had <code>j</code> been initialised to <code>strlen(s) - 1</code>, that
+  subtraction on an unsigned <code>size_t</code> would produce
+  <code>SIZE_MAX</code> and the first read would be far outside the buffer.</p>
+
+<p>Second, the price is the <code>- 1</code> on every access through
+  <code>j</code>. Three of them here, and forgetting one is the most likely way
+  to break this function. Signed <code>int</code> indices with an inclusive
+  <code>j = (int)strlen(s) - 1</code> are the alternative: no repeated
+  <code>- 1</code>, no unsigned wraparound, at the cost of a cast. Both are
+  defensible; pick one and be consistent.</p>
+
+<h2>Why the branches are a chain and not three tests</h2>
+
+<p>Only one index moves per iteration unless a real comparison succeeded. That
+  is what the <code>else if</code> chain enforces. Consider
+  <code>"a, a"</code>:</p>
+
+<table class="trace">
+  <tr><th>i</th><th>j</th><th>s[i]</th><th>s[j−1]</th><th>Branch</th></tr>
+  <tr><td>0</td><td>4</td><td><code>a</code></td><td><code>a</code></td><td>match → both move</td></tr>
+  <tr><td>1</td><td>3</td><td><code>,</code></td><td><code>' '</code></td><td>left not alnum → <code>i++</code></td></tr>
+  <tr><td>2</td><td>3</td><td><code>' '</code></td><td><code>' '</code></td><td>left not alnum → <code>i++</code></td></tr>
+  <tr><td>3</td><td>3</td><td colspan="3"><code>3 &lt; 3</code> is false → return <strong>1</strong></td></tr>
+</table>
+
+<p>Had the skips been written as two independent <code>if</code>s, the second
+  row would have moved both indices at once, stepping the right-hand one past a
+  character that had never been compared. On this input the answer would still
+  be right; on <code>"a,ba"</code> it would not be.</p>
+
+<h2>Termination</h2>
+
+<p>Every path through the loop body either returns or strictly increases
+  <code>i</code> or strictly decreases <code>j</code>. The gap <code>j - i</code>
+  therefore shrinks by at least one each iteration and cannot pass zero without
+  the condition failing. A string of nothing but punctuation exhausts itself
+  through the first branch and returns <code>1</code>.</p>
+
+<h2>The <code>&lt;ctype.h&gt;</code> casts</h2>
+
+<div class="note">
+<p><code>isalnum</code> and <code>tolower</code> take an <code>int</code> whose
+  value must be representable as <code>unsigned char</code>, or be
+  <code>EOF</code>. Plain <code>char</code> is signed on x86 and ARM, so byte
+  <code>0xC3</code> arrives as <code>-61</code> and the call is undefined
+  behaviour — typically an out-of-bounds read of the implementation's lookup
+  table.</p>
+</div>
+
+<p>The cast is required on <em>both</em> functions and on <em>every</em> call.
+  It is four extra words and it is the difference between correct code and code
+  that happens to work on ASCII input.</p>
+
+<h2>Why not clean the string first?</h2>
+
+<pre><code>/* the copying approach */
+char clean[1024];
+size_t n = 0;
+for (const char *p = s; *p; p++) {
+    if (isalnum((unsigned char)*p)) {
+        clean[n++] = (char)tolower((unsigned char)*p);
+    }
+}
+/* then compare clean with its reverse */</code></pre>
+
+<p>Correct, and easier to read. But you have just introduced a fixed-size buffer
+  that the caller's input can overflow, and the only defences are a bound check
+  you must remember to write or a <code>malloc</code> you must remember to free.
+  The two-pointer version has neither failure mode, which is why it is the one
+  worth learning.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(n)</strong> time — <code>strlen</code> is one pass and the two
+  indices together traverse the string once — and <strong>O(1)</strong> space.
+  The copying approach is also O(n) time but O(n) space.</p>
+
+<h2>Wrong turns worth recognising</h2>
+
+<div class="trap">
+<p><strong>Comparing <code>s[j]</code> instead of <code>s[j - 1]</code>.</strong>
+  With <code>j</code> exclusive, <code>s[j]</code> on the first iteration is the
+  <code>'\0'</code> terminator. <code>isalnum('\0')</code> is false, so
+  <code>j</code> decrements and the loop limps on — comparing the wrong
+  characters throughout and quietly returning the wrong answer on most
+  inputs.</p>
+</div>
+
+<div class="trap">
+<p><strong>Using <code>isalpha</code> instead of <code>isalnum</code>.</strong>
+  Digits count in this problem. <code>12321</code> is a palindrome and
+  <code>isalpha</code> would skip every character of it, returning
+  <code>1</code> for anything numeric — including <code>123</code>.</p>
+</div>
+
+<div class="trap">
+<p><strong>Lower-casing only one side.</strong> Easy to do when the two
+  comparisons are on different lines. <code>Aa</code> would come back
+  <code>0</code>.</p>
+</div>
+
+<footer>
+  <p><a href="c_is_palindrome.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

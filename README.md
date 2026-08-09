@@ -26,6 +26,7 @@ python -m crucible
 - [How a submission is run](#how-a-submission-is-run)
 - [The reference-solution gate](#the-reference-solution-gate)
 - [Randomised test data](#randomised-test-data)
+- [Hints and worked solutions](#hints-and-worked-solutions)
 - [What is in the box](#what-is-in-the-box)
 - [Writing a problem](#writing-a-problem)
 - [Adding a language](#adding-a-language)
@@ -46,6 +47,7 @@ python -m crucible              # open the GUI
 python -m crucible --toolchains # which compilers were found
 python -m crucible --list       # what problems loaded
 python -m crucible --verify     # prove every reference solution passes
+python -m crucible --guides     # which problems lack a hint or solution page
 ```
 
 On Windows, **`Crucible.cmd`** opens the GUI on a double-click.
@@ -69,8 +71,9 @@ The window is four panes:
 ```
 
 Keys: **F5** or **Ctrl+Enter** runs the suite. **Ctrl+R** draws a new
-randomised data set. **Ctrl+S** saves a draft. **Tab** / **Shift+Tab** indent
-and dedent the selection.
+randomised data set. **Ctrl+S** saves a draft. **F1** opens the hint for the
+current problem in your browser. **Tab** / **Shift+Tab** indent and dedent the
+selection.
 
 Your work is autosaved per problem to `~/.crucible/drafts/`, so closing the
 window mid-problem loses nothing. *File → Reset to starter code* discards it.
@@ -253,10 +256,60 @@ A generator runs in its own process with a ten-second limit, so one with an
 endless loop is reported rather than hanging the app, and a stray `print` left
 in it turns up as a diagnostic instead of corrupting the data.
 
+## Hints and worked solutions
+
+Every problem ships two guide pages, opened from the **Guides** menu:
+
+| | |
+| --- | --- |
+| **Hint** (`F1`) | The idea, the traps, the cases to think about — and a `Still stuck?` block that folds open into a stronger nudge. No finished answer in it. |
+| **Worked solution** | The whole answer: the code, a table tracing it running on a real test case, why each edge case comes out right, the complexity, and the wrong turns worth recognising. |
+
+They are HTML files opened in your browser rather than rendered in the app,
+which is not laziness. A guide is a document — headings, tables, a trace of the
+algorithm step by step — and a Tk `Text` widget renders that badly while every
+machine already has something that renders it well. It also means the guide sits
+*beside* the editor instead of on top of it.
+
+The pages live next to the problem and are found by name. There is no index and
+nothing to register:
+
+```text
+problems/
+  guides.css                     one stylesheet, shared by every page
+  c/
+    c_sum_array.json
+    c_sum_array.hint.html
+    c_sum_array.solution.html
+```
+
+Two things follow from keeping them in separate files rather than in the problem
+JSON:
+
+- **`reference_solution_b64` still means something.** A worked solution written
+  into the problem file would defeat it — opening the JSON to read the test
+  cases would drop the answer in your lap. In a file of its own, reading it
+  stays a deliberate act, which is also why the app asks before opening one
+  (once per problem, per session).
+- **The convention is the only wiring.** Drop the two files beside a new
+  problem and the menu picks them up. Nothing warns you if you forget, so
+  `--guides` is that warning, and it exits non-zero for CI:
+
+```console
+$ python -m crucible --guides
+  OK    Binary Search
+  MISSING Two Sum  -- no worked solution
+           expected E:\Crucible\problems\python\py_two_sum.solution.html
+```
+
+The pages link `../guides.css` — a relative path that assumes the problem sits
+one directory below `problems/`, which is where all the shipped ones live. If
+the stylesheet does not load the pages are still ordinary readable HTML.
+
 ## What is in the box
 
 21 problems — 18 in C, 3 in Python. Every one of them mixes hand-written edge
-cases with four randomised ones.
+cases with four randomised ones, and ships a hint and a worked solution.
 
 The C set is deliberately weighted towards the things C makes you think about
 and other languages do not: what the pointer points at, who owns the memory,
@@ -356,6 +409,11 @@ for the case where you want a held-out case to discourage hard-coding; hidden
 cases still run and still count, and are labelled as hidden in the list. The
 learning-aid default is that everything is shown.
 
+Guides are not part of the schema. Drop `<id>.hint.html` and
+`<id>.solution.html` beside the JSON — see
+[Hints and worked solutions](#hints-and-worked-solutions) — and `--guides`
+tells you which problems you have not got round to yet.
+
 ### Keeping the reference out of sight
 
 `reference_solution_b64` holds base64. All shipped problems use it, which is
@@ -408,6 +466,7 @@ tracebacks.
 | `python -m crucible` | Open the GUI |
 | `--verify` | Build a data set for every problem, then run every reference solution against its suite; exit 1 if any fail |
 | `--list` | List loaded problems and their test counts |
+| `--guides` | Report problems missing a hint or a worked-solution page; exit 1 if any are |
 | `--toolchains` | Report which compilers were found and where |
 | `--problems DIR` | Use a different problem directory |
 | `--seed N` | Replay a particular data set instead of drawing a new one |
@@ -418,7 +477,7 @@ tracebacks.
 python -m unittest discover -s tests -v
 ```
 
-74 tests covering output normalisation and diff hints, problem-schema
+86 tests covering output normalisation and diff hints, problem-schema
 validation (missing fields, bad base64, duplicate test names, unknown
 languages, malformed JSON), the run pipeline (correct, wrong, syntax error,
 runtime exception, timeout, progress callbacks), randomised data (determinism
@@ -426,6 +485,11 @@ per seed, expected output actually coming from the reference, generators that
 raise, loop, print, return rubbish, or try to state the answer), data-set
 storage, the language registry, and the C diagnostic/exit-code helpers that can
 be checked without a compiler.
+
+The guides are covered too: the lookup convention on its own, and then every
+shipped page — both exist, each names its problem, each links to its
+counterpart, every relative link resolves off the disk, and a hint never
+contains the whole reference solution.
 
 The suite also asserts that every shipped reference solution passes its own
 tests — including a freshly generated data set, which is what covers the
@@ -445,6 +509,7 @@ crucible/
   runner.py            build + execute + judge        (no UI)
   randomise.py         generators, and the reference-as-oracle
   workspace.py         drafts, data set numbers, settings
+  guides.py            finds the hint / solution pages, opens them
   languages/
     __init__.py        registry
     base.py            Language ABC, process runner, result types
@@ -455,8 +520,9 @@ crucible/
     editor.py          editor widget: gutter, highlighting, indentation
     theme.py           palettes and ttk styling
 problems/
-  c/                   18 problems
-  python/              3 problems
+  guides.css           shared by every guide page
+  c/                   18 problems, each with .json + .hint.html
+  python/              3 problems,             + .solution.html
 tests/
   test_crucible.py
 ```

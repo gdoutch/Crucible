@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Two Sum · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · Python · easy</p>
+  <h1>Two Sum</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>A tuple <code>(i, j)</code> with <code>i &lt; j</code> and
+  <code>numbers[i] + numbers[j] == target</code>, or <code>None</code>. Indices,
+  not values.</p>
+
+<h2>The nested-loop version</h2>
+
+<p>Try every pair: for each <code>i</code>, try every <code>j</code> after it.
+  It is five lines, it is obviously correct, and it is O(n²). Write it first if
+  it helps you get the index conventions straight — then throw it away, because
+  the interesting version is a single pass.</p>
+
+<h2>Turn the search inside out</h2>
+
+<p>Standing at index <code>j</code> holding <code>numbers[j]</code>, you do not
+  need to search for "some pair that works". You know <em>exactly</em> which
+  number would complete it:</p>
+
+<pre><code>complement = target - numbers[j]</code></pre>
+
+<p>So the only question left is: <strong>have I already seen that number, and if
+  so, where?</strong> That is a lookup, not a search — and a dict answers it in
+  constant time.</p>
+
+<p>Build the dict as you go: value → the index it was found at. At each element,
+  look up the complement <em>before</em> recording the current value, and you
+  are done.</p>
+
+<h2>Why looking up before inserting matters</h2>
+
+<p>Consider <code>numbers = [4]</code> and <code>target = 8</code>. The
+  complement of 4 is 4. If you insert first and then look up, you find yourself
+  and return <code>(0, 0)</code> — using one element twice, which the problem
+  forbids.</p>
+
+<p>Check first, insert second, and the element can only ever pair with something
+  strictly earlier. That also gives you <code>i &lt; j</code> for free, with no
+  comparison or sorting.</p>
+
+<h2>Duplicates: two different questions</h2>
+
+<p>The fixed case <code>[3, 3]</code> with target 6 must return
+  <code>(0, 1)</code>. Two equal values at <em>different</em> positions are a
+  perfectly good pair — it is the same index twice that is banned. Check that
+  your code distinguishes those.</p>
+
+<div class="note">
+<p>What should the dict do when the same value appears twice? Keep the
+  <strong>first</strong> index. It is the only one that can be the smaller half
+  of a pair with anything later, and keeping it makes the tie-break rule below
+  come out right. Plain <code>seen[value] = index</code> overwrites; there is a
+  dict method that only sets a key if it is missing.</p>
+</div>
+
+<h2>Which pair, when several work?</h2>
+
+<p>"The one whose second index is smallest." Read that carefully and it turns
+  out to require no extra code at all: if you return as soon as you find a
+  match, the <code>j</code> you return on is by definition the earliest
+  <code>j</code> that had a partner. Just do not collect candidates and choose
+  at the end.</p>
+
+<details>
+<summary>Still stuck? A bigger nudge</summary>
+
+<pre><code>seen = {}                      # value -> first index it appeared at
+for index, value in enumerate(numbers):
+    complement = target - value
+    if complement in seen:
+        return (seen[complement], index)
+    # record this value, without clobbering an earlier equal one
+return None</code></pre>
+
+<p>One line to fill in. <code>enumerate</code> gives you index and value
+  together, which is nearly always better than <code>range(len(numbers))</code>
+  in Python.</p>
+
+</details>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li>Empty list → <code>None</code>.</li>
+  <li>One element → <code>None</code>, even if it is exactly half the
+    target.</li>
+  <li><code>[3, 3]</code>, target 6 → <code>(0, 1)</code>.</li>
+  <li>No pair at all → <code>None</code>, not an exception.</li>
+  <li>Are you returning a tuple of two ints, smaller index first?</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="py_two_sum.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Rotate an Array Left · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>Rotate an Array Left</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p><code>1 2 3 4 5</code> rotated left by 2 becomes <code>3 4 5 1 2</code>. The
+  first <code>shift</code> elements go to the back; everything else slides down
+  to fill the space. In place, in the caller's array.</p>
+
+<h2>Deal with <code>shift</code> before you deal with the array</h2>
+
+<p>Two facts about the parameter, and they interact:</p>
+
+<ul>
+  <li><code>shift</code> may be <strong>larger than <code>count</code></strong>.
+    Rotating five elements by 7 is the same as rotating by 2, because a rotation
+    by exactly <code>count</code> is the identity. So reduce it:
+    <code>shift %= count</code>.</li>
+  <li><code>count</code> may be <strong>zero</strong>.</li>
+</ul>
+
+<div class="trap">
+<p>Put those in the wrong order and you have written <code>shift % 0</code>.
+  Integer division by zero in C is undefined behaviour, and on x86 it is a
+  hardware fault — the process dies with <code>SIGFPE</code>, and Crucible
+  reports the <em>empty array</em> case as a crash rather than a wrong
+  answer.</p>
+<p>Check the count first. Always.</p>
+</div>
+
+<p>After the reduction, <code>shift == 0</code> means there is nothing to do —
+  which covers both "asked for zero" and "asked for a whole number of full
+  turns".</p>
+
+<h2>Now the rotation itself</h2>
+
+<p>The obvious approach copies the first <code>shift</code> elements into a
+  temporary buffer, slides the rest down, and copies the temporary back. It
+  works, and it needs O(shift) extra memory and a <code>malloc</code> that can
+  fail.</p>
+
+<p>There is a much nicer way, and it is worth the two minutes it takes to see
+  why it works. <strong>Three reversals.</strong></p>
+
+<pre><code>start          1 2 3 | 4 5        shift = 3
+reverse [0, shift)     3 2 1 | 4 5
+reverse [shift, end)   3 2 1 | 5 4
+reverse the whole      4 5 | 1 2 3</code></pre>
+
+<p>Check it: <code>1 2 3 4 5</code> rotated left by 3 is indeed
+  <code>4 5 1 2 3</code>. Try it on paper with a different shift before you
+  believe it.</p>
+
+<p>The reason it works: reversing a block twice restores its order, and the
+  final whole-array reversal reverses each block a second time <em>while
+  also</em> swapping the two blocks' positions. Order restored, places
+  exchanged — which is exactly what a rotation is.</p>
+
+<h2>The helper you will want</h2>
+
+<p>Write a small <code>reverse_range(int *values, int from, int to)</code> that
+  swaps inwards between two <strong>inclusive</strong> indices, then call it
+  three times. Mark it <code>static</code> — it is private to your translation
+  unit, and it keeps the name out of the link.</p>
+
+<details>
+<summary>Still stuck? A bigger nudge</summary>
+
+<pre><code>static void reverse_range(int *values, int from, int to)
+{
+    while (from &lt; to) {
+        /* swap values[from] and values[to], then move both inwards */
+    }
+}
+
+void rotate_left(int *values, int count, int shift)
+{
+    if (count &lt;= 0) {
+        return;                      /* before the modulo! */
+    }
+    shift %= count;
+    if (shift == 0) {
+        return;
+    }
+
+    reverse_range(values, 0, shift - 1);
+    reverse_range(values, shift, count - 1);
+    reverse_range(values, 0, count - 1);
+}</code></pre>
+
+<p>All three index pairs are inclusive, which is why they end in
+  <code>- 1</code>. Being consistent about that is most of the battle.</p>
+
+</details>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li><code>count == 0</code> → returns immediately, no division, no crash.</li>
+  <li><code>shift == 0</code> → array unchanged.</li>
+  <li><code>shift == count</code> → array unchanged.</li>
+  <li><code>shift &gt; count</code> → same as <code>shift % count</code>.</li>
+  <li>Single element, any shift → unchanged.</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_rotate_array.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

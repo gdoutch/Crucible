@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — FizzBuzz · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · easy</p>
+  <h1>FizzBuzz</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>Print <code>1</code> to <code>n</code>, one line each, replacing multiples
+  of 3 with <code>Fizz</code>, multiples of 5 with <code>Buzz</code>, and
+  multiples of both with <code>FizzBuzz</code>. Your function prints; it
+  returns nothing.</p>
+
+<h2>The single decision that matters</h2>
+
+<p>Four outcomes, and they are <strong>not</strong> mutually exclusive in the
+  order you will naturally write them. 15 is a multiple of 3 <em>and</em> a
+  multiple of 5. If you test <code>i % 3</code> first and stop there, every
+  fifteenth line says <code>Fizz</code> when it should say
+  <code>FizzBuzz</code>.</p>
+
+<p>So the ordering rule is: <strong>most specific test first</strong>. Ask
+  "both?" before you ask "either?". An <code>if / else if / else if / else</code>
+  chain with "both" at the top gets this right by construction, because
+  <code>else if</code> means "and none of the above matched".</p>
+
+<div class="note">
+<p>There is a second way that also works and never has the ordering problem:
+  build the line as a string. Start empty, append <code>Fizz</code> if divisible
+  by 3, append <code>Buzz</code> if divisible by 5, and print the number only if
+  the string is still empty. Slightly more code, no precedence to get wrong.</p>
+</div>
+
+<h2>The output has to match exactly</h2>
+
+<p>Crucible compares stdout line by line. It normalises line endings and
+  trailing whitespace, but not spelling, not capitalisation, and not the
+  <em>number</em> of lines.</p>
+
+<ul>
+  <li><code>Fizz</code>, <code>Buzz</code>, <code>FizzBuzz</code> — capital F,
+    capital B, nothing else.</li>
+  <li>One value per line. Every line ends with <code>\n</code>, including the
+    last one.</li>
+  <li>No header, no separators, no trailing summary.</li>
+</ul>
+
+<h2>Do not forget the boundary</h2>
+
+<p>When <code>n</code> is <code>0</code> — or negative — the correct output is
+  <strong>nothing at all</strong>. Not a blank line; no output whatsoever. A
+  loop counting from <code>1</code> while <code>i &lt;= n</code> gives you that
+  for free, which is a good reason to prefer it over a
+  <code>do…while</code>.</p>
+
+<details>
+<summary>Still stuck? A bigger nudge</summary>
+
+<pre><code>for (int i = 1; i &lt;= n; i++) {
+    if (/* divisible by both */) {
+        printf("FizzBuzz\n");
+    } else if (/* divisible by 3 */) {
+        ...
+    } else if (/* divisible by 5 */) {
+        ...
+    } else {
+        printf("%d\n", i);
+    }
+}</code></pre>
+
+<p>"Divisible by both 3 and 5" can be written as two tests joined with
+  <code>&amp;&amp;</code>, or as one test against their least common multiple.
+  Both are correct; one is shorter.</p>
+
+</details>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_fizzbuzz.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

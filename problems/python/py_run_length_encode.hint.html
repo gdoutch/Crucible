@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Run-Length Encoding · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · Python · medium</p>
+  <h1>Run-Length Encoding</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>Replace each run of identical characters with the character followed by the
+  run length. <code>"aaabbc"</code> → <code>"a3b2c1"</code>. Every run gets a
+  number, including runs of one.</p>
+
+<h2>The shape</h2>
+
+<p>You are grouping adjacent equal characters. Two pieces of state carry you
+  through:</p>
+
+<ul>
+  <li><strong>which character</strong> the current run is made of;</li>
+  <li><strong>how long</strong> it has got so far.</li>
+</ul>
+
+<p>Walk the string. If the next character continues the run, increment the
+  length. If it does not, the run has just ended — emit it, and start a new run
+  from the character you are looking at.</p>
+
+<h2>The bug this problem is really about</h2>
+
+<div class="trap">
+<p><strong>The last run has no character after it to end it.</strong></p>
+<p>Every run is emitted when something <em>different</em> comes along. At the end
+  of the string nothing different comes along, so the final run is still sitting
+  in your two variables, unemitted, when the loop finishes.</p>
+<p><code>"aaabbc"</code> comes out as <code>"a3b2"</code> — right up to the last
+  run, then silently short. Emit the final run after the loop.</p>
+</div>
+
+<p>This is the same shape as the classic "flush the buffer before you exit"
+  problem, and recognising it is worth more than this exercise.</p>
+
+<h2>How to start</h2>
+
+<p>The two state variables need initial values, and there is no sensible
+  "character that is not a character" to use. Two ways out:</p>
+
+<ol>
+  <li>Handle the empty string first, then seed from <code>text[0]</code> and
+    iterate over <code>text[1:]</code>.</li>
+  <li>Start with the character set to <code>None</code> and treat the first
+    iteration as a special case inside the loop.</li>
+</ol>
+
+<p>The first is cleaner. It also makes the empty-string case explicit, which you
+  need anyway.</p>
+
+<h2>Building the output</h2>
+
+<div class="note">
+<p>Collect the pieces in a list and <code>"".join(parts)</code> at the end.
+  Repeatedly doing <code>result += ...</code> builds a new string every time —
+  Python strings are immutable — which is quadratic in the length of the output.
+  For these inputs it makes no measurable difference, and it is still the habit
+  to build.</p>
+</div>
+
+<h2>Details from the specification</h2>
+
+<ul>
+  <li><strong>Runs of ten or more are written in full.</strong>
+    <code>"a" * 12</code> → <code>"a12"</code>, not <code>"a9a3"</code>. There is
+    no digit limit.</li>
+  <li><strong>Case is significant.</strong> <code>"aAaa"</code> is three runs:
+    <code>"a1A1a2"</code>.</li>
+  <li><strong>The empty string encodes to the empty string</strong>, not to
+    something like <code>"0"</code>.</li>
+  <li><strong>Every run gets a count</strong>, even length one. This is not the
+    space-saving variant.</li>
+</ul>
+
+<details>
+<summary>Still stuck? A bigger nudge</summary>
+
+<pre><code>if not text:
+    return ""
+
+parts = []
+run_char = text[0]
+run_length = 1
+
+for char in text[1:]:
+    if char == run_char:
+        run_length += 1
+    else:
+        # the run ended: emit it, then start a new one
+        ...
+
+# and here: the last run, which nothing ended
+...
+
+return "".join(parts)</code></pre>
+
+<p>The line you write inside the <code>else</code> and the line you write after
+  the loop are <em>the same line</em>. If you find yourself writing it twice,
+  that is correct and expected — it is the price of the sentinel that the end of
+  a string does not provide.</p>
+
+</details>
+
+<h2>Check yourself before you press Go</h2>
+
+<table>
+  <tr><th>Input</th><th>Output</th></tr>
+  <tr><td><code>""</code></td><td><code>""</code></td></tr>
+  <tr><td><code>"z"</code></td><td><code>"z1"</code></td></tr>
+  <tr><td><code>"aaabbc"</code></td><td><code>"a3b2c1"</code></td></tr>
+  <tr><td><code>"aaaaaaaaaaaa"</code> (12)</td><td><code>"a12"</code></td></tr>
+  <tr><td><code>"aAaa"</code></td><td><code>"a1A1a2"</code></td></tr>
+  <tr><td><code>"abc"</code></td><td><code>"a1b1c1"</code></td></tr>
+</table>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="py_run_length_encode.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

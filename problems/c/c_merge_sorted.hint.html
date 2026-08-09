@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Merge Two Sorted Arrays · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>Merge Two Sorted Arrays</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>All <code>count_a + count_b</code> values, in ascending order, written into
+  <code>out</code>. The caller has already sized <code>out</code> correctly, so
+  there is nothing to allocate and nothing to return.</p>
+
+<h2>The insight</h2>
+
+<p>Both inputs are already sorted, and that is worth more than it first looks.
+  The smallest value overall <em>must</em> be at the front of one array or the
+  other — there is nowhere else it could be hiding. Take it, advance past it,
+  and the same is true of what remains.</p>
+
+<p>So: two positions, one in each array. Compare the two front elements, copy
+  the smaller, advance <em>that array's</em> position only. Repeat.</p>
+
+<pre><code>a:  1  4  9        i ──►
+b:  2  3  4  8     j ──►
+out:                       take 1 (a) ─► i moves
+     1                     take 2 (b) ─► j moves
+     1  2                  take 3 (b) ─► j moves
+     1  2  3               take 4 — from which one?</code></pre>
+
+<h2>Three loops, and two of them are trivial</h2>
+
+<p>The comparison loop can only run while <strong>both</strong> arrays still
+  have elements. As soon as one is exhausted there is nothing left to compare
+  against, and the remainder of the other array is already in order — so it is
+  copied across unchanged.</p>
+
+<p>You cannot know in advance which one runs out first, so you write both
+  drain loops and one of them does nothing.</p>
+
+<h2>Details that will cost you a test case</h2>
+
+<ul>
+  <li><strong>Check counts, not pointers.</strong> An empty array's pointer may
+    be <code>NULL</code>. <code>i &lt; count_a</code> must be tested before
+    <code>a[i]</code> is read — which the loop conditions do for you, provided
+    you never read outside them.</li>
+  <li><strong>Both arrays may be empty.</strong> All three loops do nothing and
+    <code>out</code> is untouched. That is correct: zero values written.</li>
+  <li><strong>Duplicates are ordinary.</strong> Equal values across the two
+    arrays are not a special case — but see below.</li>
+  <li><strong>One output index.</strong> <code>out</code> is written strictly
+    front to back, so a single <code>k</code> that only ever increments is all
+    you need. Do not try to derive it from <code>i + j</code>… actually, you
+    can, since every step advances exactly one of them. Either works; one
+    variable is clearer.</li>
+</ul>
+
+<div class="note">
+<p><strong>Which array wins a tie?</strong> Use <code>&lt;=</code> rather than
+  <code>&lt;</code> so that when the fronts are equal you take from
+  <code>a</code>. Either choice produces correctly sorted output here, but
+  preferring the first array is what makes a merge <em>stable</em>, and
+  stability is the whole reason merge sort is worth having.</p>
+</div>
+
+<details>
+<summary>Still stuck? A bigger nudge</summary>
+
+<pre><code>int i = 0, j = 0, k = 0;
+
+while (i &lt; count_a &amp;&amp; j &lt; count_b) {
+    /* copy the smaller front element into out[k++],
+       advancing i or j -- exactly one of them */
+}
+while (i &lt; count_a) {
+    out[k++] = a[i++];
+}
+while (j &lt; count_b) {
+    out[k++] = b[j++];
+}</code></pre>
+
+<p>The two drain loops are the easy part; write them first and the main loop has
+  less to worry about.</p>
+
+</details>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li>Both empty → nothing written, no crash.</li>
+  <li>First empty → the whole of <code>b</code> appears.</li>
+  <li>Second empty → the whole of <code>a</code> appears.</li>
+  <li><code>1 2</code> and <code>8 9</code> → <code>1 2 8 9</code>: the first
+    array empties before the second is touched at all.</li>
+  <li>Equal values in both arrays all survive — merging keeps duplicates, it
+    does not remove them.</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_merge_sorted.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

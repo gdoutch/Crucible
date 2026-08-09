@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Sort an Array In Place · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>Sort an Array In Place</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The idea</h2>
+
+<p>Insertion sort. Grow a sorted region at the front of the array one element at
+  a time. To absorb the next element, shift every larger element of the sorted
+  region one place right and drop the new value into the gap that opens up.</p>
+
+<div class="note">
+<p><strong>Invariant:</strong> at the top of iteration <code>i</code>,
+  <code>values[0..i-1]</code> is sorted. It contains the same elements it
+  started with, just rearranged.</p>
+</div>
+
+<h2>The code</h2>
+
+<pre><code>void sort_values(int *values, int count)
+{
+    for (int i = 1; i &lt; count; i++) {
+        int key = values[i];
+        int j = i - 1;
+
+        while (j &gt;= 0 &amp;&amp; values[j] &gt; key) {
+            values[j + 1] = values[j];
+            j--;
+        }
+
+        values[j + 1] = key;
+    }
+}</code></pre>
+
+<h2>The four things to get right</h2>
+
+<h3>1. Save <code>key</code> first</h3>
+
+<p><code>values[i]</code> is the first slot the shifting overwrites — the very
+  first assignment in the inner loop is <code>values[i] = values[i - 1]</code>.
+  Reading the key after that gets you a duplicate of its neighbour and loses the
+  original permanently.</p>
+
+<h3>2. The bounds test comes first</h3>
+
+<p><code>j &gt;= 0 &amp;&amp; values[j] &gt; key</code>. C evaluates
+  <code>&amp;&amp;</code> left to right and stops as soon as the answer is
+  known, so when <code>j</code> reaches <code>-1</code> the second operand is
+  never evaluated. Swap the two and you read <code>values[-1]</code> — one
+  <code>int</code> before the allocation — on every element that turns out to be
+  the new minimum.</p>
+
+<p>That bug does not usually crash. It reads whatever happens to be in memory,
+  compares it, and mostly gets away with it, which makes it far more dangerous
+  than a segfault.</p>
+
+<h3>3. Shift right to left</h3>
+
+<p><code>values[j + 1] = values[j]</code> copies each element into the slot
+  <em>after</em> it, and <code>j</code> descends. Going the other way would
+  overwrite each element before it had been copied, smearing one value across
+  the region.</p>
+
+<h3>4. The gap is at <code>j + 1</code></h3>
+
+<p>When the loop exits, <code>j</code> is either <code>-1</code> or points at an
+  element that is <code>&lt;= key</code> and therefore stays to the key's left.
+  Either way the empty slot is the one after it. Both exits agree, which is why
+  a single <code>values[j + 1] = key</code> handles them.</p>
+
+<h2>Walking a case</h2>
+
+<p><code>5 2 4 1</code>. The sorted region is shown in bold.</p>
+
+<table class="trace">
+  <tr><th>i</th><th>key</th><th>Shifts</th><th>Array after</th></tr>
+  <tr><td>—</td><td>—</td><td>—</td><td><strong>5</strong> 2 4 1</td></tr>
+  <tr><td>1</td><td>2</td><td>5 moves right</td><td><strong>2 5</strong> 4 1</td></tr>
+  <tr><td>2</td><td>4</td><td>5 moves right</td><td><strong>2 4 5</strong> 1</td></tr>
+  <tr><td>3</td><td>1</td><td>5, 4, 2 all move right; <code>j</code> falls to −1</td><td><strong>1 2 4 5</strong></td></tr>
+</table>
+
+<p>The last row is the worst case in miniature: the new element is smaller than
+  everything, so the whole sorted region shifts.</p>
+
+<h2><code>&gt;</code> and not <code>&gt;=</code></h2>
+
+<p>With <code>values[j] &gt;= key</code> the loop keeps shifting past elements
+  equal to the key, walking it further left than it needs to go. The array still
+  ends up sorted, so the tests still pass — but two things are lost:</p>
+
+<ul>
+  <li><strong>Work.</strong> The <em>all the same</em> case
+    (<code>7 7 7 7</code>) degenerates from n−1 comparisons to the full
+    quadratic shuffle.</li>
+  <li><strong>Stability.</strong> Equal elements end up in reverse order
+    relative to how they started. With bare <code>int</code>s that is
+    undetectable; with records sorted by one field it is a visible bug.</li>
+</ul>
+
+<h2>Why the empty and single-element cases need no guard</h2>
+
+<p>The outer loop starts at <code>i = 1</code>. With <code>count</code> of
+  <code>0</code> or <code>1</code>, <code>1 &lt; count</code> is false
+  immediately, the body never runs, and <code>values</code> — possibly
+  <code>NULL</code> — is never dereferenced. Adding <code>if (count &lt; 2)
+  return;</code> is harmless but tells the reader you were not sure.</p>
+
+<h2>Cost</h2>
+
+<table>
+  <tr><th>Input</th><th>Comparisons</th><th>Why</th></tr>
+  <tr><td>Already sorted</td><td><strong>O(n)</strong></td>
+      <td>Every inner loop fails on its first test. This is the
+        <em>already sorted</em> fixed case, and nothing moves.</td></tr>
+  <tr><td>All equal</td><td><strong>O(n)</strong></td>
+      <td>Same reason — given <code>&gt;</code> rather than <code>&gt;=</code>.</td></tr>
+  <tr><td>Random</td><td><strong>O(n²)</strong></td>
+      <td>Each element shifts past about half the sorted region.</td></tr>
+  <tr><td>Reverse sorted</td><td><strong>O(n²)</strong></td>
+      <td>Every element shifts past the whole region — the worst case.</td></tr>
+</table>
+
+<p><strong>O(1)</strong> extra space in all cases: one <code>int</code> for the
+  key and one for the index.</p>
+
+<p>Quadratic sounds disqualifying, and for large arrays it is. But insertion
+  sort is the right tool more often than its reputation suggests: it is fast on
+  nearly-sorted data, it is stable, it allocates nothing, and its constant
+  factor is tiny. Production quicksorts — including most libc
+  <code>qsort</code> implementations — switch to it once a partition drops below
+  a dozen or so elements.</p>
+
+<h2>Wrong turns worth recognising</h2>
+
+<div class="trap">
+<p><strong>Calling <code>qsort</code>.</strong> It passes every test. It also
+  means you did not write a sort, and it drags in a comparison callback whose
+  own classic bug — <code>return *(int*)a - *(int*)b;</code>, which overflows for
+  large opposite-signed values — is worse than anything in the loop above.</p>
+</div>
+
+<div class="trap">
+<p><strong>Allocating a second array.</strong> "In place" is in the title. A
+  merge sort into scratch memory is a fine algorithm and the wrong answer to
+  this question.</p>
+</div>
+
+<div class="trap">
+<p><strong>Swapping instead of shifting.</strong> Repeatedly swapping the key
+  with its left neighbour is bubble sort's inner loop. It sorts correctly, but
+  it performs three assignments per step where the shift performs one, and it
+  obscures the "open a gap and insert" idea the exercise is about.</p>
+</div>
+
+<footer>
+  <p><a href="c_insertion_sort.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

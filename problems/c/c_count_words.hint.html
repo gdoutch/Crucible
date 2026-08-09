@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Count the Words · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · easy</p>
+  <h1>Count the Words</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>How many runs of non-space characters are in the line. Spaces and tabs
+  separate words; everything else, punctuation included, is part of a word.</p>
+
+<h2>The wrong first instinct</h2>
+
+<p>Almost everybody starts with "count the spaces and add one". Try that
+  against these four inputs before writing any code:</p>
+
+<table>
+  <tr><th>Input</th><th>Spaces</th><th>Spaces + 1</th><th>Right answer</th></tr>
+  <tr><td><code>hello world</code></td><td>1</td><td>2</td><td>2</td></tr>
+  <tr><td><code>hello&nbsp;&nbsp;&nbsp;world</code></td><td>3</td><td>4</td><td>2</td></tr>
+  <tr><td><code>&nbsp;hello</code></td><td>1</td><td>2</td><td>1</td></tr>
+  <tr><td><code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</code></td><td>5</td><td>6</td><td>0</td></tr>
+</table>
+
+<p>It works for exactly one of them. The problem is that a separator is not one
+  character, it is a <em>run</em> of them, and the ends of the string are
+  special.</p>
+
+<h2>The shape that does work</h2>
+
+<p>Stop thinking about separators and think about <strong>transitions</strong>.
+  At every character you are in one of two states — inside a word, or not —
+  and a word begins at the moment you go from <em>outside</em> to
+  <em>inside</em>. Count those moments and you have counted the words, with no
+  special cases for the start or the end of the line.</p>
+
+<p>So you need one extra variable besides the counter: a flag remembering which
+  state you are in. It starts as "outside", because before the first character
+  you are not inside anything.</p>
+
+<h2>The four things that happen at each character</h2>
+
+<table>
+  <tr><th>Current char</th><th>Currently inside?</th><th>Do what</th></tr>
+  <tr><td>space or tab</td><td>yes</td><td>the word just ended</td></tr>
+  <tr><td>space or tab</td><td>no</td><td>nothing</td></tr>
+  <tr><td>anything else</td><td>no</td><td>a word just started — <em>this</em> is the one you count</td></tr>
+  <tr><td>anything else</td><td>yes</td><td>nothing, still in the same word</td></tr>
+</table>
+
+<p>Two of those four rows do nothing at all, which is why the finished loop is
+  shorter than this table suggests.</p>
+
+<details>
+<summary>Still stuck? A bigger nudge</summary>
+
+<pre><code>int words = 0;
+int inside = 0;
+
+for (; *s != '\0'; s++) {
+    if (/* *s is a space or a tab */) {
+        inside = 0;
+    } else if (!inside) {
+        inside = 1;
+        words++;
+    }
+}
+return words;</code></pre>
+
+<p>Note that the <code>else if</code> already covers "not inside" — the fourth
+  row of the table needs no branch, because falling off the end of the
+  <code>if</code> chain <em>is</em> doing nothing.</p>
+
+</details>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li>Empty string → <code>0</code>.</li>
+  <li>Five spaces and nothing else → <code>0</code>. You never enter a word,
+    so you never count one.</li>
+  <li>Leading and trailing spaces do not change the count.</li>
+  <li>Tabs separate words too, not just spaces.</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_count_words.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

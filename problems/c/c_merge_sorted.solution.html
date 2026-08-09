@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Merge Two Sorted Arrays · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>Merge Two Sorted Arrays</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The idea</h2>
+
+<p>The classic two-finger merge — the inner half of merge sort. Keep a position
+  in each input. The smallest value not yet emitted is necessarily at one of the
+  two positions, because everything behind them is already emitted and
+  everything ahead of them is larger. Compare, take the smaller, advance that
+  finger.</p>
+
+<p>When one array is exhausted the comparison has nothing to compare against,
+  and the rest of the other array is already sorted and already larger than
+  everything emitted — so it is copied straight across.</p>
+
+<h2>The code</h2>
+
+<pre><code>void merge_sorted(const int *a, int count_a,
+                  const int *b, int count_b,
+                  int *out)
+{
+    int i = 0, j = 0, k = 0;
+
+    while (i &lt; count_a &amp;&amp; j &lt; count_b) {
+        out[k++] = (a[i] &lt;= b[j]) ? a[i++] : b[j++];
+    }
+    while (i &lt; count_a) {
+        out[k++] = a[i++];
+    }
+    while (j &lt; count_b) {
+        out[k++] = b[j++];
+    }
+}</code></pre>
+
+<p>The one-line body is dense but honest. Written out:</p>
+
+<pre><code>if (a[i] &lt;= b[j]) {
+    out[k] = a[i];
+    i++;
+} else {
+    out[k] = b[j];
+    j++;
+}
+k++;</code></pre>
+
+<p>Both forms are fine. The post-increments in the compact version are safe here
+  because each variable is modified once in the expression and the assignment
+  sequences the write to <code>out[k]</code> — but if you have to think about
+  it, write the long form.</p>
+
+<h2>Walking a case</h2>
+
+<p><code>a = 1 4 9</code>, <code>b = 2 3 4</code>:</p>
+
+<table class="trace">
+  <tr><th>i</th><th>j</th><th>a[i]</th><th>b[j]</th><th>Take</th><th>out so far</th></tr>
+  <tr><td>0</td><td>0</td><td>1</td><td>2</td><td>a</td><td><code>1</code></td></tr>
+  <tr><td>1</td><td>0</td><td>4</td><td>2</td><td>b</td><td><code>1 2</code></td></tr>
+  <tr><td>1</td><td>1</td><td>4</td><td>3</td><td>b</td><td><code>1 2 3</code></td></tr>
+  <tr><td>1</td><td>2</td><td>4</td><td>4</td><td>a (tie → <code>&lt;=</code>)</td><td><code>1 2 3 4</code></td></tr>
+  <tr><td>2</td><td>2</td><td>9</td><td>4</td><td>b</td><td><code>1 2 3 4 4</code></td></tr>
+  <tr><td>2</td><td>3</td><td colspan="2">b exhausted</td><td>drain a</td><td><code>1 2 3 4 4 9</code></td></tr>
+</table>
+
+<p>Six values in, six out. Note the fourth row: both fronts are <code>4</code>,
+  and both <code>4</code>s appear in the output. A merge does not deduplicate.</p>
+
+<h2>Why <code>&lt;=</code> rather than <code>&lt;</code></h2>
+
+<p>On a tie, <code>&lt;=</code> takes from <code>a</code> — the first array.
+  Both choices produce correctly sorted output, so no test here can tell them
+  apart. The difference is <strong>stability</strong>: when merge sort splits a
+  sequence, <code>a</code> holds the elements that came earlier. Preferring
+  <code>a</code> on equal keys preserves their original relative order; taking
+  from <code>b</code> reverses it.</p>
+
+<p>With bare <code>int</code>s equal values are indistinguishable and nothing is
+  observable. Sort records by surname and it becomes very observable indeed.
+  <code>&lt;=</code> costs nothing, so make it the habit.</p>
+
+<h2>Why the drain loops are separate</h2>
+
+<p>The main loop's condition is a conjunction: it stops the moment
+  <em>either</em> array is finished. It cannot copy the remainder itself,
+  because doing so would mean reading past the end of the exhausted array.</p>
+
+<p>Exactly one drain loop does any work — whichever array still has elements —
+  and the other's condition is false on first evaluation. Both must be written
+  because you cannot know in advance which. The <em>first empty</em> and
+  <em>second empty</em> fixed cases exercise one each, with the main loop never
+  running at all.</p>
+
+<div class="note">
+<p><code>memcpy</code> would do the drains faster:<br>
+  <code>memcpy(out + k, a + i, (size_t)(count_a - i) * sizeof *out);</code><br>
+  Correct, and worth it in a real merge sort. The loop is clearer at this size,
+  and it handles the zero-remaining case without a special check.</p>
+</div>
+
+<h2>The <code>NULL</code> question</h2>
+
+<div class="trap">
+<p>An empty array's pointer may be <code>NULL</code>. Every read of
+  <code>a[i]</code> or <code>b[j]</code> in this function sits inside a
+  condition that has already established the corresponding count is positive, so
+  a null pointer is never dereferenced. Test the <em>count</em>, never the
+  pointer — a non-null pointer to a zero-length array is perfectly legal, and
+  <code>if (a != NULL)</code> would happily read from it.</p>
+</div>
+
+<p>The <em>both empty</em> case runs all three loop conditions once, fails all
+  three, and writes nothing. <code>out</code> is untouched, which is right —
+  zero values were merged.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(n + m)</strong> time and <strong>O(1)</strong> extra space (the
+  output buffer belongs to the caller). Every element is compared at most once
+  and copied exactly once.</p>
+
+<p>The alternative — concatenate then sort — is O((n+m) log(n+m)) and throws away
+  the ordering the inputs already had. That is the real lesson here: the inputs
+  being sorted is <em>information</em>, and a merge is what spending it looks
+  like.</p>
+
+<h2>Wrong turns worth recognising</h2>
+
+<div class="trap">
+<p><strong>Advancing both fingers on a tie.</strong> Feels efficient, drops a
+  value. The output ends up one element short and everything after the tie is
+  shifted, which reads as a mysterious truncation.</p>
+</div>
+
+<div class="trap">
+<p><strong>Using <code>||</code> in the main loop condition.</strong>
+  <code>while (i &lt; count_a || j &lt; count_b)</code> keeps going after one
+  array is exhausted and then compares <code>a[i]</code> past its end. It often
+  works by accident, reading whatever is next in memory, and fails
+  unpredictably.</p>
+</div>
+
+<div class="trap">
+<p><strong>Merging into one of the inputs.</strong> Not possible here — they are
+  <code>const</code> — but the general trap is real: merging in place overwrites
+  values you have not yet read. The standard trick when the destination is one
+  of the sources is to fill it from the <em>back</em>, largest first, where the
+  free space is.</p>
+</div>
+
+<footer>
+  <p><a href="c_merge_sorted.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

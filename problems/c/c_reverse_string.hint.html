@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Reverse a String In Place · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · easy</p>
+  <h1>Reverse a String In Place</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>Rearrange the characters the caller already owns. No <code>malloc</code>, no
+  second buffer, no return value — when you finish, <code>s</code> holds the
+  same bytes backwards and is still a valid C string.</p>
+
+<h2>The shape of it</h2>
+
+<p>Two indices, one at each end, walking towards each other and swapping as
+  they go. Each step swaps one pair and moves both indices inward, so a string
+  of length <em>n</em> costs <em>n</em>/2 swaps.</p>
+
+<pre><code>i:  0  1  2  3  4
+    h  e  l  l  o
+    ^           ^
+    i           j</code></pre>
+
+<p>Swap <code>s[i]</code> with <code>s[j]</code>, then <code>i++</code> and
+  <code>j--</code>. Stop when they meet.</p>
+
+<h2>Two questions to settle before you write it</h2>
+
+<ol>
+  <li><strong>Where does <code>j</code> start?</strong> Not at
+    <code>strlen(s)</code> — that is the index of the terminator. One before
+    it.</li>
+  <li><strong>When do you stop?</strong> <code>while (i &lt; j)</code> or
+    <code>while (i &lt;= j)</code>? Think about an odd-length string: the
+    middle character has to be swapped with itself, which is harmless, or
+    skipped, which is also harmless. Now think about an <em>even</em>-length
+    one, where <code>i</code> and <code>j</code> cross without ever being
+    equal.</li>
+</ol>
+
+<div class="trap">
+<p><strong>The empty string will bite you.</strong> <code>strlen("")</code> is
+  <code>0</code>, so <code>length - 1</code> is… what, exactly? If you stored
+  the length in a <code>size_t</code> — which is what <code>strlen</code>
+  returns, and which is <em>unsigned</em> — then <code>0 - 1</code> is not
+  <code>-1</code>. It is <code>SIZE_MAX</code>, and your loop is about to index
+  four billion characters off the end of the buffer.</p>
+<p>This is the single most instructive bug in the problem. Either guard the
+  short cases before computing <code>length - 1</code>, or use signed indices,
+  or compare in a way that never forms that subtraction.</p>
+</div>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li>Empty string in, empty string out, and no crash.</li>
+  <li>One character in, the same character out.</li>
+  <li><code>abcd</code> → <code>dcba</code> (even length, indices cross).</li>
+  <li><code>abcde</code> → <code>edcba</code> (odd length, middle stays put).</li>
+  <li>Is the <code>'\0'</code> still at the end? If you swapped it into the
+    middle, the string is now shorter than it was and <code>strlen</code> lies.</li>
+</ul>
+
+<details>
+<summary>Still stuck? A bigger nudge</summary>
+
+<pre><code>size_t length = strlen(s);
+if (length &lt; 2) {
+    return;                 /* nothing to do -- and this is the guard
+                               that stops length - 1 wrapping around */
+}
+for (size_t i = 0, j = length - 1; i &lt; j; i++, j--) {
+    /* swap s[i] and s[j] using a one-character temporary */
+}</code></pre>
+
+<p>A swap in C needs the temporary. There is no simultaneous assignment, so
+  <code>s[i] = s[j]; s[j] = s[i];</code> just writes the same character
+  twice.</p>
+
+</details>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_reverse_string.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Maximum Subarray Sum · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · hard</p>
+  <h1>Maximum Subarray Sum</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The idea</h2>
+
+<p>Kadane's algorithm. The trick is to solve a <em>different</em>, easier
+  problem at every position and let the answer to the real one fall out of it.</p>
+
+<div class="note">
+<p>Let <code>current</code> be the largest sum of any run <strong>ending at the
+  element you are looking at</strong>. Then
+  <code>current<sub>i</sub> = max(values[i], current<sub>i−1</sub> + values[i])</code>,
+  and the answer to the whole problem is the largest <code>current</code> ever
+  computed.</p>
+</div>
+
+<p>Why that recurrence is complete: any run ending at <em>i</em> either starts
+  at <em>i</em> — in which case its sum is <code>values[i]</code> — or it
+  extends a run ending at <em>i−1</em>. Among all runs ending at <em>i−1</em>,
+  the best one to extend is the best one, since every extension adds the same
+  <code>values[i]</code>. So two candidates, one comparison, and no information
+  from earlier positions needs to be kept beyond that single number.</p>
+
+<h2>The code</h2>
+
+<pre><code>int max_subarray_sum(const int *values, int count)
+{
+    if (count &lt;= 0) {
+        return 0;
+    }
+
+    int best = values[0];
+    int current = values[0];
+
+    for (int i = 1; i &lt; count; i++) {
+        int extended = current + values[i];
+        current = (values[i] &gt; extended) ? values[i] : extended;
+        if (current &gt; best) {
+            best = current;
+        }
+    }
+    return best;
+}</code></pre>
+
+<p>Two variables doing two different jobs, and mixing them up is the usual
+  bug:</p>
+
+<table>
+  <tr><th>Variable</th><th>Means</th><th>Can go down?</th></tr>
+  <tr><td><code>current</code></td><td>best run ending <em>here</em></td>
+      <td>Yes — a negative element drags it down.</td></tr>
+  <tr><td><code>best</code></td><td>best run seen <em>anywhere so far</em></td>
+      <td>No. It only ever rises.</td></tr>
+</table>
+
+<h2>Walking a case</h2>
+
+<p><code>-2 1 -3 4 -1 2 1 -5 4</code> — the textbook input.</p>
+
+<table class="trace">
+  <tr><th>i</th><th>values[i]</th><th>current + v</th><th>current</th><th>best</th><th>What happened</th></tr>
+  <tr><td>0</td><td>−2</td><td>—</td><td>−2</td><td>−2</td><td>seeded</td></tr>
+  <tr><td>1</td><td>1</td><td>−1</td><td>1</td><td>1</td><td>restart — the past was a liability</td></tr>
+  <tr><td>2</td><td>−3</td><td>−2</td><td>−2</td><td>1</td><td>extend; <code>best</code> holds</td></tr>
+  <tr><td>3</td><td>4</td><td>2</td><td>4</td><td>4</td><td>restart</td></tr>
+  <tr><td>4</td><td>−1</td><td>3</td><td>3</td><td>4</td><td>extend; dips but stays worth keeping</td></tr>
+  <tr><td>5</td><td>2</td><td>5</td><td>5</td><td>5</td><td>extend</td></tr>
+  <tr><td>6</td><td>1</td><td>6</td><td>6</td><td><strong>6</strong></td><td>extend — the peak</td></tr>
+  <tr><td>7</td><td>−5</td><td>1</td><td>1</td><td>6</td><td>extend; <code>best</code> remembers</td></tr>
+  <tr><td>8</td><td>4</td><td>5</td><td>5</td><td>6</td><td>extend, not enough</td></tr>
+</table>
+
+<p>Answer <strong>6</strong>, from the run <code>4 -1 2 1</code>. Row 4 is the
+  instructive one: <code>current</code> falls from 4 to 3 and the algorithm
+  keeps going anyway, because a run with a small dip in it can still grow into
+  the winner. Row 7 is why <code>best</code> exists as a separate variable —
+  <code>current</code> collapses and the answer must survive it.</p>
+
+<h2>Why both variables start at <code>values[0]</code></h2>
+
+<div class="trap">
+<p>Starting either one at <code>0</code> is the classic error. It silently
+  encodes "the empty run is allowed", which contradicts the requirement to pick
+  at least one element. On the all-negative array <code>-7</code> the function
+  would return <code>0</code> — a sum achievable only by choosing nothing.</p>
+</div>
+
+<p>Seeding both with the first element states the base case correctly: with one
+  element available, the best run ending there, and the best run anywhere, are
+  both that element. The loop then starts at index 1 because index 0 is already
+  accounted for.</p>
+
+<p>The same reasoning rules out the popular "clamp to zero" variant:</p>
+
+<pre><code>current = current + values[i];
+if (current &lt; 0) { current = 0; }        /* wrong for all-negative input */</code></pre>
+
+<p>It is a correct algorithm for a subtly different problem — one where the
+  empty run is a legal answer worth 0.</p>
+
+<h2>The empty array</h2>
+
+<p><code>count &lt;= 0</code> returns <code>0</code> before <code>values[0]</code>
+  is read, which matters because <code>values</code> may be <code>NULL</code>.
+  This is the one place the answer <code>0</code> is correct, and it is correct
+  by fiat — the problem defines it, since there is no element to pick.</p>
+
+<p>The <em>zeros only</em> case (<code>0 0 0</code> → <code>0</code>) is the
+  companion: a real run whose sum happens to be zero. Both must produce
+  <code>0</code>, by different routes.</p>
+
+<h2>Cost</h2>
+
+<table>
+  <tr><th>Approach</th><th>Time</th><th>Space</th></tr>
+  <tr><td>Every start, every end, re-summed</td><td>O(n³)</td><td>O(1)</td></tr>
+  <tr><td>Every start, running sum to each end</td><td>O(n²)</td><td>O(1)</td></tr>
+  <tr><td>Divide and conquer</td><td>O(n log n)</td><td>O(log n) stack</td></tr>
+  <tr><td><strong>Kadane</strong></td><td><strong>O(n)</strong></td><td><strong>O(1)</strong></td></tr>
+</table>
+
+<p>One pass, two <code>int</code>s, and it works on a stream — you never need to
+  see an element twice, so the array need not be held in memory at all.</p>
+
+<h2>If you also wanted the indices</h2>
+
+<p>Track where the current run began, and record it whenever <code>best</code>
+  improves:</p>
+
+<pre><code>int start = 0, best_start = 0, best_end = 0;
+for (int i = 1; i &lt; count; i++) {
+    if (values[i] &gt; current + values[i]) {
+        current = values[i];
+        start = i;                    /* restart -- new beginning */
+    } else {
+        current = current + values[i];
+    }
+    if (current &gt; best) {
+        best = current;
+        best_start = start;
+        best_end = i;
+    }
+}</code></pre>
+
+<p>The bookkeeping is where the remaining bugs live, which is why the problem
+  asks only for the sum.</p>
+
+<h2>Wrong turns worth recognising</h2>
+
+<div class="trap">
+<p><strong>Updating <code>best</code> before <code>current</code>.</strong> The
+  order in the loop body is not arbitrary: <code>best</code> must fold in the
+  <em>new</em> <code>current</code>. Reversed, the answer is always one element
+  behind, and the bug hides on any input whose peak is not at the end.</p>
+</div>
+
+<div class="trap">
+<p><strong>Returning <code>current</code>.</strong> It is the best run ending at
+  the <em>last</em> element, which is only the answer when the optimal run
+  happens to finish there.</p>
+</div>
+
+<div class="trap">
+<p><strong>Overflow.</strong> Summing many large <code>int</code>s can exceed
+  <code>INT_MAX</code>, and signed overflow is undefined behaviour. This
+  problem's generator caps the magnitudes so it cannot arise; production code
+  accumulates into a <code>long long</code>.</p>
+</div>
+
+<footer>
+  <p><a href="c_max_subarray.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

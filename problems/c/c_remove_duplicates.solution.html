@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Remove Duplicates From a Sorted Array · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>Remove Duplicates From a Sorted Array</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The idea</h2>
+
+<p>Two indices over one array. <code>read</code> sweeps every element;
+  <code>write</code> marks the end of the deduplicated prefix being built at the
+  front. Each element is kept — copied to <code>values[write]</code>, then
+  <code>write</code> advances — only if it differs from the last value kept.
+  Duplicates are handled by doing nothing, which leaves them behind as
+  <code>read</code> moves past them.</p>
+
+<p>Sortedness is what makes this possible: equal values are adjacent, so
+  "different from the last one kept" is the same test as "not seen before".</p>
+
+<h2>The code</h2>
+
+<pre><code>int remove_duplicates(int *values, int count)
+{
+    if (count &lt;= 0) {
+        return 0;
+    }
+
+    int write = 1;
+    for (int read = 1; read &lt; count; read++) {
+        if (values[read] != values[write - 1]) {
+            values[write] = values[read];
+            write++;
+        }
+    }
+    return write;
+}</code></pre>
+
+<h2>Walking a case</h2>
+
+<p><code>1 1 2 3 3 3 4</code>, seven elements. <code>values[0]</code> is kept
+  implicitly, so both indices start at 1.</p>
+
+<table class="trace">
+  <tr><th>read</th><th>values[read]</th><th>last kept<br><code>values[write−1]</code></th><th>Keep?</th><th>Array after</th><th>write</th></tr>
+  <tr><td>1</td><td>1</td><td>1</td><td>no</td><td><code>1 1 2 3 3 3 4</code></td><td>1</td></tr>
+  <tr><td>2</td><td>2</td><td>1</td><td>yes</td><td><code>1 <strong>2</strong> 2 3 3 3 4</code></td><td>2</td></tr>
+  <tr><td>3</td><td>3</td><td>2</td><td>yes</td><td><code>1 2 <strong>3</strong> 3 3 3 4</code></td><td>3</td></tr>
+  <tr><td>4</td><td>3</td><td>3</td><td>no</td><td>unchanged</td><td>3</td></tr>
+  <tr><td>5</td><td>3</td><td>3</td><td>no</td><td>unchanged</td><td>3</td></tr>
+  <tr><td>6</td><td>4</td><td>3</td><td>yes</td><td><code>1 2 3 <strong>4</strong> 3 3 4</code></td><td>4</td></tr>
+</table>
+
+<p>Returns <code>4</code>, and the first four slots hold <code>1 2 3 4</code>.
+  The tail reads <code>3 3 4</code> — leftover rubbish that the contract says
+  the caller must ignore. The harness prints only the first <code>n</code>
+  values, so it never appears.</p>
+
+<h2>Why writing over the array is safe</h2>
+
+<p><code>write</code> starts equal to <code>read</code> and only ever advances
+  when <code>read</code> does, so the invariant <code>write &lt;= read</code>
+  holds throughout. The slot being written has therefore already been read this
+  iteration or in an earlier one. No live data is ever clobbered.</p>
+
+<p>When <code>write == read</code> the copy is a self-assignment — harmless, and
+  not worth an <code>if</code> to avoid. That is the case for an array with no
+  duplicates at all, where the function walks the whole array writing every
+  element onto itself and returns <code>count</code>.</p>
+
+<h2><code>values[write - 1]</code> or <code>values[read - 1]</code>?</h2>
+
+<p>Both pass. <code>values[read - 1]</code> compares with the immediately
+  preceding <em>original</em> element, which on sorted input is equivalent
+  because duplicates are contiguous.</p>
+
+<p><code>values[write - 1]</code> compares with the last value actually
+  <em>kept</em>, which is the property the function is really maintaining. It
+  keeps working if the input is only grouped rather than fully sorted, and it
+  says what the code means. Prefer it.</p>
+
+<h2>The <code>count &lt;= 0</code> guard is not optional</h2>
+
+<div class="trap">
+<p>Without it, <code>write</code> is initialised to <code>1</code> and returned
+  for an empty array — claiming one element in an array that has none, and one
+  whose pointer may be <code>NULL</code>. The <em>empty array</em> test case
+  catches exactly this.</p>
+</div>
+
+<p>This is the cost of the "first element is always kept" shortcut: it assumes
+  there <em>is</em> a first element. The guard is where that assumption is paid
+  for. An alternative that avoids the guard entirely is to start
+  <code>write = 0</code> and <code>read = 0</code>, keeping an element when
+  <code>write == 0 || values[read] != values[write - 1]</code> — one extra test
+  per iteration in exchange for one fewer special case.</p>
+
+<h2>The other fixed cases</h2>
+
+<table>
+  <tr><th>Case</th><th>What happens</th></tr>
+  <tr>
+    <td><em>single element</em></td>
+    <td>The loop body never runs; <code>write</code> is returned as
+      <code>1</code>. Correct by the same reasoning that lets index 0 be kept
+      unconditionally.</td>
+  </tr>
+  <tr>
+    <td><em>all the same</em> (<code>7 7 7 7 7</code>)</td>
+    <td>Every comparison fails, nothing is ever copied, <code>write</code> stays
+      at <code>1</code>. The extreme case for the compaction: four elements
+      dropped and not one byte moved.</td>
+  </tr>
+</table>
+
+<h2>Cost</h2>
+
+<p><strong>O(n)</strong> time — one pass, one comparison per element — and
+  <strong>O(1)</strong> extra space. Each element is written at most once.</p>
+
+<p>The alternative that allocates a second array and copies the survivors into
+  it is also O(n) time, but O(n) space plus a <code>malloc</code> that can fail
+  and a <code>free</code> you must not forget. Worse, the result would be in the
+  wrong place: the contract says the caller's array holds the answer, so you
+  would have to copy it back.</p>
+
+<h2>Wrong turns worth recognising</h2>
+
+<div class="trap">
+<p><strong>Shuffling the tail down on every duplicate.</strong> Finding a repeat
+  and <code>memmove</code>-ing the rest of the array left by one is the
+  instinctive "delete", and it turns an O(n) problem into O(n²) — quadratic on
+  an array that is all one value, which is one of the fixed cases.</p>
+</div>
+
+<div class="trap">
+<p><strong>Zeroing the tail.</strong> Clearing the slots beyond
+  <code>write</code> feels tidy but is outside the contract, and it destroys
+  data the caller may still own — the array might be a window into something
+  larger.</p>
+</div>
+
+<div class="trap">
+<p><strong>Returning the number removed.</strong> The function returns how many
+  values <em>remain</em>. <code>7 7 7 7 7</code> returns <code>1</code>, not
+  <code>4</code>.</p>
+</div>
+
+<footer>
+  <p><a href="c_remove_duplicates.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

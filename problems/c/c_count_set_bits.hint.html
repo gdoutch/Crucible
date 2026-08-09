@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Count the Set Bits · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · easy</p>
+  <h1>Count the Set Bits</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>How many of the 32 bits in an <code>unsigned int</code> are <code>1</code>.
+  This is the population count — <code>popcount</code> in most instruction
+  sets.</p>
+
+<h2>The straightforward approach</h2>
+
+<p>Two operators do all the work:</p>
+
+<ul>
+  <li><code>value &amp; 1u</code> — the lowest bit, as a <code>0</code> or a
+    <code>1</code>. Add it straight into your counter; there is no need for an
+    <code>if</code>.</li>
+  <li><code>value &gt;&gt;= 1</code> — shift everything down one place, so the
+    next bit up becomes the lowest.</li>
+</ul>
+
+<p>Repeat until there is nothing left. Stopping at <code>value != 0</code> is
+  natural; looping exactly 32 times is also correct and slightly simpler to
+  reason about.</p>
+
+<h2>The trap the problem is built around</h2>
+
+<div class="trap">
+<p>The parameter is <code>unsigned int</code>, and the tests will punish you for
+  quietly turning it back into a signed one.</p>
+<p>Copy it into an <code>int</code>, or write your loop variable as
+  <code>int</code>, and the value <code>4294967295</code> arrives as
+  <code>-1</code>. Right-shifting a negative signed value is
+  <em>implementation defined</em>: on every mainstream compiler it shifts the
+  sign bit in from the top, so <code>-1 &gt;&gt; 1</code> is <code>-1</code>
+  again, forever. Your <code>while (value != 0)</code> never ends and the test
+  case reports <code>TIMEOUT</code>.</p>
+<p>Two of the four fixed cases — <em>every bit set</em> and <em>the top bit
+  alone</em> — exist purely to catch this. If they hang or come back wrong
+  while the small cases pass, look for a missing <code>unsigned</code>.</p>
+</div>
+
+<h2>Then, when it works, make it clever</h2>
+
+<p>There is a well-known identity worth knowing:</p>
+
+<pre><code>value &amp; (value - 1)</code></pre>
+
+<p>Subtracting one from a number flips its lowest set bit to <code>0</code> and
+  turns every zero below it into a <code>1</code>. AND-ing that with the
+  original therefore <strong>clears exactly the lowest set bit</strong> and
+  changes nothing else. Work it through on paper for
+  <code>value = 0b10110000</code> and you will see it.</p>
+
+<p>That gives a loop that runs once per bit that is actually set, rather than
+  once per bit position — so a value with two bits set takes two iterations
+  instead of 32. Same answer, and the loop reads as "keep removing a bit until
+  there are none left".</p>
+
+<details>
+<summary>Still stuck? A bigger nudge</summary>
+
+<p>The shift version:</p>
+
+<pre><code>int count = 0;
+while (value != 0) {
+    count += value &amp; 1u;
+    value &gt;&gt;= 1;
+}
+return count;</code></pre>
+
+<p>The clear-lowest-bit version has the same skeleton, but the body is one
+  statement plus <code>count++</code>. Both are accepted; only one of them
+  looks like it was written by someone who has done this before.</p>
+
+</details>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li><code>0</code> → <code>0</code>.</li>
+  <li><code>1</code> → <code>1</code>.</li>
+  <li><code>4294967295</code> → <code>32</code>, promptly.</li>
+  <li><code>2147483648</code> (bit 31 alone) → <code>1</code>, promptly.</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_count_set_bits.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

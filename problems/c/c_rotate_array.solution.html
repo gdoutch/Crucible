@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Rotate an Array Left · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>Rotate an Array Left</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The idea</h2>
+
+<p>A left rotation by <em>k</em> splits the array into two blocks —
+  <code>A</code> = the first <em>k</em> elements, <code>B</code> = the rest —
+  and produces <code>BA</code> from <code>AB</code>. The blocks swap places and
+  each keeps its internal order.</p>
+
+<p>There is an identity that does exactly that with nothing but reversals:</p>
+
+<div class="note">
+<p>reverse(reverse(A) · reverse(B)) = B · A</p>
+</div>
+
+<p>Reversing the concatenation of two reversed blocks un-reverses each block and
+  exchanges their positions in one operation. Three reversals, no extra memory,
+  every element touched at most twice.</p>
+
+<h2>The code</h2>
+
+<pre><code>static void reverse_range(int *values, int from, int to)
+{
+    while (from &lt; to) {
+        int temp = values[from];
+        values[from] = values[to];
+        values[to] = temp;
+        from++;
+        to--;
+    }
+}
+
+void rotate_left(int *values, int count, int shift)
+{
+    if (count &lt;= 0) {
+        return;
+    }
+
+    shift %= count;
+    if (shift == 0) {
+        return;
+    }
+
+    reverse_range(values, 0, shift - 1);
+    reverse_range(values, shift, count - 1);
+    reverse_range(values, 0, count - 1);
+}</code></pre>
+
+<p><code>reverse_range</code> takes <strong>inclusive</strong> bounds — hence
+  the two <code>- 1</code>s — and is <code>static</code> because nothing outside
+  your file should be able to call it. Your file and the harness are separate
+  translation units, so a non-static helper puts a symbol into the link that
+  could collide with one of the harness's.</p>
+
+<h2>Walking it through</h2>
+
+<p><code>1 2 3 4 5</code>, <code>shift = 2</code>:</p>
+
+<table class="trace">
+  <tr><th>Step</th><th>Range</th><th>Array after</th></tr>
+  <tr><td>start</td><td>—</td><td><code>1 2 | 3 4 5</code></td></tr>
+  <tr><td>reverse the first block</td><td><code>[0, 1]</code></td><td><code>2 1 | 3 4 5</code></td></tr>
+  <tr><td>reverse the second block</td><td><code>[2, 4]</code></td><td><code>2 1 | 5 4 3</code></td></tr>
+  <tr><td>reverse everything</td><td><code>[0, 4]</code></td><td><code>3 4 5 | 1 2</code></td></tr>
+</table>
+
+<p>Which is <code>1 2 3 4 5</code> rotated left by two. The final reversal is
+  doing double duty: it undoes both block reversals <em>and</em> moves the
+  blocks past each other.</p>
+
+<h2>The two guards, in this order</h2>
+
+<h3><code>count &lt;= 0</code> first</h3>
+
+<div class="trap">
+<p><code>shift %= count</code> with <code>count == 0</code> is integer division
+  by zero — undefined behaviour, and on x86 a <code>SIGFPE</code> that kills the
+  process. Crucible runs each case in its own process and translates the signal,
+  so you would see <code>ERROR</code> against <em>empty array</em> with a
+  message about the arithmetic fault while every other case passed.</p>
+<p>This is the whole reason the empty-array case is in the fixed set with a
+  non-zero shift (<code>0\n3\n</code>): a solution that reduces before checking
+  fails here and only here.</p>
+</div>
+
+<h3><code>shift == 0</code> second</h3>
+
+<p>After the reduction, zero means "no rotation needed" — either the caller
+  asked for none, or they asked for a whole number of complete turns. Without
+  this guard the first call becomes
+  <code>reverse_range(values, 0, -1)</code>, whose loop condition
+  <code>0 &lt; -1</code> is false, so it happens to do nothing… and then the
+  second and third reversals reverse the whole array twice, which also happens
+  to do nothing. So it would actually still be correct — but only by luck, and
+  the explicit early return says what is meant and skips the work.</p>
+
+<h2>Why the modulo is required, not an optimisation</h2>
+
+<p>With <code>shift = 7</code> on a five-element array, the unreduced code would
+  call <code>reverse_range(values, 0, 6)</code> — reading and writing two
+  <code>int</code>s past the end of the allocation. Not a wrong answer: memory
+  corruption. The <em>shift equal to the length</em> fixed case
+  (<code>4\n1 2 3 4\n4\n</code>) sits right on the boundary where an unreduced
+  shift first goes out of bounds.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(n)</strong> time — the first two reversals together touch every
+  element once, the third touches every element again, so about
+  <code>n</code> swaps in total — and <strong>O(1)</strong> extra space: one
+  <code>int</code> temporary.</p>
+
+<table>
+  <tr><th>Approach</th><th>Time</th><th>Extra space</th></tr>
+  <tr><td>Three reversals</td><td>O(n)</td><td>O(1)</td></tr>
+  <tr><td>Copy <code>shift</code> elements aside, slide, copy back</td><td>O(n)</td><td>O(shift)</td></tr>
+  <tr><td>Rotate by one, <code>shift</code> times</td><td>O(n · shift)</td><td>O(1)</td></tr>
+  <tr><td>Juggling / cyclic replacement</td><td>O(n)</td><td>O(1)</td></tr>
+</table>
+
+<p>The juggling algorithm moves each element straight to its final home by
+  following cycles, and needs <code>gcd(count, shift)</code> starting points to
+  cover them all. It is optimal in element moves and considerably harder to get
+  right — the reversal trick gets the same complexity class from three calls to
+  a five-line helper.</p>
+
+<h2>Wrong turns worth recognising</h2>
+
+<div class="trap">
+<p><strong>Rotating right instead of left.</strong> The reversal order is the
+  same; what changes is the split point. Left by <em>k</em> splits at
+  <em>k</em>; right by <em>k</em> splits at <code>count - k</code>. Getting this
+  backwards passes the <em>shift of zero</em> and <em>full turn</em> cases and
+  fails everything else.</p>
+</div>
+
+<div class="trap">
+<p><strong>Exclusive bounds in the helper.</strong> If <code>reverse_range</code>
+  takes <code>[from, to)</code> then the three calls lose their
+  <code>- 1</code>s. Mixing the two conventions — inclusive helper, exclusive
+  call sites — produces an array that is almost right, with one element out of
+  place at a block boundary.</p>
+</div>
+
+<div class="trap">
+<p><strong>Negative shifts.</strong> Not possible here: the problem promises
+  <code>shift &gt;= 0</code>. Worth knowing that C's <code>%</code> truncates
+  towards zero, so <code>-1 % 5</code> is <code>-1</code>, not <code>4</code>.
+  Code that accepts negative shifts needs
+  <code>shift = ((shift % count) + count) % count</code>.</p>
+</div>
+
+<footer>
+  <p><a href="c_rotate_array.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

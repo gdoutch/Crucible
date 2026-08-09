@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Remove Duplicates From a Sorted Array · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>Remove Duplicates From a Sorted Array</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>Compact the array so each distinct value appears once, in the first
+  <code>n</code> slots, and return <code>n</code>. Whatever is left beyond
+  index <code>n - 1</code> is nobody's business — you do not have to blank it
+  out.</p>
+
+<h2>The fact that makes it easy</h2>
+
+<p>The array is <strong>sorted</strong>. Equal values are therefore always
+  adjacent. That means you never need to remember the values you have seen — a
+  set, a hash table, a nested search — you only need to compare each element
+  with the previous distinct one.</p>
+
+<h2>Two indices moving at different speeds</h2>
+
+<p>This is the standard read/write pair, and the names help:</p>
+
+<ul>
+  <li><strong><code>read</code></strong> visits every element, one after
+    another. It never goes backwards and never skips.</li>
+  <li><strong><code>write</code></strong> marks where the next kept value goes.
+    It only advances when you actually keep something, so it lags behind — and
+    when the loop ends it <em>is</em> the count.</li>
+</ul>
+
+<p>The invariant to hold in your head: everything below index <code>write</code>
+  is already the correct, deduplicated prefix.</p>
+
+<div class="note">
+<p>Because <code>write</code> can never outrun <code>read</code>, copying
+  <code>values[read]</code> into <code>values[write]</code> can only ever
+  overwrite a slot that has already been read. That is why compacting in place
+  is safe and needs no scratch array.</p>
+</div>
+
+<h2>What is the test?</h2>
+
+<p>"Is this element the same as the last one I kept?" Note the wording — the
+  last one you <em>kept</em>, which lives at <code>values[write - 1]</code>.
+  Comparing with <code>values[read - 1]</code> also works on sorted input, since
+  duplicates are adjacent, but the first form is the one that keeps working if
+  the problem changes.</p>
+
+<h2>Where do the indices start?</h2>
+
+<p>The first element is always kept — there is nothing before it to duplicate.
+  So both indices can start at <code>1</code> with the answer already
+  "at least one". That does mean the empty array must be dealt with first,
+  because "at least one" is false when there are no elements at all.</p>
+
+<details>
+<summary>Still stuck? A bigger nudge</summary>
+
+<pre><code>if (count &lt;= 0) {
+    return 0;
+}
+
+int write = 1;                       /* values[0] is always kept */
+for (int read = 1; read &lt; count; read++) {
+    if (/* values[read] differs from the last kept value */) {
+        values[write] = values[read];
+        write++;
+    }
+}
+return write;</code></pre>
+
+<p>One comparison to fill in. When the element is a duplicate you do nothing at
+  all — no <code>else</code>, no shuffling down. Deleting in place is really
+  just declining to copy.</p>
+
+</details>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li>Empty array → <code>0</code>, and no read through <code>values</code>
+    (it may be <code>NULL</code>).</li>
+  <li>Single element → <code>1</code>, array unchanged.</li>
+  <li><code>7 7 7 7 7</code> → <code>1</code>, and <code>values[0]</code> is
+    <code>7</code>.</li>
+  <li>All distinct → the count is unchanged and nothing has moved.</li>
+  <li>Did you allocate anything? You should not have.</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_remove_duplicates.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

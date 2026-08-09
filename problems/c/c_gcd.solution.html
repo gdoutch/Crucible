@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Greatest Common Divisor · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · easy</p>
+  <h1>Greatest Common Divisor</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The idea</h2>
+
+<p>Euclid's algorithm, in its remainder form. It rests on one fact:</p>
+
+<div class="note">
+<p>For <code>b ≠ 0</code>, the common divisors of <code>(a, b)</code> are
+  exactly the common divisors of <code>(b, a mod b)</code>.</p>
+</div>
+
+<p>Why: write <code>a = qb + r</code>. If <code>d</code> divides
+  <code>a</code> and <code>b</code>, then it divides <code>a − qb</code>, which
+  is <code>r</code>. And if <code>d</code> divides <code>b</code> and
+  <code>r</code>, then it divides <code>qb + r</code>, which is <code>a</code>.
+  The two sets contain the same numbers, so they have the same maximum.</p>
+
+<p>That turns "find the greatest common divisor" into "make the numbers smaller
+  without changing the answer", repeated until one of them is zero.</p>
+
+<h2>The code</h2>
+
+<pre><code>int gcd(int a, int b)
+{
+    while (b != 0) {
+        int remainder = a % b;
+        a = b;
+        b = remainder;
+    }
+    return a;
+}</code></pre>
+
+<p>Three statements in the loop, and the order of them matters:
+  <code>remainder</code> must be computed from the old <code>a</code> before
+  <code>a</code> is overwritten. Assigning <code>a = b</code> first destroys the
+  value you still need.</p>
+
+<h2>Walking a case</h2>
+
+<p><code>gcd(48, 18)</code>:</p>
+
+<table class="trace">
+  <tr><th>a</th><th>b</th><th>a % b</th></tr>
+  <tr><td>48</td><td>18</td><td>12</td></tr>
+  <tr><td>18</td><td>12</td><td>6</td></tr>
+  <tr><td>12</td><td>6</td><td>0</td></tr>
+  <tr><td>6</td><td>0</td><td>loop ends</td></tr>
+</table>
+
+<p>Answer: <strong>6</strong>. Notice how quickly it shrinks — that is the whole
+  point of the algorithm.</p>
+
+<h2>Why it always terminates</h2>
+
+<p>For positive <code>b</code>, the C standard guarantees
+  <code>0 ≤ a % b &lt; b</code>. So the new <code>b</code> is strictly smaller
+  than the old <code>b</code> and never negative: a strictly decreasing sequence
+  of non-negative integers, which cannot go on forever. In fact it is
+  remarkably fast — the worst case is consecutive Fibonacci numbers, and even
+  then the number of steps is logarithmic in the input.</p>
+
+<h2>The zero cases, which are the ones being tested</h2>
+
+<table>
+  <tr><th>Call</th><th>What happens</th><th>Result</th></tr>
+  <tr>
+    <td><code>gcd(0, 0)</code></td>
+    <td><code>b</code> is already <code>0</code>, so the loop never runs.</td>
+    <td><code>0</code></td>
+  </tr>
+  <tr>
+    <td><code>gcd(0, 18)</code></td>
+    <td>One step: <code>0 % 18</code> is <code>0</code>, so the pair becomes
+      <code>(18, 0)</code>.</td>
+    <td><code>18</code></td>
+  </tr>
+  <tr>
+    <td><code>gcd(18, 0)</code></td>
+    <td>Loop never runs.</td>
+    <td><code>18</code></td>
+  </tr>
+</table>
+
+<p>Two things worth noticing. First, arguments in the "wrong" order fix
+  themselves in a single step, so there is no need to sort them beforehand.
+  Second, <code>gcd(0, 0)</code> is a convention rather than a fact — every
+  integer divides zero, so there is no greatest one — and <code>0</code> is the
+  standard choice, being the value that makes <code>gcd</code> behave sensibly
+  in the algebraic identities it appears in.</p>
+
+<p>The loop condition <code>b != 0</code> is also what keeps <code>a % b</code>
+  from ever executing with a zero divisor. That is not a lucky arrangement; it
+  is the reason the condition is on <code>b</code> rather than on
+  <code>a</code>.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(log min(a, b))</strong> divisions, <strong>O(1)</strong> space.
+  The brute-force alternative — trying every candidate downwards from
+  <code>min(a, b)</code> — is O(min(a, b)), which for <code>gcd(999999937, 2)</code>
+  is the difference between two steps and half a billion.</p>
+
+<h2>Variations</h2>
+
+<div class="note">
+<p><strong>Recursive.</strong> <code>return b == 0 ? a : gcd(b, a % b);</code> —
+  a faithful transcription of the mathematical statement, and tail-recursive, so
+  optimising compilers turn it back into the loop above. Perfectly good here;
+  the iterative form is preferred in C mostly because tail-call elimination is
+  not guaranteed.</p>
+</div>
+
+<div class="note">
+<p><strong>Subtraction instead of modulo.</strong> The original form repeatedly
+  subtracts the smaller from the larger. It works, needs no division, and takes
+  <code>a / b</code> steps where the modulo version takes one — so
+  <code>gcd(1000000, 1)</code> becomes a million iterations. Historically
+  interesting, practically a timeout.</p>
+</div>
+
+<h2>Wrong turns worth recognising</h2>
+
+<div class="trap">
+<p><strong>Guarding zero by hand.</strong> <code>if (a == 0) return b;</code>
+  before the loop is harmless but redundant, and it suggests the author did not
+  trust the loop. Worse is <code>if (b == 0) return 0;</code>, which turns
+  <code>gcd(18, 0)</code> into <code>0</code>.</p>
+</div>
+
+<div class="trap">
+<p><strong>Negative inputs.</strong> This problem promises non-negative
+  arguments, so nothing here handles them. In general C's <code>%</code>
+  truncates towards zero, meaning <code>-7 % 3</code> is <code>-1</code>, and
+  the loop can return a negative "greatest" divisor. Real code takes the
+  absolute value of both arguments first — and even that has an edge case at
+  <code>INT_MIN</code>, whose negation does not fit in an <code>int</code>.</p>
+</div>
+
+<footer>
+  <p><a href="c_gcd.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

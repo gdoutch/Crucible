@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Sum of an Array · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · easy</p>
+  <h1>Sum of an Array</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>One number out: the total of <code>count</code> integers starting at
+  <code>values</code>. No printing — the harness already has a
+  <code>main</code> that reads the array, calls you, and prints whatever you
+  return.</p>
+
+<h2>The shape of it</h2>
+
+<p>Three moving parts, and you have met all of them before:</p>
+
+<ul>
+  <li>a running total, starting at <strong>zero</strong> — not at
+    <code>values[0]</code>;</li>
+  <li>a loop that visits index <code>0</code> up to <code>count - 1</code>;</li>
+  <li>adding each element into the total.</li>
+</ul>
+
+<h2>The one thing that catches people</h2>
+
+<p>Look at the <em>empty array</em> case. <code>count</code> is <code>0</code>
+  and <code>values</code> may be <code>NULL</code>. Ask yourself: how many
+  times does my loop body run, and does anything read through the pointer
+  before that first comparison?</p>
+
+<p>Written the ordinary way, this case needs no special handling at all — the
+  loop simply never executes. Written as "start the total at the first element,
+  then loop from 1", it dereferences a null pointer and crashes. If you find
+  yourself adding an <code>if (count == 0)</code> guard, that is a sign the
+  loop is doing something more complicated than it needs to.</p>
+
+<h2>Then look at "sums back to zero"</h2>
+
+<p><code>10 -10 20 -20 30 -30</code> totals <code>0</code>. That case is there
+  to stop you using <code>0</code> as a marker for anything — "empty" and
+  "adds up to nothing" have to produce the same answer, because they are the
+  same answer.</p>
+
+<details>
+<summary>Still stuck? A bigger nudge</summary>
+
+<p>The whole function is a declaration, a <code>for</code> loop, and a
+  <code>return</code>:</p>
+
+<pre><code>int total = ...;
+for (int i = 0; i &lt; count; i++) {
+    /* one line here */
+}
+return total;</code></pre>
+
+<p>Fill in the initial value and the one line. If you would rather walk a
+  pointer than an index, <code>for (const int *p = values; p &lt; values +
+  count; p++)</code> is the same loop and is equally safe when
+  <code>count</code> is zero, because <code>values + 0</code> is a legal
+  pointer to compare even when <code>values</code> is null in practice.</p>
+
+</details>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li>Does it return <code>0</code> for an empty array without touching
+    <code>values</code>?</li>
+  <li>Does a one-element array return that element?</li>
+  <li>Did you write <code>main</code>? You should not have — the harness
+    supplies it, and a second one will not link.</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_sum_array.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

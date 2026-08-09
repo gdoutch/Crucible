@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Edit Distance · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · hard</p>
+  <h1>Edit Distance</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>The fewest single-character insertions, deletions and replacements that turn
+  <code>a</code> into <code>b</code>. This is the Levenshtein distance.
+  <code>kitten</code> → <code>sitting</code> is three.</p>
+
+<h2>Why greedy fails</h2>
+
+<p>Try walking both strings from the front and fixing each difference as you
+  meet it. On <code>kitten</code>/<code>sitting</code> that happens to work. On
+  <code>ab</code>/<code>ba</code> it does not: the first characters differ, so a
+  greedy replace costs 1, then the second pair differs too, so that is 2 — but
+  the true answer is also 2, so even this does not expose it. The real failures
+  come when an early insertion would have re-aligned everything downstream, and
+  a greedy pass cannot see that far.</p>
+
+<p>The fix is to stop making decisions and start computing every prefix
+  answer.</p>
+
+<h2>The table</h2>
+
+<div class="note">
+<p>Let <code>d[i][j]</code> be the edit distance between the <strong>first
+  <em>i</em> characters</strong> of <code>a</code> and the <strong>first
+  <em>j</em> characters</strong> of <code>b</code>.</p>
+</div>
+
+<p>The answer you want is <code>d[len_a][len_b]</code>, the bottom-right corner.
+  The table has <code>(len_a + 1) × (len_b + 1)</code> cells — the extra row and
+  column are for the empty prefixes, and they are where the whole thing is
+  anchored.</p>
+
+<h3>The edges are not zero</h3>
+
+<p>Work out <code>d[0][j]</code> for yourself: turning the empty string into the
+  first <em>j</em> characters of <code>b</code>. There is only one way — insert
+  them, one at a time. So the first row counts up: 0, 1, 2, 3… And by the same
+  argument the first column counts down the deletions.</p>
+
+<p>Getting these wrong is the most common way to fail this problem, and the
+  <em>first empty</em> and <em>second empty</em> test cases exist to catch
+  it.</p>
+
+<h3>Every other cell is the smallest of three</h3>
+
+<p>To reach <code>d[i][j]</code>, the last edit you performed was one of exactly
+  three things. Work out what each costs in terms of a neighbouring cell:</p>
+
+<ul>
+  <li><strong>Delete</strong> <code>a[i-1]</code> — you have dealt with one more
+    character of <code>a</code> and none more of <code>b</code>. Which
+    neighbour does that leave you at, and what does the deletion add?</li>
+  <li><strong>Insert</strong> <code>b[j-1]</code> — one more character of
+    <code>b</code> accounted for, none of <code>a</code>.</li>
+  <li><strong>Match or replace</strong> — one more of each. This one is free if
+    <code>a[i-1] == b[j-1]</code>, and costs 1 otherwise.</li>
+</ul>
+
+<p>Take the minimum of the three. That is the entire recurrence.</p>
+
+<div class="trap">
+<p>Mind the indices. <code>d[i][j]</code> is about the first <em>i</em>
+  characters, so the character it concerns is <code>a[i - 1]</code>, not
+  <code>a[i]</code>. The table is offset by one from the strings, and mixing the
+  two up is the second most common way to fail this.</p>
+</div>
+
+<h2>Fill order</h2>
+
+<p>Each cell depends on the one above, the one to the left, and the one
+  diagonally up-left. So sweep row by row, left to right, and every dependency
+  is already computed.</p>
+
+<h2>Two rows are enough</h2>
+
+<p>Look again at those three dependencies: none of them is more than one row
+  above. The rows before that are never read again, so there is no reason to
+  keep them. Allocate two rows of <code>len_b + 1</code> ints, fill the new one
+  from the old one, then swap the pointers and go again.</p>
+
+<p>The full table is fine for these test sizes. The two-row version is not much
+  harder and turns O(n·m) memory into O(m).</p>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li>Both empty → <code>0</code>.</li>
+  <li><code>hello</code>/<code>hello</code> → <code>0</code>. The diagonal must
+    cost nothing when the characters match.</li>
+  <li><code>""</code>/<code>abcd</code> → <code>4</code>, and
+    <code>abcde</code>/<code>""</code> → <code>5</code>. These are the two edges
+    of the table, read straight off.</li>
+  <li><code>kitten</code>/<code>sitting</code> → <code>3</code>.</li>
+  <li>Whatever you allocated, did you free it — on every return path?</li>
+</ul>
+
+<details>
+<summary>Still stuck? A bigger nudge</summary>
+
+<p>The recurrence, spelled out:</p>
+
+<pre><code>d[0][j] = j
+d[i][0] = i
+
+d[i][j] = min( d[i-1][j] + 1,                        /* delete  */
+               d[i][j-1] + 1,                        /* insert  */
+               d[i-1][j-1] + (a[i-1] != b[j-1]) )    /* keep or replace */</code></pre>
+
+<p>In the two-row form, <code>previous[]</code> is row <code>i-1</code> and
+  <code>current[]</code> is row <code>i</code>. Then <code>d[i-1][j]</code> is
+  <code>previous[j]</code>, <code>d[i][j-1]</code> is
+  <code>current[j-1]</code>, and <code>d[i-1][j-1]</code> is
+  <code>previous[j-1]</code>. Do not forget to set <code>current[0] = i</code>
+  at the start of each row.</p>
+
+</details>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_edit_distance.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

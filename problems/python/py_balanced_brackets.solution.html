@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Balanced Brackets · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · Python · medium</p>
+  <h1>Balanced Brackets</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The idea</h2>
+
+<p>Brackets nest, and nesting is last-in-first-out: the bracket you must close
+  next is always the one you opened most recently. A stack models that exactly.
+  Push every opener; on every closer, the thing you pop must be its partner.</p>
+
+<p>This is not a toy correspondence — it is why a stack is the data structure
+  underneath every recursive-descent parser, and why the call stack is called
+  that.</p>
+
+<h2>The code</h2>
+
+<pre><code>def is_balanced(text):
+    """Return True if the brackets in `text` are balanced."""
+    closing = {")": "(", "]": "[", "}": "{"}
+    stack = []
+
+    for char in text:
+        if char in "([{":
+            stack.append(char)
+        elif char in closing:
+            if not stack or stack.pop() != closing[char]:
+                return False
+
+    return not stack</code></pre>
+
+<h2>The three failure modes, and where each is caught</h2>
+
+<table>
+  <tr><th>Failure</th><th>Example</th><th>Caught by</th></tr>
+  <tr>
+    <td>A closer with nothing open</td><td><code>)</code></td>
+    <td><code>not stack</code> — inside the loop</td>
+  </tr>
+  <tr>
+    <td>A closer for the wrong opener</td><td><code>(]</code>, <code>([)]</code></td>
+    <td><code>stack.pop() != closing[char]</code> — inside the loop</td>
+  </tr>
+  <tr>
+    <td>An opener never closed</td><td><code>(</code>, <code>(((</code></td>
+    <td><code>return not stack</code> — <em>after</em> the loop</td>
+  </tr>
+</table>
+
+<p>The third one is the one people leave out. A string of nothing but openers
+  never reaches a comparison, so nothing inside the loop can reject it. Ending
+  with <code>return True</code> passes every test except that one.</p>
+
+<h2>Short-circuiting is doing real work</h2>
+
+<pre><code>if not stack or stack.pop() != closing[char]:</code></pre>
+
+<p>Python's <code>or</code> evaluates its right side only when the left is
+  falsy. So when the stack is empty, <code>stack.pop()</code> is never called —
+  and it must not be, because popping an empty list raises
+  <code>IndexError</code>.</p>
+
+<div class="trap">
+<p>Reverse the two operands and the input <code>)</code> crashes with
+  <code>IndexError: pop from empty list</code> instead of returning
+  <code>False</code>. Crucible reports that as <code>ERROR</code> with the
+  traceback, which at least points at the line — but the fix is ordering, not a
+  <code>try</code>.</p>
+</div>
+
+<p>Note also that <code>stack.pop()</code> mutates. It appears once in the
+  condition, which is fine; writing the check as two separate comparisons that
+  each pop would consume two entries per closer.</p>
+
+<h2>Why the dict maps closer → opener</h2>
+
+<p><code>{")": "(", "]": "[", "}": "{"}</code> is keyed by the closing bracket,
+  which buys two things from one structure:</p>
+
+<ul>
+  <li><code>elif char in closing</code> — the membership test <em>is</em> the
+    "is this a closing bracket?" question, since dict membership checks
+    keys.</li>
+  <li><code>closing[char]</code> — the opener it demands, ready to compare
+    against whatever was popped.</li>
+</ul>
+
+<p>Mapping the other way (opener → closer) would need a separate way to
+  recognise closers, or a reverse lookup by value.</p>
+
+<h2>Walking the interesting case</h2>
+
+<p><code>([)]</code> — the input that defeats counting:</p>
+
+<table class="trace">
+  <tr><th>char</th><th>Kind</th><th>Stack before</th><th>What happens</th></tr>
+  <tr><td><code>(</code></td><td>opener</td><td><code>[]</code></td><td>push → <code>['(']</code></td></tr>
+  <tr><td><code>[</code></td><td>opener</td><td><code>['(']</code></td><td>push → <code>['(', '[']</code></td></tr>
+  <tr><td><code>)</code></td><td>closer</td><td><code>['(', '[']</code></td>
+      <td>pop gives <code>[</code>, but <code>)</code> needs <code>(</code> →
+        <strong>False</strong></td></tr>
+</table>
+
+<p>The counts are perfectly balanced — one of each bracket, openers before
+  closers. Only the stack notices that the <code>[</code> opened after the
+  <code>(</code> and so must close before it.</p>
+
+<h2>The empty string</h2>
+
+<p>The loop never runs, the stack is empty, and <code>not []</code> is
+  <code>True</code>. Vacuously balanced, no special case. This is the payoff of
+  ending with <code>return not stack</code> rather than a separate check.</p>
+
+<h2>Ignoring everything else</h2>
+
+<p>The <code>if / elif</code> chain has no <code>else</code>, so any character
+  that is neither an opener nor a closer simply falls through. Letters, spaces,
+  digits — all invisible to the algorithm. That is the specification, and it is
+  also what makes this the skeleton of a real syntax checker, which cares about
+  brackets and hands everything else to another layer.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(n)</strong> time — one pass, and the push/pop/lookup are all
+  constant time — and <strong>O(n)</strong> space in the worst case, which is a
+  string of nothing but openers.</p>
+
+<p>The space cannot be improved in general: <code>((([[[{{{</code> genuinely
+  requires remembering nine things. If there were only one bracket type, a
+  counter would do — and that is the difference between a regular language and a
+  context-free one, in one example.</p>
+
+<h2>Wrong turns worth recognising</h2>
+
+<div class="trap">
+<p><strong><code>return True</code> at the end.</strong> Leaves unclosed
+  brackets undetected. The single most common bug in this problem.</p>
+</div>
+
+<div class="trap">
+<p><strong>Repeatedly removing <code>"()"</code>, <code>"[]"</code> and
+  <code>"{}"</code> from the string.</strong> It works — keep replacing until
+  nothing changes, then check the string is empty of brackets — and it is
+  O(n²) with a hidden trap: you must ignore the non-bracket characters, which
+  a naive <code>replace</code> chain does not.</p>
+</div>
+
+<div class="trap">
+<p><strong>Tracking a depth counter per bracket type.</strong> Three counters
+  that must all end at zero. It accepts <code>([)]</code>, because it records
+  how many of each are open but not the order they were opened in.</p>
+</div>
+
+<footer>
+  <p><a href="py_balanced_brackets.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

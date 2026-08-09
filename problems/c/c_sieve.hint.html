@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Primes up to N · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>Primes up to N</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>Every prime from 2 up to and including <code>n</code>, written ascending into
+  <code>out</code>, and the count returned. The caller sized <code>out</code>
+  for you.</p>
+
+<h2>Turn the question round</h2>
+
+<p>Testing each number for primality is the obvious approach, and it asks the
+  same question over and over: "does anything divide this?" The sieve of
+  Eratosthenes asks a cheaper question instead — it never tests anything for
+  primality at all.</p>
+
+<div class="note">
+<p>Instead of asking <em>what divides this number</em>, walk up from 2 and,
+  every time you meet a number nobody has crossed out, cross out all of its
+  multiples. Anything still standing when you reach it had no smaller factor —
+  so it is prime, and you knew that without dividing once.</p>
+</div>
+
+<p>You need a scratch array of <code>n + 1</code> flags to record the crossings
+  out. Index it by the number itself, so <code>composite[15]</code> is about
+  15 — that wastes slots 0 and 1 and is worth every byte for the confusion it
+  saves.</p>
+
+<h2>The shape</h2>
+
+<pre><code>for value = 2 .. n:
+    if value is already crossed out:
+        skip it
+    record value as prime
+    cross out value*2, value*3, value*4, ... up to n</code></pre>
+
+<p>Nothing crosses out 2, so 2 is recorded and 4, 6, 8… fall. Then 3 survives
+  and 6, 9, 12… fall. Then 4 is already down, so it is skipped — and crucially
+  its multiples do not need crossing out again, because every multiple of 4 is
+  also a multiple of 2.</p>
+
+<h2>Two refinements, one of which has a trap in it</h2>
+
+<p><strong>Start crossing out at <code>value * value</code>.</strong> Anything
+  smaller than that — say <code>value * 3</code> when <code>value</code> is 7 —
+  has a factor below <code>value</code> and was already crossed out when that
+  smaller factor had its turn. Starting at the square skips a great deal of
+  repeated work.</p>
+
+<div class="trap">
+<p><strong>And that product is where the bug lives.</strong> With
+  <code>n</code> anywhere near 46341, <code>value * value</code> in
+  <code>int</code> arithmetic overflows — signed overflow, so undefined
+  behaviour, and in practice a large negative number that then gets used as an
+  array index. Compute the starting multiple in a <code>long long</code>, or
+  guard the loop so <code>value</code> never exceeds the square root of
+  <code>n</code>.</p>
+</div>
+
+<h2>Housekeeping</h2>
+
+<ul>
+  <li><code>n &lt; 2</code> — including <code>0</code> and negatives — means
+    zero primes and nothing written. Handle that <em>before</em> you allocate
+    anything, or <code>calloc(n + 1, …)</code> gets a negative size.</li>
+  <li><code>calloc</code> zeroes for you, which is what you want: "not crossed
+    out" is the initial state. <code>malloc</code> would need an explicit
+    clearing loop.</li>
+  <li>Whatever you allocate, <strong>free it</strong> — on every return path,
+    including the failure ones.</li>
+  <li>A <code>char</code> array is enough for the flags. One byte per number
+    rather than four.</li>
+</ul>
+
+<details>
+<summary>Still stuck? A bigger nudge</summary>
+
+<pre><code>if (n &lt; 2) {
+    return 0;
+}
+
+char *composite = calloc((size_t)n + 1, sizeof *composite);
+if (composite == NULL) {
+    return 0;
+}
+
+int found = 0;
+for (int value = 2; value &lt;= n; value++) {
+    if (composite[value]) {
+        continue;
+    }
+    out[found++] = value;
+    for (long long multiple = (long long)value * value;
+         multiple &lt;= n;
+         multiple += value) {
+        composite[multiple] = 1;
+    }
+}
+
+free(composite);
+return found;</code></pre>
+
+<p>Note the cast on <code>(long long)value * value</code>. Casting the
+  <em>result</em> — <code>(long long)(value * value)</code> — is too late; the
+  multiplication has already overflowed by then.</p>
+
+</details>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li><code>n = 0</code>, <code>n = 1</code>, <code>n = -5</code> → <code>0</code>,
+    nothing written.</li>
+  <li><code>n = 2</code> → <code>1</code>, and <code>out[0] == 2</code>.</li>
+  <li><code>n = 10</code> → <code>4</code>: <code>2 3 5 7</code>.</li>
+  <li>Is 1 excluded? It is not prime.</li>
+  <li>Does the output come out ascending? It should, for free.</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_sieve.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

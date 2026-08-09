@@ -12,6 +12,7 @@ from __future__ import annotations
 import base64
 import json
 import os
+import re
 import sys
 import tempfile
 import textwrap
@@ -20,7 +21,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from crucible import languages, randomise, runner, workspace
+from crucible import guides, languages, randomise, runner, workspace
 from crucible.languages.c_lang import CLanguage
 from crucible.problem import ProblemError, load_library, load_problem
 
@@ -522,6 +523,135 @@ class TestShippedProblems(unittest.TestCase):
                     + "\n".join(f"  {o.test.name}: expected "
                                 f"{o.test.expected_stdout!r} got {o.actual!r}"
                                 for o in result.failures()))
+
+
+# ---------------------------------------------------------------------------
+# hint and worked-solution guides
+# ---------------------------------------------------------------------------
+
+class TestGuideLookup(unittest.TestCase):
+    """The naming convention is the only registration guides have, so it is
+    worth pinning down on its own rather than only through the shipped set."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self._tmp.name)
+        self.problem = load_problem(write_problem(self.dir))
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_path_is_derived_from_the_problem_filename(self):
+        self.assertEqual(guides.guide_path(self.problem, guides.HINT),
+                         self.dir / "demo.hint.html")
+        self.assertEqual(guides.guide_path(self.problem, guides.SOLUTION),
+                         self.dir / "demo.solution.html")
+
+    def test_absent_guides_are_reported_not_invented(self):
+        self.assertIsNone(guides.find(self.problem, guides.HINT))
+        self.assertEqual(guides.find_all(self.problem), {})
+        self.assertEqual(sorted(guides.missing(self.problem)),
+                         sorted(guides.KINDS))
+
+    def test_a_guide_is_found_once_the_file_exists(self):
+        (self.dir / "demo.hint.html").write_text("<h1>Demo</h1>",
+                                                 encoding="utf-8")
+        guide = guides.find(self.problem, guides.HINT)
+        self.assertIsNotNone(guide)
+        self.assertEqual(guide.kind, guides.HINT)
+        self.assertEqual(guide.path, self.dir / "demo.hint.html")
+        self.assertEqual(list(guides.find_all(self.problem)), [guides.HINT])
+        self.assertEqual(guides.missing(self.problem), [guides.SOLUTION])
+
+    def test_a_directory_of_the_right_name_is_not_a_guide(self):
+        (self.dir / "demo.hint.html").mkdir()
+        self.assertIsNone(guides.find(self.problem, guides.HINT))
+
+    def test_a_problem_with_no_source_file_has_no_guides(self):
+        self.problem.source_path = None
+        self.assertIsNone(guides.guide_path(self.problem, guides.HINT))
+        self.assertIsNone(guides.find(self.problem, guides.HINT))
+        self.assertEqual(guides.find_all(self.problem), {})
+
+
+class TestShippedGuides(unittest.TestCase):
+    """Every shipped problem must come with both pages, and the pages must be
+    usable off the disk -- no missing stylesheet, no broken cross-link."""
+
+    HREF = re.compile(r'href="([^"]+)"')
+
+    @classmethod
+    def setUpClass(cls):
+        cls.library = load_library(PROBLEMS_ROOT)
+        cls.pages = {}
+        for problem in cls.library.problems:
+            for kind, guide in guides.find_all(problem).items():
+                cls.pages[(problem.id, kind)] = guide.path.read_text(
+                    encoding="utf-8")
+
+    def each_page(self):
+        for problem in self.library.problems:
+            for kind in guides.KINDS:
+                page = self.pages.get((problem.id, kind))
+                if page is not None:
+                    yield problem, kind, page
+
+    def test_every_problem_ships_both_guides(self):
+        for problem in self.library.problems:
+            with self.subTest(problem=problem.id):
+                self.assertEqual(
+                    guides.missing(problem), [],
+                    f"{problem.title} is missing a guide -- "
+                    f"see 'python -m crucible --guides'")
+
+    def test_every_page_says_which_problem_it_is_about(self):
+        for problem, kind, page in self.each_page():
+            with self.subTest(problem=problem.id, kind=kind):
+                self.assertIn(problem.title, page)
+                self.assertIn(guides.KINDS[kind], page)
+
+    def test_every_page_has_content_rather_than_a_stub(self):
+        for problem, kind, page in self.each_page():
+            with self.subTest(problem=problem.id, kind=kind):
+                self.assertGreater(len(page), 1500)
+                self.assertIn("<h2", page)
+
+    def test_a_worked_solution_shows_code_and_a_hint_does_not_show_the_answer(self):
+        for problem, kind, page in self.each_page():
+            with self.subTest(problem=problem.id, kind=kind):
+                if kind == guides.SOLUTION:
+                    self.assertIn("<pre><code>", page)
+                else:
+                    # A hint may show a skeleton, but never the finished
+                    # function -- so it must not carry the whole reference.
+                    escaped = (problem.reference.source
+                               .replace("&", "&amp;")
+                               .replace("<", "&lt;")
+                               .replace(">", "&gt;")
+                               .strip())
+                    self.assertNotIn(escaped, page)
+
+    def test_the_two_pages_link_to_each_other(self):
+        for problem, kind, page in self.each_page():
+            other = guides.SOLUTION if kind == guides.HINT else guides.HINT
+            target = guides.guide_path(problem, other)
+            with self.subTest(problem=problem.id, kind=kind):
+                self.assertIn(f'href="{target.name}"', page)
+
+    def test_every_local_link_resolves(self):
+        for problem, kind, page in self.each_page():
+            directory = guides.guide_path(problem, kind).parent
+            for href in self.HREF.findall(page):
+                if "://" in href or href.startswith("#"):
+                    continue
+                with self.subTest(problem=problem.id, kind=kind, href=href):
+                    self.assertTrue((directory / href).is_file(),
+                                    f"{href} does not resolve from {directory}")
+
+    def test_the_shared_stylesheet_is_linked_and_present(self):
+        for problem, kind, page in self.each_page():
+            with self.subTest(problem=problem.id, kind=kind):
+                self.assertIn('rel="stylesheet"', page)
 
 
 # ---------------------------------------------------------------------------

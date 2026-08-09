@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Balanced Brackets · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · Python · medium</p>
+  <h1>Balanced Brackets</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p><code>True</code> if every <code>(</code>, <code>[</code> and <code>{</code>
+  is closed by its own kind of bracket, in the right order. Any other character
+  is ignored entirely.</p>
+
+<h2>Why counting does not work</h2>
+
+<p>The instinct is to count openers and closers and check they match. Try that
+  against the fixed cases:</p>
+
+<table>
+  <tr><th>Input</th><th>Counts balance?</th><th>Actually balanced?</th></tr>
+  <tr><td><code>()</code></td><td>yes</td><td>yes</td></tr>
+  <tr><td><code>)(</code></td><td>yes</td><td><strong>no</strong> — closed before opened</td></tr>
+  <tr><td><code>([)]</code></td><td>yes</td><td><strong>no</strong> — wrong order</td></tr>
+  <tr><td><code>(]</code></td><td>yes, if you count all brackets together</td><td><strong>no</strong></td></tr>
+</table>
+
+<p>Counting throws away the two things that matter: <em>which</em> bracket was
+  opened, and <em>when</em>.</p>
+
+<h2>The structure is a stack</h2>
+
+<p>Brackets nest. The one you must close next is always the one you opened
+  <strong>most recently</strong> — last in, first out. That is the definition of
+  a stack, and in Python a plain list is one: <code>append</code> to push,
+  <code>pop</code> to take the last item off.</p>
+
+<p>So the algorithm is one pass with three kinds of character:</p>
+
+<ol>
+  <li><strong>An opener</strong> — push it and move on.</li>
+  <li><strong>A closer</strong> — the top of the stack must be its matching
+    opener. Pop it and compare. If the stack is <em>empty</em>, there is nothing
+    to close and the answer is <code>False</code> immediately.</li>
+  <li><strong>Anything else</strong> — ignore it.</li>
+</ol>
+
+<h2>And then the ending</h2>
+
+<p>Running out of characters is not the same as succeeding. If anything is still
+  on the stack, those brackets were opened and never closed — so the final
+  answer is "the stack is empty", not <code>True</code>.</p>
+
+<p>Two of the four failure modes are detected during the loop (a closer with
+  nothing open, a closer that does not match), and the third is detected only
+  after it: <code>(((</code> never fails a comparison, because there are no
+  comparisons to fail.</p>
+
+<h2>Matching closers to openers</h2>
+
+<p>You need to know that <code>)</code> goes with <code>(</code>. A dict is the
+  natural home for that, and mapping <em>closer → opener</em> is more useful
+  than the other way round, because it doubles as your "is this a closer?"
+  test.</p>
+
+<div class="note">
+<p>Python's <code>in</code> works on strings as well as dicts, so
+  <code>if char in "([{"</code> is a neat way to ask "is this an opener?".
+  Watch out for one thing: <code>"" in "([{"</code> is <code>True</code>, since
+  every string contains the empty string. Not a problem when iterating over
+  characters, but it surprises people.</p>
+</div>
+
+<details>
+<summary>Still stuck? A bigger nudge</summary>
+
+<pre><code>closing = {")": "(", "]": "[", "}": "{"}
+stack = []
+
+for char in text:
+    if char in "([{":
+        stack.append(char)
+    elif char in closing:
+        # two ways to fail here -- nothing open, or the wrong thing open
+        ...
+
+return ...        # not just True</code></pre>
+
+<p>Both failure checks can be written as a single condition joined with
+  <code>or</code>, provided you put the emptiness test first — Python's
+  <code>or</code> short-circuits, so the <code>pop</code> is only reached when
+  there is something to pop.</p>
+
+</details>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li><code>""</code> → <code>True</code>. Nothing unbalanced about nothing.</li>
+  <li><code>)</code> → <code>False</code>, and no exception from popping an
+    empty list.</li>
+  <li><code>(]</code> → <code>False</code> — right shape, wrong type.</li>
+  <li><code>([)]</code> → <code>False</code> — interleaved is not nested.</li>
+  <li><code>(</code> → <code>False</code> — left open.</li>
+  <li><code>a(b[c]d)e</code> → <code>True</code> — other characters ignored.</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="py_balanced_brackets.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>
