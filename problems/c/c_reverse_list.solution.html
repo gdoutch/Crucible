@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Reverse a Linked List · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · hard</p>
+  <h1>Reverse a Linked List</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The idea</h2>
+
+<p>Walk the list once, turning each <code>next</code> pointer to face backwards
+  as you pass it. The list is conceptually split in two at all times: a
+  reversed prefix behind you, headed by <code>previous</code>, and an untouched
+  suffix ahead, headed by <code>head</code>. Each iteration moves one node from
+  the front of the suffix to the front of the prefix.</p>
+
+<div class="note">
+<p><strong>Invariant:</strong> <code>previous</code> points at the reversed list
+  of everything already visited; <code>head</code> points at the original list
+  of everything not yet visited. When the suffix runs out,
+  <code>previous</code> is the answer.</p>
+</div>
+
+<h2>The code</h2>
+
+<pre><code>#include &lt;stddef.h&gt;
+
+struct node {
+    int value;
+    struct node *next;
+};
+
+struct node *reverse_list(struct node *head)
+{
+    struct node *previous = NULL;
+
+    while (head != NULL) {
+        struct node *next = head-&gt;next;
+        head-&gt;next = previous;
+        previous = head;
+        head = next;
+    }
+
+    return previous;
+}</code></pre>
+
+<h2>The four statements, and why the order is forced</h2>
+
+<table>
+  <tr><th>#</th><th>Statement</th><th>Why it must be here</th></tr>
+  <tr>
+    <td>1</td><td><code>next = head-&gt;next</code></td>
+    <td>The only surviving reference to the rest of the list. Line 2 destroys
+      the original.</td>
+  </tr>
+  <tr>
+    <td>2</td><td><code>head-&gt;next = previous</code></td>
+    <td>The actual reversal — one pointer turned round. Must come after 1 and
+      before 3, since 3 overwrites <code>previous</code>.</td>
+  </tr>
+  <tr>
+    <td>3</td><td><code>previous = head</code></td>
+    <td>The current node joins the reversed prefix. Must come after 2.</td>
+  </tr>
+  <tr>
+    <td>4</td><td><code>head = next</code></td>
+    <td>Step into the suffix, using the pointer saved in 1.</td>
+  </tr>
+</table>
+
+<div class="trap">
+<p>Swap 1 and 2 and the list is gone. <code>head-&gt;next</code> now points
+  backwards, so <code>next</code> receives a node you have already processed;
+  the loop turns round and walks the prefix, and every node from the third
+  onwards becomes unreachable. Depending on where the pointers land you get
+  truncated output, a cycle that never terminates, or a segmentation fault —
+  three different symptoms of one reordering.</p>
+</div>
+
+<h2>Watching it run</h2>
+
+<p>The list <code>1 → 2 → 3 → NULL</code>:</p>
+
+<table class="trace">
+  <tr><th>Iteration</th><th>previous</th><th>head</th><th>Links after the body</th></tr>
+  <tr><td>start</td><td><code>NULL</code></td><td>1</td><td><code>1→2→3→NULL</code></td></tr>
+  <tr><td>1</td><td>1</td><td>2</td><td><code>NULL←1</code> &nbsp; <code>2→3→NULL</code></td></tr>
+  <tr><td>2</td><td>2</td><td>3</td><td><code>NULL←1←2</code> &nbsp; <code>3→NULL</code></td></tr>
+  <tr><td>3</td><td>3</td><td><code>NULL</code></td><td><code>NULL←1←2←3</code></td></tr>
+</table>
+
+<p>The loop exits with <code>head == NULL</code> and <code>previous</code> on
+  node 3 — the original tail, now the head. Reading forward from it gives
+  <code>3 → 2 → 1 → NULL</code>.</p>
+
+<h2>Why <code>previous</code> starts at <code>NULL</code></h2>
+
+<p>Two jobs from one initialisation.</p>
+
+<p>First, it <strong>terminates the reversed list</strong>. On the first
+  iteration the original head's <code>next</code> is set to
+  <code>previous</code> — so the node that used to be first becomes the one
+  whose <code>next</code> is null, which is precisely what being last means. Get
+  this wrong and the final node points at itself or at rubbish, and anything
+  walking the list runs forever.</p>
+
+<p>Second, it <strong>is the answer for the empty list</strong>.
+  <code>head</code> is <code>NULL</code>, the loop condition fails immediately,
+  and <code>previous</code> is returned unchanged. No guard needed.</p>
+
+<h2>The other two fixed cases</h2>
+
+<table>
+  <tr><th>Case</th><th>What happens</th></tr>
+  <tr>
+    <td><em>one node</em></td>
+    <td>One iteration. <code>next</code> is <code>NULL</code>,
+      <code>head-&gt;next</code> is set to <code>NULL</code> (it already was),
+      <code>previous</code> becomes the node, <code>head</code> becomes
+      <code>NULL</code>. The node comes back unchanged, which is correct — and
+      it exercises the assignment of <code>previous</code> into
+      <code>next</code> without any real relinking.</td>
+  </tr>
+  <tr>
+    <td><em>two nodes</em></td>
+    <td>The smallest list where a link genuinely changes direction, and the
+      smallest one that catches a solution which returns <code>head</code>
+      instead of <code>previous</code>.</td>
+  </tr>
+</table>
+
+<h2>Why not copy the values?</h2>
+
+<pre><code>/* the answer that passes and misses the point */
+int buffer[1000];
+int n = 0;
+for (struct node *p = head; p; p = p-&gt;next) { buffer[n++] = p-&gt;value; }
+for (struct node *p = head; p; p = p-&gt;next) { p-&gt;value = buffer[--n]; }
+return head;</code></pre>
+
+<p>Same printed output, and wrong in every way that matters:</p>
+
+<ul>
+  <li>It needs O(n) memory, and that fixed buffer is a bug waiting for a longer
+    list.</li>
+  <li>It only works because the payload is a copyable <code>int</code>. Real
+    nodes carry payloads that are large, or owned by someone else, or referred
+    to by other pointers — and moving values between nodes breaks all of
+    that.</li>
+  <li>It does not reverse the list. It reverses the <em>data</em>, and leaves
+    the structure exactly as it was.</li>
+</ul>
+
+<h2>The recursive version</h2>
+
+<pre><code>struct node *reverse_list(struct node *head)
+{
+    if (head == NULL || head-&gt;next == NULL) {
+        return head;
+    }
+    struct node *new_head = reverse_list(head-&gt;next);
+    head-&gt;next-&gt;next = head;     /* the node behind me now points at me */
+    head-&gt;next = NULL;           /* and I might be the tail */
+    return new_head;
+}</code></pre>
+
+<p>Elegant, and it needs both base cases: <code>NULL</code> for the empty list
+  and <code>head-&gt;next == NULL</code> so the recursion has something to
+  return. The line <code>head-&gt;next-&gt;next = head</code> is worth staring
+  at — at that moment <code>head-&gt;next</code> is the node that was after us
+  and is now, in the reversed list, the node before us.</p>
+
+<p>The cost is O(n) stack frames, so a long list overflows the stack. The
+  iterative version is O(1) space, which is why it is the one to write.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(n)</strong> time — every node visited exactly once —
+  and <strong>O(1)</strong> space: three pointers, no allocation.</p>
+
+<h2>Wrong turns worth recognising</h2>
+
+<div class="trap">
+<p><strong>Returning <code>head</code>.</strong> It is <code>NULL</code> when
+  the loop ends. The harness prints nothing and every non-empty case fails
+  identically — which at least makes it easy to spot.</p>
+</div>
+
+<div class="trap">
+<p><strong>Allocating new nodes.</strong> The caller owns this memory and will
+  free the list you return. A fresh list leaks the original; freeing the
+  original hands back pointers into released memory.</p>
+</div>
+
+<div class="trap">
+<p><strong>Declaring <code>struct node</code> differently from the
+  harness.</strong> Your file and the harness are separate translation units
+  that agree on the layout only because both declarations match. Reorder the
+  members and the two disagree about where <code>next</code> lives — it compiles
+  cleanly, links cleanly, and reads garbage at runtime. Copy the struct exactly
+  as the problem statement gives it.</p>
+</div>
+
+<footer>
+  <p><a href="c_reverse_list.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

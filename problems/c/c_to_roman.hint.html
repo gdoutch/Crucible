@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Decimal to Roman Numeral String · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>Decimal to Roman Numeral String</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>One string out, written into a buffer the caller owns. No return value, no
+  allocation, no printing — the harness does all of that.</p>
+
+<h2>The instinct to resist</h2>
+
+<p>Almost everyone starts here: emit <code>M</code> while the value is at least
+  1000, then <code>D</code>, then <code>C</code>… and then discovers that 4
+  comes out as <code>IIII</code> and 900 as <code>DCCCC</code>. So they add
+  a fixing-up pass that finds those and rewrites them.</p>
+
+<p>That pass is where the bugs live. It has to know six patterns, it has to
+  apply them in the right order, and it has to not corrupt the string while
+  editing it in place.</p>
+
+<div class="note">
+<p><strong>Delete the fix-up by making it unnecessary.</strong> Ask what the
+  first approach was actually missing: it only knew about seven values —
+  1000, 500, 100, 50, 10, 5, 1. But there are <em>thirteen</em> values a Roman
+  numeral can be built from. The other six are the subtractive pairs, and they
+  are values in their own right, not exceptions to be patched afterwards.</p>
+</div>
+
+<h2>Thirteen rows, largest first</h2>
+
+<p>Write out all thirteen in descending order of value:</p>
+
+<pre><code>1000  M       900  CM
+ 500  D       400  CD
+ 100  C        90  XC
+  50  L        40  XL
+  10  X         9  IX
+   5  V         4  IV
+   1  I</code></pre>
+
+<p>Interleaved into one descending list — <code>1000, 900, 500, 400, 100,
+  90, …</code> — that table <em>is</em> the algorithm. Repeatedly take the
+  largest row that still fits, append its symbol, subtract its value. When the
+  value reaches zero you are done, and every subtractive pair has appeared
+  exactly where it should, without a single special case.</p>
+
+<p>Try it by hand on <strong>1994</strong> before you write anything. You
+  should use four rows and get seven characters.</p>
+
+<div class="trap">
+<p><strong>The ordering is not cosmetic.</strong> If <code>900</code> sits
+  below <code>500</code> in your table, then 900 takes the <code>D</code> row
+  first and you are back to <code>DCCCC</code>. Greedy is only correct against
+  a table in strictly descending order.</p>
+</div>
+
+<h2>Two loops, not one</h2>
+
+<p>A row can be needed <em>three times running</em> — <code>MMM</code>,
+  <code>CCC</code>, <code>XXX</code>, <code>III</code>. So the inner step is a
+  <code>while</code>, not an <code>if</code>: keep taking the same row until it
+  no longer fits, then move down.</p>
+
+<p>(Never four times, and that is not something you have to enforce. The
+  subtractive rows sit between the plain ones and take the fourth repeat away
+  before it can happen — one more thing the table does for you.)</p>
+
+<h2>Building the string</h2>
+
+<p>You are appending, so you need to remember where the end is. The tidiest way
+  is to walk <code>out</code> itself:</p>
+
+<pre><code>*out++ = 'X';       /* write, then advance */</code></pre>
+
+<p><code>out</code> is your own copy of the pointer, so moving it does not
+  disturb the caller's. A symbol is one or two characters, so copy it with a
+  small loop over its own <code>'\0'</code>.</p>
+
+<div class="trap">
+<p><strong>Terminate it.</strong> The very last thing the function does is
+  <code>*out = '\0';</code> — after the loops, not inside them. Forget it and
+  the caller reads whatever followed your last letter. The harness prefills its
+  buffer and checks, so you will get <code>UNTERMINATED</code> rather than
+  garbage, but only this harness is that kind to you.</p>
+</div>
+
+<h2>What you do <em>not</em> have to do</h2>
+
+<ul>
+  <li><strong>Validate.</strong> <code>value</code> is always 1–3999.</li>
+  <li><strong>Check the buffer size.</strong> 16 bytes is guaranteed, and it is
+    exactly enough — the longest numeral in range is 3888,
+    <code>MMMDCCCLXXXVIII</code>, fifteen characters.</li>
+  <li><strong>Allocate or free anything.</strong></li>
+</ul>
+
+<details>
+<summary>Still stuck? A bigger nudge</summary>
+
+<pre><code>static const struct {
+    int value;
+    const char *symbol;
+} ROMAN[] = {
+    { 1000, "M" }, { 900, "CM" }, /* ...eleven more, descending... */
+    { 1, "I" },
+};
+
+void to_roman(int value, char *out)
+{
+    size_t count = sizeof ROMAN / sizeof ROMAN[0];
+
+    for (size_t i = 0; i &lt; count; i++) {
+        while (value &gt;= ROMAN[i].value) {
+            /* append ROMAN[i].symbol -- one or two characters */
+            value -= ROMAN[i].value;
+        }
+    }
+    *out = '\0';
+}</code></pre>
+
+<p><code>sizeof ROMAN / sizeof ROMAN[0]</code> is the row count, worked out by
+  the compiler. It only works where the real array type is in scope, which it
+  is here.</p>
+
+</details>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li><code>1</code> → <code>I</code>, <code>3</code> → <code>III</code>,
+    <code>4</code> → <code>IV</code>.</li>
+  <li>All six pairs: <code>4 9 40 90 400 900</code> →
+    <code>IV IX XL XC CD CM</code>.</li>
+  <li><code>1994</code> → <code>MCMXCIV</code>, not <code>MDCCCCXCIV</code>.</li>
+  <li><code>3999</code> → <code>MMMCMXCIX</code>, not <code>MMMIM</code>.</li>
+  <li><code>3888</code> → fifteen characters, and still terminated.</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_to_roman.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

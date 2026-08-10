@@ -26,6 +26,7 @@ python -m crucible
 - [How a submission is run](#how-a-submission-is-run)
 - [The reference-solution gate](#the-reference-solution-gate)
 - [Randomised test data](#randomised-test-data)
+- [Hints and worked solutions](#hints-and-worked-solutions)
 - [What is in the box](#what-is-in-the-box)
 - [Writing a problem](#writing-a-problem)
 - [Adding a language](#adding-a-language)
@@ -46,6 +47,7 @@ python -m crucible              # open the GUI
 python -m crucible --toolchains # which compilers were found
 python -m crucible --list       # what problems loaded
 python -m crucible --verify     # prove every reference solution passes
+python -m crucible --guides     # which problems lack a hint or solution page
 ```
 
 On Windows, **`Crucible.cmd`** opens the GUI on a double-click.
@@ -69,8 +71,9 @@ The window is four panes:
 ```
 
 Keys: **F5** or **Ctrl+Enter** runs the suite. **Ctrl+R** draws a new
-randomised data set. **Ctrl+S** saves a draft. **Tab** / **Shift+Tab** indent
-and dedent the selection.
+randomised data set. **Ctrl+S** saves a draft. **F1** opens the hint for the
+current problem in your browser and **F2** its diagram, where it has one.
+**Tab** / **Shift+Tab** indent and dedent the selection.
 
 Your work is autosaved per problem to `~/.crucible/drafts/`, so closing the
 window mid-problem loses nothing. *File → Reset to starter code* discards it.
@@ -253,10 +256,72 @@ A generator runs in its own process with a ten-second limit, so one with an
 endless loop is reported rather than hanging the app, and a stray `print` left
 in it turns up as a diagnostic instead of corrupting the data.
 
+## Hints and worked solutions
+
+Every problem ships two guide pages, opened from the **Guides** menu, and some
+ship a third:
+
+| | |
+| --- | --- |
+| **Hint** (`F1`) | The idea, the traps, the cases to think about — and a `Still stuck?` block that folds open into a stronger nudge. No finished answer in it. |
+| **Worked solution** | The whole answer: the code, a table tracing it running on a real test case, why each edge case comes out right, the complexity, and the wrong turns worth recognising. |
+| **Diagram** (`F2`) | Only for problems whose specification *is* a diagram. Renders the statement's Mermaid source as a picture. |
+
+They are HTML files opened in your browser rather than rendered in the app,
+which is not laziness. A guide is a document — headings, tables, a trace of the
+algorithm step by step — and a Tk `Text` widget renders that badly while every
+machine already has something that renders it well. It also means the guide sits
+*beside* the editor instead of on top of it.
+
+The pages live next to the problem and are found by name. There is no index and
+nothing to register:
+
+```text
+problems/
+  guides.css                     one stylesheet, shared by every page
+  c/
+    c_sum_array.json
+    c_sum_array.hint.html
+    c_sum_array.solution.html
+  uml/
+    uml_state_machine.json
+    uml_state_machine.diagram.html      optional -- most problems have none
+    ...
+```
+
+A diagram page holds the Mermaid source in a `<pre class="mermaid">` and pulls
+the renderer from a CDN. With no network the source shows through as text,
+which is the same specification — and it is in the problem statement as well,
+so the app itself never needs the network. One `<script>` tag to delete if you
+would rather it did not try.
+
+Two things follow from keeping them in separate files rather than in the problem
+JSON:
+
+- **`reference_solution_b64` still means something.** A worked solution written
+  into the problem file would defeat it — opening the JSON to read the test
+  cases would drop the answer in your lap. In a file of its own, reading it
+  stays a deliberate act, which is also why the app asks before opening one
+  (once per problem, per session).
+- **The convention is the only wiring.** Drop the two files beside a new
+  problem and the menu picks them up. Nothing warns you if you forget, so
+  `--guides` is that warning, and it exits non-zero for CI:
+
+```console
+$ python -m crucible --guides
+  OK    Binary Search
+  MISSING Two Sum  -- no worked solution
+           expected E:\Crucible\problems\python\py_two_sum.solution.html
+```
+
+The pages link `../guides.css` — a relative path that assumes the problem sits
+one directory below `problems/`, which is where all the shipped ones live. If
+the stylesheet does not load the pages are still ordinary readable HTML.
+
 ## What is in the box
 
-21 problems — 18 in C, 3 in Python. Every one of them mixes hand-written edge
-cases with four randomised ones.
+27 problems — 23 in C, 4 in Python. Every one of them mixes hand-written edge
+cases with four randomised ones, and ships a hint and a worked solution.
 
 The C set is deliberately weighted towards the things C makes you think about
 and other languages do not: what the pointer points at, who owns the memory,
@@ -279,6 +344,7 @@ what happens at the boundary, and what the standard actually promises.
 | | C | Merge Two Sorted Arrays | arrays, pointers |
 | | C | Rotate an Array Left | arrays, in-place |
 | | C | Parse an Integer | strings, pointers |
+| | C | Decimal to Roman Numeral String | strings, tables, greedy |
 | | C | Primes up to N | arrays, loops |
 | | Python | Balanced Brackets | stacks, strings, parsing |
 | | Python | Run-Length Encoding | strings, iteration |
@@ -297,10 +363,71 @@ A few are worth calling out for what they are really testing:
 - **Parse an Integer** rejects `"12a"`. Stopping at the first bad character and
   returning what you had is what `atoi` does, and is the habit the problem is
   there to break.
+- **Decimal to Roman Numeral String** is a fix-up pass waiting to be deleted.
+  Treat the six subtractive pairs as values in their own right — thirteen
+  building blocks rather than seven — and a plain greedy walk produces `IV`
+  and `CM` with no special cases left over. Its buffer is 16 bytes because
+  that is the exact bound: 3888 is `MMMDCCCLXXXVIII`, and it is the only
+  value in range fifteen characters long.
 - **Reverse a Linked List** wants the nodes relinked, not the values copied
   into an array and written back. It declares `struct node` in both your file
   and the harness — separate translation units, same layout, which is what a
   shared header would have given you.
+
+### Beyond writing algorithms
+
+Five problems sit next to programming rather than in it — reading a UML
+diagram, and the mechanical parts of safety engineering. They are ordinary
+Crucible problems: same pipeline, same visible test cases, same reference
+solution proving the suite before you see it.
+
+| | Language | Problem | Topics |
+| --- | --- | --- | --- |
+| **easy** | C | ASIL Determination | safety, ISO 26262, tables |
+| **medium** | C | State Machine From a Diagram | UML, state machines, tables |
+| | Python | Trace From a Sequence Diagram | UML, sequence diagrams, control flow |
+| **hard** | C | Smallest Cut Set of a Fault Tree | safety, fault trees, recursion |
+| | C | Level Crossing Interlock | safety, interlocks, invariants |
+
+That they fit at all comes down to one question: **can the reference answer be
+run?** Where it can, nothing in the app has to change. Where it cannot — "is
+this a good abstraction", "did you find the right hazards" — no amount of
+harness makes it checkable, and those problems are deliberately absent rather
+than faked with an answer key the gate cannot test.
+
+The two UML problems put a **Mermaid diagram** in the statement and draw it on
+a [diagram page](#hints-and-worked-solutions). The specification is the
+picture; the tests check that your code agrees with it.
+
+- **State Machine From a Diagram** gives you five states and six events —
+  thirty pairs, of which the diagram draws six. The other twenty-four are
+  refusals, which is what makes a transition *table* the answer and a nest of
+  `if`s merely a passing one.
+- **Trace From a Sequence Diagram** asks for the message trace, replies
+  included. Nested `alt` and `loop` fragments are scopes: with nothing in
+  stock the payment gateway is never reached, whatever else the scenario says.
+
+The safety three are chosen for having exactly one right answer:
+
+- **ASIL Determination** is a lookup the standard specifies completely. Its
+  worked solution argues the interesting bit — the table has a two-line closed
+  form, and you should still write the table, because a reviewer can check
+  thirty-six cells against the standard and cannot check an argument as
+  easily.
+- **Smallest Cut Set of a Fault Tree** is `min` at an OR and `sum` at an AND.
+  An answer of `1` is a single point of failure. The sum is only valid because
+  no basic event is shared — the guide is explicit about what that assumption
+  buys and what it costs.
+- **Level Crossing Interlock** is the one to look at if you look at one. The
+  candidate writes a pure controller; the **harness owns the safety monitor**,
+  the same way it owns `main`, and checks after every decision that no train
+  was ever in the crossing without the barrier down and the signal never
+  showed green over a barrier that was not up. Randomised event sequences are
+  generated with enough warning time by construction, so a correct controller
+  is always safe and an incomplete one meets an arrival it did not picture.
+  One fixed case is deliberately unsurvivable — proving the monitor can fire,
+  because a check that has never failed is indistinguishable from one that is
+  wired up wrong.
 
 ## Writing a problem
 
@@ -356,6 +483,11 @@ for the case where you want a held-out case to discourage hard-coding; hidden
 cases still run and still count, and are labelled as hidden in the list. The
 learning-aid default is that everything is shown.
 
+Guides are not part of the schema. Drop `<id>.hint.html` and
+`<id>.solution.html` beside the JSON — see
+[Hints and worked solutions](#hints-and-worked-solutions) — and `--guides`
+tells you which problems you have not got round to yet.
+
 ### Keeping the reference out of sight
 
 `reference_solution_b64` holds base64. All shipped problems use it, which is
@@ -408,6 +540,7 @@ tracebacks.
 | `python -m crucible` | Open the GUI |
 | `--verify` | Build a data set for every problem, then run every reference solution against its suite; exit 1 if any fail |
 | `--list` | List loaded problems and their test counts |
+| `--guides` | Report problems missing a hint or a worked-solution page; exit 1 if any are |
 | `--toolchains` | Report which compilers were found and where |
 | `--problems DIR` | Use a different problem directory |
 | `--seed N` | Replay a particular data set instead of drawing a new one |
@@ -418,7 +551,7 @@ tracebacks.
 python -m unittest discover -s tests -v
 ```
 
-74 tests covering output normalisation and diff hints, problem-schema
+89 tests covering output normalisation and diff hints, problem-schema
 validation (missing fields, bad base64, duplicate test names, unknown
 languages, malformed JSON), the run pipeline (correct, wrong, syntax error,
 runtime exception, timeout, progress callbacks), randomised data (determinism
@@ -426,6 +559,13 @@ per seed, expected output actually coming from the reference, generators that
 raise, loop, print, return rubbish, or try to state the answer), data-set
 storage, the language registry, and the C diagnostic/exit-code helpers that can
 be checked without a compiler.
+
+The guides are covered too: the lookup convention on its own, and then every
+shipped page — both required ones exist, each names its problem, each links to
+its counterpart, every relative link resolves off the disk, and a hint never
+contains the whole reference solution. A diagram page must carry exactly one
+Mermaid block, and that block must appear verbatim in the problem statement,
+so the picture and the specification cannot drift apart.
 
 The suite also asserts that every shipped reference solution passes its own
 tests — including a freshly generated data set, which is what covers the
@@ -445,6 +585,7 @@ crucible/
   runner.py            build + execute + judge        (no UI)
   randomise.py         generators, and the reference-as-oracle
   workspace.py         drafts, data set numbers, settings
+  guides.py            finds the hint / solution pages, opens them
   languages/
     __init__.py        registry
     base.py            Language ABC, process runner, result types
@@ -455,8 +596,11 @@ crucible/
     editor.py          editor widget: gutter, highlighting, indentation
     theme.py           palettes and ttk styling
 problems/
-  c/                   18 problems
-  python/              3 problems
+  guides.css           shared by every guide page
+  c/                   19 problems, each with .json + .hint.html
+  python/              3 problems,             + .solution.html
+  uml/                 2 problems,             + .diagram.html
+  safety/              3 problems
 tests/
   test_crucible.py
 ```

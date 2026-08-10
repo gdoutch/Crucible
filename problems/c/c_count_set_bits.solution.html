@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Count the Set Bits · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · easy</p>
+  <h1>Count the Set Bits</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The idea</h2>
+
+<p>Remove one set bit at a time and count how many times you had to do it. The
+  trick that makes it a two-line loop is Kernighan's:</p>
+
+<div class="note">
+<p><code>value &amp; (value - 1)</code> is <code>value</code> with its
+  <strong>lowest set bit cleared</strong>, and nothing else changed.</p>
+</div>
+
+<h2>The code</h2>
+
+<pre><code>int count_set_bits(unsigned int value)
+{
+    int count = 0;
+
+    while (value != 0) {
+        value &amp;= value - 1u;
+        count++;
+    }
+
+    return count;
+}</code></pre>
+
+<h2>Why the identity holds</h2>
+
+<p>Take any non-zero value. Write it as some prefix, then its lowest
+  <code>1</code>, then a run of <em>k</em> zeros:</p>
+
+<pre><code>value       =  P 1 0 0 0
+value - 1   =  P 0 1 1 1      borrow ripples through the zeros
+value &amp; ...    P 0 0 0 0</code></pre>
+
+<p>Subtracting one has to borrow, and the borrow propagates right-to-left
+  through the trailing zeros — turning each of them into a <code>1</code> — and
+  stops at the first <code>1</code> it meets, turning that into a
+  <code>0</code>. The prefix <code>P</code> is untouched.</p>
+
+<p>AND the two together: the prefix survives (it is identical in both), the
+  lowest set bit is gone (<code>1 &amp; 0</code>), and the trailing zeros stay
+  zero (<code>0 &amp; 1</code>). One bit removed, exactly.</p>
+
+<p>A concrete pass over <code>0b10110000</code> (176, three bits set):</p>
+
+<table class="trace">
+  <tr><th>Iteration</th><th>value</th><th>value − 1</th><th>value &amp; (value−1)</th><th>count</th></tr>
+  <tr><td>1</td><td><code>10110000</code></td><td><code>10101111</code></td><td><code>10100000</code></td><td>1</td></tr>
+  <tr><td>2</td><td><code>10100000</code></td><td><code>10011111</code></td><td><code>10000000</code></td><td>2</td></tr>
+  <tr><td>3</td><td><code>10000000</code></td><td><code>01111111</code></td><td><code>00000000</code></td><td>3</td></tr>
+</table>
+
+<p>Three iterations for three set bits, whatever their positions.</p>
+
+<h2>The <code>unsigned</code> in the signature is load-bearing</h2>
+
+<div class="trap">
+<p>Everything above depends on the arithmetic being unsigned. Two of the fixed
+  test cases exist to break code that lets the value become signed.</p>
+</div>
+
+<p><strong><code>4294967295</code> — every bit set.</strong> That value does not
+  fit in a signed 32-bit <code>int</code>. Assign it to one and you get
+  <code>-1</code>. Now consider the alternative shift-based loop written with a
+  signed variable:</p>
+
+<pre><code>int v = value;              /* -1 */
+while (v != 0) {
+    count += v &amp; 1;
+    v &gt;&gt;= 1;                /* stays -1 on every mainstream compiler */
+}</code></pre>
+
+<p>Right-shifting a negative signed value is implementation defined. Every
+  compiler you are likely to meet performs an <em>arithmetic</em> shift, which
+  copies the sign bit down from the top — so <code>-1</code> shifted right is
+  <code>-1</code>. The loop never terminates. Crucible runs each case in its own
+  process with a time limit, so you get <code>TIMEOUT</code> on that one case
+  and passes on the small ones, which is the signature of this exact
+  mistake.</p>
+
+<p><strong><code>2147483648</code> — bit 31 alone.</strong> The smallest value
+  whose top bit is set. Signed, it is <code>INT_MIN</code>, and the same
+  arithmetic shift drags ones down from the top: the count comes back as a
+  number much larger than 1 rather than hanging. A different symptom of the
+  same cause.</p>
+
+<p>Kernighan's loop sidesteps the whole issue because it never shifts — but keep
+  the type unsigned regardless. Note the <code>1u</code> in
+  <code>value - 1u</code>: with <code>value</code> already
+  <code>unsigned int</code> the plain <code>1</code> would be converted anyway,
+  so the suffix is documentation rather than necessity. It costs nothing and it
+  tells the next reader that the unsignedness is deliberate.</p>
+
+<h2>The shift version, done correctly</h2>
+
+<pre><code>int count_set_bits(unsigned int value)
+{
+    int count = 0;
+    for (int i = 0; i &lt; 32; i++) {
+        count += (value &gt;&gt; i) &amp; 1u;
+    }
+    return count;
+}</code></pre>
+
+<p>A fixed 32 iterations, no loop-termination question to get wrong, and
+  branch-free. Perfectly acceptable — it is just doing 32 units of work where
+  Kernighan's does one per set bit.</p>
+
+<p>Note <code>count += ... &amp; 1u</code> rather than an <code>if</code>. The
+  masked expression is already <code>0</code> or <code>1</code>, so adding it
+  directly is both shorter and, on a modern CPU, faster for avoiding an
+  unpredictable branch.</p>
+
+<h2>Cost</h2>
+
+<table>
+  <tr><th>Version</th><th>Iterations</th></tr>
+  <tr><td>Kernighan</td><td>one per <em>set</em> bit — 0 to 32</td></tr>
+  <tr><td>Shift-until-zero</td><td>one per bit up to the highest set bit</td></tr>
+  <tr><td>Fixed 32-iteration</td><td>always 32</td></tr>
+</table>
+
+<p>All <strong>O(1)</strong> for a fixed-width type, all <strong>O(1)</strong>
+  space. In production you would write <code>__builtin_popcount(value)</code>
+  (GCC/Clang) or <code>std::popcount</code> (C++20), which compile to a single
+  <code>POPCNT</code> instruction. That is the right answer at work and the
+  wrong answer here, where the exercise is the bit manipulation itself.</p>
+
+<h2>Wrong turns worth recognising</h2>
+
+<div class="trap">
+<p><strong>Dividing by two instead of shifting.</strong> For unsigned values
+  <code>value /= 2</code> is equivalent and the compiler emits the same shift.
+  For signed negative values it is <em>not</em> equivalent — division truncates
+  towards zero, arithmetic shift rounds towards negative infinity — which is one
+  more reason the type matters.</p>
+</div>
+
+<div class="trap">
+<p><strong>Using <code>%</code> and <code>/</code> as a decimal habit.</strong>
+  <code>value % 2</code> to get the bit and <code>value / 2</code> to advance
+  works, and it obscures that this is a bit problem. The bitwise operators say
+  what you mean.</p>
+</div>
+
+<footer>
+  <p><a href="c_count_set_bits.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

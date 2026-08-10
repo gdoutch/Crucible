@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Sum of an Array · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · easy</p>
+  <h1>Sum of an Array</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The idea</h2>
+
+<p>Accumulate. Keep one running total, add every element into it, hand it back.
+  There is no cleverness available here and none wanted — the exercise is
+  about the <em>contract</em> rather than the arithmetic: you are given a
+  pointer and a length, and the length is the only thing that tells you where
+  the data ends.</p>
+
+<p>That is the habit worth taking away. A C array does not know how long it is.
+  <code>sizeof values</code> inside this function is the size of a
+  <em>pointer</em>, not of the array the caller allocated. The only reliable
+  bound is <code>count</code>.</p>
+
+<h2>The code</h2>
+
+<pre><code>int sum_array(const int *values, int count)
+{
+    int total = 0;
+    for (int i = 0; i &lt; count; i++) {
+        total += values[i];
+    }
+    return total;
+}</code></pre>
+
+<p>Five lines, and every one of them is doing something:</p>
+
+<ul>
+  <li><code>int total = 0;</code> — the identity for addition. Starting
+    anywhere else means the empty case comes out wrong.</li>
+  <li><code>i &lt; count</code> — a strict less-than, so the last index touched
+    is <code>count - 1</code>. <code>i &lt;= count</code> reads one
+    <code>int</code> past the end of the allocation, which is undefined
+    behaviour and often does not crash, which is worse.</li>
+  <li><code>values[i]</code> — identical to <code>*(values + i)</code>. The
+    <code>const</code> in the parameter is a promise to the caller that you
+    will not modify their array; the compiler holds you to it.</li>
+</ul>
+
+<h2>Why the empty case needs no special handling</h2>
+
+<p>With <code>count == 0</code> the loop's condition is <code>0 &lt; 0</code>,
+  which is false on the very first evaluation. The body never runs, so
+  <code>values</code> is never dereferenced, and <code>total</code> is returned
+  still holding <code>0</code>.</p>
+
+<p>This is worth pausing on, because it is why the loop is written the way it
+  is. The tempting alternative —</p>
+
+<pre><code>int total = values[0];              /* wrong */
+for (int i = 1; i &lt; count; i++) {
+    total += values[i];
+}</code></pre>
+
+<p>— reads <code>values[0]</code> <em>before</em> anything has checked
+  <code>count</code>. On the empty case <code>values</code> is <code>NULL</code>
+  and the program dies with a segmentation fault. Crucible runs each test case
+  in its own process, so you would see <code>ERROR</code> against
+  <em>empty array</em> and passes elsewhere, which is exactly the fingerprint
+  of a missing zero-length check.</p>
+
+<h2>Walking a small case</h2>
+
+<p>Input <code>3\n10 20 30\n</code> — three values:</p>
+
+<table class="trace">
+  <tr><th>i</th><th>values[i]</th><th>total after</th></tr>
+  <tr><td>—</td><td>—</td><td><code>0</code></td></tr>
+  <tr><td>0</td><td><code>10</code></td><td><code>10</code></td></tr>
+  <tr><td>1</td><td><code>20</code></td><td><code>30</code></td></tr>
+  <tr><td>2</td><td><code>30</code></td><td><code>60</code></td></tr>
+</table>
+
+<p><code>i</code> reaches <code>3</code>, <code>3 &lt; 3</code> is false, and
+  <code>60</code> comes back.</p>
+
+<h2>The other fixed cases</h2>
+
+<table>
+  <tr><th>Case</th><th>What it is defending</th></tr>
+  <tr>
+    <td><em>single element</em></td>
+    <td>The loop runs exactly once. An off-by-one in either direction shows up
+      here as <code>0</code> or as a read past the end.</td>
+  </tr>
+  <tr>
+    <td><em>sums back to zero</em></td>
+    <td><code>10 -10 20 -20 30 -30</code> totals <code>0</code>. If you had
+      reached for <code>0</code> as a sentinel meaning "nothing here", this is
+      the case that catches it. A total of zero is a real answer.</td>
+  </tr>
+</table>
+
+<h2>Cost</h2>
+
+<p><strong>O(n)</strong> time — one pass, one addition per element — and
+  <strong>O(1)</strong> extra space. Both are optimal: you cannot sum
+  <code>n</code> numbers without looking at all <code>n</code> of them.</p>
+
+<h2>Wrong turns worth recognising</h2>
+
+<div class="trap">
+<p><strong>Looking for a terminator.</strong> There is no <code>'\0'</code> at
+  the end of an <code>int</code> array, and no <code>-1</code> either. Anything
+  of the form <code>while (values[i] != 0)</code> stops at the first zero
+  element and runs off the end of an array that has none.</p>
+</div>
+
+<div class="trap">
+<p><strong>Overflow.</strong> Summing large <code>int</code>s can overflow, and
+  signed overflow in C is undefined behaviour rather than a wrap-around you can
+  rely on. This problem's generator deliberately caps the values so no correct
+  solution can overflow — but in real code you would sum into a
+  <code>long long</code>, and it is worth noticing that the test data was
+  chosen to keep the question from arising.</p>
+</div>
+
+<div class="trap">
+<p><strong>Writing <code>main</code>.</strong> The harness has one. Your file
+  and the harness are compiled as separate translation units and linked, so a
+  second <code>main</code> is a duplicate-symbol error at link time rather than
+  a compile error — the message points at the linker, not at your line.</p>
+</div>
+
+<footer>
+  <p><a href="c_sum_array.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

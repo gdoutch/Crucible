@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Run-Length Encoding · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · Python · medium</p>
+  <h1>Run-Length Encoding</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The idea</h2>
+
+<p>Carry two pieces of state — the character the current run is made of, and how
+  long it is — and walk the string. A character equal to the run extends it;
+  anything else ends the run, which is emitted before a new one starts from the
+  current character.</p>
+
+<p>The whole difficulty is that <em>runs are emitted by their successor</em>, and
+  the last run has no successor.</p>
+
+<h2>The code</h2>
+
+<pre><code>def encode(text):
+    """Return the run-length encoding of `text`."""
+    if not text:
+        return ""
+
+    parts = []
+    run_char = text[0]
+    run_length = 1
+
+    for char in text[1:]:
+        if char == run_char:
+            run_length += 1
+        else:
+            parts.append(f"{run_char}{run_length}")
+            run_char = char
+            run_length = 1
+
+    parts.append(f"{run_char}{run_length}")
+    return "".join(parts)</code></pre>
+
+<h2>The line after the loop</h2>
+
+<div class="note">
+<p><code>parts.append(f"{run_char}{run_length}")</code> appears twice, and it
+  has to. Inside the loop it emits a run that a different character has just
+  ended. After the loop it emits the run that the <em>end of the string</em>
+  ended.</p>
+</div>
+
+<p>Leave the second one out and every output is missing its final run.
+  <code>"aaabbc"</code> becomes <code>"a3b2"</code>; <code>"z"</code> becomes
+  <code>""</code>. Notice that the tests would still show something plausible —
+  the output is well-formed, just truncated — which is what makes this bug worth
+  practising.</p>
+
+<p>The alternative is to append a sentinel that cannot appear in the input and
+  let the loop's own <code>else</code> branch flush the last run. That works for
+  bytes with a reserved value; for arbitrary text there is no character you can
+  safely reserve, so the explicit flush is the honest version.</p>
+
+<h2>Seeding from <code>text[0]</code></h2>
+
+<p><code>run_char</code> has no sensible "nothing yet" value that is also a
+  character, so the function reads the first character directly and iterates over
+  <code>text[1:]</code>. That requires there to <em>be</em> a first character,
+  which is what <code>if not text: return ""</code> guarantees — the guard is
+  load-bearing, not decorative.</p>
+
+<p><code>not text</code> rather than <code>len(text) == 0</code> is the Python
+  idiom, and it reads as "if there is no text".</p>
+
+<div class="note">
+<p><code>text[1:]</code> copies the string. For the inputs here that is
+  irrelevant; for a very large one you would iterate over indices instead, or
+  use <code>itertools.islice(text, 1, None)</code>, which slices lazily.</p>
+</div>
+
+<h2>Walking a case</h2>
+
+<p><code>"aAaa"</code> — the case-sensitivity test:</p>
+
+<table class="trace">
+  <tr><th>char</th><th>Same as run?</th><th>Emitted</th><th>run_char</th><th>run_length</th></tr>
+  <tr><td>—</td><td>—</td><td>—</td><td><code>a</code></td><td>1</td></tr>
+  <tr><td><code>A</code></td><td>no</td><td><code>a1</code></td><td><code>A</code></td><td>1</td></tr>
+  <tr><td><code>a</code></td><td>no</td><td><code>A1</code></td><td><code>a</code></td><td>1</td></tr>
+  <tr><td><code>a</code></td><td>yes</td><td>—</td><td><code>a</code></td><td>2</td></tr>
+  <tr><td colspan="2">end of string — flush</td><td><code>a2</code></td><td colspan="2"></td></tr>
+</table>
+
+<p>Result <code>"a1A1a2"</code>. <code>==</code> on characters is exact, so
+  <code>a</code> and <code>A</code> are different and the run breaks — no
+  case-folding anywhere, which is the specification.</p>
+
+<h2>Why the counts are not capped</h2>
+
+<p>The <em>run longer than nine</em> test — twelve <code>a</code>s producing
+  <code>"a12"</code> — pins down that the count is written as a decimal number,
+  not as a single digit. The f-string does this without being asked; a solution
+  that deliberately splits long runs into chunks of nine has invented a rule the
+  problem does not have.</p>
+
+<p>It is a real rule in some formats: fixed-width RLE, where each count occupies
+  one byte, genuinely must break runs at 255. Worth knowing that the variant
+  exists, and worth not implementing it here.</p>
+
+<p>An aside on the format itself: this encoding is not always a compression.
+  <code>"abc"</code> encodes to <code>"a1b1c1"</code>, twice the length. RLE only
+  wins on data with long runs — scanned documents, simple bitmaps — which is why
+  real formats either mark runs explicitly or fall back to storing literals.</p>
+
+<h2><code>"".join(parts)</code></h2>
+
+<p>Python strings are immutable, so <code>result += piece</code> allocates a new
+  string and copies the old contents every time — O(n²) over the whole output.
+  Collecting into a list and joining once is O(n).</p>
+
+<p>CPython has an optimisation that makes <code>+=</code> on strings fast when
+  the left operand has no other references, so in practice the naive version is
+  often fine. It is an implementation detail of one interpreter, and
+  <code>join</code> is both faster everywhere and clearer about intent.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(n)</strong> time — one pass, one comparison per character — and
+  <strong>O(n)</strong> space for the output, which is unavoidable since the
+  output can be longer than the input.</p>
+
+<h2>The library version</h2>
+
+<pre><code>from itertools import groupby
+
+def encode(text):
+    return "".join(f"{char}{len(list(group))}"
+                   for char, group in groupby(text))</code></pre>
+
+<p><code>itertools.groupby</code> is exactly this problem: it yields consecutive
+  runs of equal items. It handles the empty string (no groups, empty join) and
+  the final run (a group like any other) without special cases — the flush
+  disappears because <code>groupby</code> does it for you.</p>
+
+<p>This is the answer to write at work and the wrong answer here, where the
+  point is the state machine. Note the <code>len(list(group))</code>:
+  <code>group</code> is an iterator that shares its position with the outer one,
+  so it must be consumed before the next group is requested.</p>
+
+<h2>Wrong turns worth recognising</h2>
+
+<div class="trap">
+<p><strong>Forgetting the final flush.</strong> Covered above, and it is the
+  bug this problem exists to teach. Every output is missing its last run.</p>
+</div>
+
+<div class="trap">
+<p><strong>Omitting the count for runs of one.</strong> <code>"abc"</code> →
+  <code>"abc"</code> is the space-saving variant of RLE and is not what is
+  asked. The <em>one character</em> fixed case (<code>"z"</code> →
+  <code>"z1"</code>) settles it.</p>
+</div>
+
+<div class="trap">
+<p><strong>Comparing with the previous character instead of the run
+  character.</strong> On this problem they are the same thing, since a run is by
+  definition consecutive — but the run variable is the one that says what you
+  mean, and it survives changes to the grouping rule.</p>
+</div>
+
+<div class="trap">
+<p><strong>Indexing past the end.</strong> Loops written as
+  <code>for i in range(len(text))</code> with a <code>text[i + 1]</code>
+  lookahead raise <code>IndexError</code> on the last character. Iterating over
+  the characters themselves removes the opportunity.</p>
+</div>
+
+<footer>
+  <p><a href="py_run_length_encode.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

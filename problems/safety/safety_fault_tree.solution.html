@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Smallest Cut Set of a Fault Tree · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · hard</p>
+  <h1>Smallest Cut Set of a Fault Tree</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The idea</h2>
+
+<p>Structural recursion over the tree, with one rule per node kind, each read
+  straight off what the gate means:</p>
+
+<table>
+  <tr><th>Node</th><th>Semantics</th><th>Smallest cut set</th></tr>
+  <tr><td>basic event</td><td>fails on its own</td><td><code>1</code></td></tr>
+  <tr><td><code>OR</code></td><td>any one input suffices</td>
+      <td><code>min</code> over children</td></tr>
+  <tr><td><code>AND</code></td><td>all inputs required</td>
+      <td><code>sum</code> over children</td></tr>
+</table>
+
+<p>The whole difficulty is believing that <code>min</code> and <code>sum</code>
+  are enough. They are, for a tree — and the section on shared events below is
+  about what happens when it is not one.</p>
+
+<h2>The code</h2>
+
+<pre><code>enum gate_kind { GATE_BASIC, GATE_AND, GATE_OR };
+
+struct gate {
+    int kind;
+    int input_count;
+    int inputs[8];
+};
+
+int smallest_cut_set(const struct gate *gates, int top)
+{
+    const struct gate *node = &amp;gates[top];
+
+    if (node-&gt;kind == GATE_BASIC) {
+        return 1;
+    }
+
+    if (node-&gt;kind == GATE_AND) {
+        /* Every input has to fail, and no basic event is shared between
+         * them, so the sets are disjoint and the sizes simply add. */
+        int total = 0;
+        for (int i = 0; i &lt; node-&gt;input_count; i++) {
+            total += smallest_cut_set(gates, node-&gt;inputs[i]);
+        }
+        return total;
+    }
+
+    /* OR: any one input is enough, so the cheapest child wins. */
+    int smallest = smallest_cut_set(gates, node-&gt;inputs[0]);
+    for (int i = 1; i &lt; node-&gt;input_count; i++) {
+        int size = smallest_cut_set(gates, node-&gt;inputs[i]);
+        if (size &lt; smallest) {
+            smallest = size;
+        }
+    }
+    return smallest;
+}</code></pre>
+
+<h2>Why the OR seeds from the first child</h2>
+
+<p>The alternative is to start at some large sentinel:</p>
+
+<pre><code>int smallest = INT_MAX;                 /* needs &lt;limits.h&gt; */
+for (int i = 0; i &lt; node-&gt;input_count; i++) { ... }</code></pre>
+
+<p>It works, and it hides a decision. If <code>input_count</code> were ever
+  <code>0</code> the loop would not run and <code>INT_MAX</code> would be
+  returned as a cut set size — a nonsense number that then propagates upwards,
+  and if it reaches an <code>AND</code>, overflows on the addition.</p>
+
+<p>Seeding from <code>inputs[0]</code> states the assumption that every gate
+  has at least one input, and the statement guarantees it. Where a guarantee
+  exists, code that depends on it visibly is better than code that quietly
+  papers over its absence with a wrong answer.</p>
+
+<h2>Walking the interesting case</h2>
+
+<p><em>Redundancy beside a single point of failure</em> —
+  <code>OR(AND(b, b), b)</code>:</p>
+
+<pre><code>0  OR  2  1 4
+1  AND 2  2 3
+2  BASIC
+3  BASIC
+4  BASIC</code></pre>
+
+<table class="trace">
+  <tr><th>Call</th><th>Node</th><th>Computes</th><th>Returns</th></tr>
+  <tr><td>1</td><td>0 (OR)</td><td>min of children 1 and 4</td><td>see below</td></tr>
+  <tr><td>2</td><td>1 (AND)</td><td>sum of children 2 and 3</td><td>—</td></tr>
+  <tr><td>3</td><td>2 (BASIC)</td><td>—</td><td><code>1</code></td></tr>
+  <tr><td>4</td><td>3 (BASIC)</td><td>—</td><td><code>1</code></td></tr>
+  <tr><td>—</td><td>1 (AND)</td><td>1 + 1</td><td><code>2</code></td></tr>
+  <tr><td>5</td><td>4 (BASIC)</td><td>—</td><td><code>1</code></td></tr>
+  <tr><td>—</td><td>0 (OR)</td><td>min(2, 1)</td><td><strong>1</strong></td></tr>
+</table>
+
+<p>The AND branch needs two failures. The bare basic event beside it needs one.
+  The OR takes the cheaper, and the answer is <strong>1</strong> —
+  <code>SINGLE POINT OF FAILURE</code>.</p>
+
+<div class="note">
+<p>This is the whole reason the analysis is quantitative rather than a matter
+  of looking at the diagram. The design <em>contains</em> dual redundancy, and
+  someone will say so in a review. The number says it buys nothing while
+  anything beside it can fail alone.</p>
+</div>
+
+<h2>The assumption that makes AND a sum</h2>
+
+<div class="trap">
+<p><strong>Adding the children is only correct when no basic event appears in
+  more than one branch.</strong> The problem guarantees a tree, so it is
+  correct here — and it is worth knowing exactly what breaks without that
+  guarantee, because real fault trees violate it constantly.</p>
+</div>
+
+<p>Consider <code>AND(a, a)</code> — the same component feeding both inputs.
+  The sum says <code>2</code>. The truth is <code>1</code>: <code>a</code>
+  failing satisfies both inputs at once, so <code>{a}</code> is a cut set of
+  size one. The sum has counted one component as two.</p>
+
+<p>That configuration is exactly what a fault tree is drawn to find — the
+  shared power rail behind two "independent" channels, the common connector,
+  the single clock. Real tools therefore compute cut <em>sets</em>, not sizes:
+  the set for a basic event is <code>{{a}}</code>, for an OR it is the union of
+  its children's sets, and for an AND it is the pairwise union of every
+  combination, after which sets that contain another set are discarded. The
+  number of cut sets can grow exponentially, which is why the standard
+  algorithms (MOCUS and its descendants) exist and why the general problem is
+  NP-hard.</p>
+
+<p>Restricting this exercise to a tree collapses all of that into
+  <code>min</code> and <code>sum</code>. Knowing <em>which</em> assumption you
+  are trading on is the point — an engineer who reaches for this recursion on a
+  DAG will get an answer that is too optimistic, which in safety work is the
+  dangerous direction to be wrong in.</p>
+
+<h2>Structural recursion</h2>
+
+<p>The function's shape follows the data's shape: one branch per kind, and the
+  recursive calls mirror the child edges. There is no explicit termination
+  argument to construct, because the base case is a node kind with no children
+  and every path down the tree reaches one.</p>
+
+<p>The index ordering — every child's index greater than its parent's — is what
+  makes the structure a tree rather than a graph, and so rules out a cycle
+  taking the recursion round forever. Note that the code never checks this; it
+  is a precondition the harness establishes. That is a legitimate division of
+  responsibility, and it is worth being explicit that it <em>is</em> one.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(n)</strong> in the number of nodes: each is visited once, because
+  each has exactly one parent. Stack depth is O(depth of the tree), which for
+  the 256-node cap here is trivially safe.</p>
+
+<p>On a DAG with shared subtrees the same code becomes exponential, since a
+  shared node is recomputed once per path that reaches it. Memoising on the
+  node index fixes that and returns it to O(n) — though as above, on a DAG the
+  <em>arithmetic</em> is wrong regardless of how fast it is computed.</p>
+
+<h2>Wrong turns worth recognising</h2>
+
+<div class="trap">
+<p><strong>Swapping <code>min</code> and <code>sum</code>.</strong> The easiest
+  slip on this problem, and the diagnosis is quick: if <code>OR(a, b)</code>
+  comes out as <code>2</code>, you have them the wrong way round. Anchor it on
+  the meaning — OR is the <em>easy</em> way to fail, so it must produce the
+  <em>smaller</em> number.</p>
+</div>
+
+<div class="trap">
+<p><strong>Counting nodes instead of basic events.</strong> Gates are not
+  components; they are structure. Only leaves contribute to a cut set, which is
+  why <code>GATE_BASIC</code> is the only case that returns a literal.</p>
+</div>
+
+<div class="trap">
+<p><strong>Recursing on the child index as if it were a node.</strong>
+  <code>smallest_cut_set(gates, node-&gt;inputs[i])</code> is right;
+  <code>smallest_cut_set(&amp;gates[node-&gt;inputs[i]], 0)</code> is not — it
+  re-bases the array so every subsequent index is measured from the wrong
+  place. The indices are absolute, into one array that never moves.</p>
+</div>
+
+<footer>
+  <p><a href="safety_fault_tree.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> for a fresh data set.</p>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Maximum Subarray Sum · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · hard</p>
+  <h1>Maximum Subarray Sum</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>The largest total obtainable from a <strong>contiguous</strong> run of
+  elements. Contiguous means no gaps — you pick a start and an end, not a
+  subset. The run must contain at least one element, unless the array is empty,
+  in which case the answer is <code>0</code>.</p>
+
+<h2>Start with the case that decides everything</h2>
+
+<p>Look at the fixed test <em>single negative element</em>: the array is
+  <code>-7</code> and the expected answer is <code>-7</code>, not
+  <code>0</code>.</p>
+
+<p>That one line rules out the most common wrong solution — the one that clamps
+  a running total at zero and returns zero when everything is negative. Because
+  you must pick at least one element, an all-negative array's answer is its
+  <em>least bad</em> element. Get that straight before writing anything.</p>
+
+<h2>The brute force, and what it wastes</h2>
+
+<p>Try every start, every end, sum each range: O(n³). Keep a running sum as the
+  end moves: O(n²). Both pass these tests. Both recompute information they
+  already had.</p>
+
+<h2>Kadane's question</h2>
+
+<p>Here is the reframing that collapses it to one pass. Instead of asking
+  "what is the best run anywhere", ask a smaller question at each position:</p>
+
+<div class="note">
+<p><strong>What is the best run that <em>ends exactly here</em>?</strong></p>
+</div>
+
+<p>That has a beautifully short answer, because a run ending at position
+  <em>i</em> has only two possible shapes:</p>
+
+<ul>
+  <li>it is just <code>values[i]</code> on its own; or</li>
+  <li>it is the best run ending at <em>i−1</em>, extended by
+    <code>values[i]</code>.</li>
+</ul>
+
+<p>There is no third option — extending anything <em>other</em> than the best
+  run ending at <em>i−1</em> would be worse by definition. So you take whichever
+  of the two is larger, and that is a single comparison. Carry it forward, and
+  separately remember the largest such value you have ever seen.</p>
+
+<p>Two variables. One pass.</p>
+
+<h2>Making it concrete</h2>
+
+<p>Walk <code>-2 1 -3 4</code> by hand, filling in "best run ending here":</p>
+
+<table>
+  <tr><th>i</th><th>values[i]</th><th>best ending here</th><th>Why</th></tr>
+  <tr><td>0</td><td>−2</td><td>−2</td><td>nothing to extend</td></tr>
+  <tr><td>1</td><td>1</td><td>1</td><td>−2 + 1 = −1 is worse than starting fresh</td></tr>
+  <tr><td>2</td><td>−3</td><td>−2</td><td>1 + −3 = −2 beats starting fresh at −3</td></tr>
+  <tr><td>3</td><td>4</td><td>4</td><td>−2 + 4 = 2 is worse than starting fresh</td></tr>
+</table>
+
+<p>The best ever seen is <strong>4</strong>. Notice the pattern: whenever the
+  running value would drag you below the element itself, you abandon the past
+  and start again from the current element.</p>
+
+<h2>Details</h2>
+
+<ul>
+  <li><strong>What do the two variables start at?</strong> Not zero — that is
+    the same clamping bug in disguise. Both start at <code>values[0]</code>, and
+    the loop begins at index 1. Which means…</li>
+  <li>…<strong>the empty array must be handled first</strong>, before you touch
+    <code>values[0]</code>. <code>count</code> may be <code>0</code> with
+    <code>values == NULL</code>, and the answer is <code>0</code>.</li>
+  <li><strong>Zeros only</strong> is a fixed case: <code>0 0 0</code> →
+    <code>0</code>. It should fall out naturally.</li>
+</ul>
+
+<details>
+<summary>Still stuck? A bigger nudge</summary>
+
+<pre><code>if (count &lt;= 0) {
+    return 0;
+}
+
+int best = values[0];         /* best seen anywhere */
+int current = values[0];      /* best run ending at i */
+
+for (int i = 1; i &lt; count; i++) {
+    /* current = the larger of: values[i] alone,
+                                current + values[i] */
+    /* best = the larger of: best, current */
+}
+return best;</code></pre>
+
+<p>Two comparisons in the body, and the order matters: update
+  <code>current</code> first, then fold it into <code>best</code>.</p>
+
+</details>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_max_subarray.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

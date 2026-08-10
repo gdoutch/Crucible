@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Parse an Integer · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>Parse an Integer</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>A parser with a <strong>two-part result</strong>: a success flag as the
+  return value, and the parsed number through an out-parameter. That shape —
+  <code>int f(input, output *out)</code> — is everywhere in C, because there is
+  no return value you could reserve to mean "failed" without also making it
+  unparseable.</p>
+
+<h2>The grammar, precisely</h2>
+
+<pre><code>number  :=  sign? digit+ end-of-string
+sign    :=  '+' | '-'
+digit   :=  '0'..'9'</code></pre>
+
+<p>Read that as three obligations, and notice that two of them are about what
+  must <em>not</em> be there:</p>
+
+<ol>
+  <li>An optional sign, at most one, only at the very front.</li>
+  <li><strong>At least one</strong> digit. This is what rejects
+    <code>""</code>, <code>"-"</code> and <code>"+"</code>.</li>
+  <li>Nothing after the digits <em>at all</em> — the next thing must be
+    <code>'\0'</code>. This is what rejects <code>"12a"</code>, and it is the
+    habit the problem exists to build.</li>
+</ol>
+
+<h2>Why not <code>atoi</code></h2>
+
+<p><code>atoi("12a")</code> returns <code>12</code>. It stops at the first
+  character it does not understand and tells you nothing about it — and
+  <code>atoi("banana")</code> returns <code>0</code>, indistinguishable from
+  <code>atoi("0")</code>. It cannot report failure, so it cannot be used
+  correctly on input you did not write yourself.</p>
+
+<p>You are writing the thing <code>atoi</code> should have been. The
+  distinguishing feature is the third obligation above.</p>
+
+<h2>Building the value</h2>
+
+<p>Left to right, one digit at a time:</p>
+
+<pre><code>value = value * 10 + (*s - '0');</code></pre>
+
+<p><code>*s - '0'</code> works because the C standard guarantees the ten digit
+  characters are consecutive and in order — a promise it makes for digits and
+  pointedly does not make for letters.</p>
+
+<h2>Three details worth settling in advance</h2>
+
+<ul>
+  <li><strong>Remember the sign, apply it at the end.</strong> Accumulate the
+    magnitude positively and negate once at the finish. Trying to accumulate
+    negatively as you go is possible but fiddly.</li>
+  <li><strong>Do not touch <code>*out</code> until you have decided to
+    succeed.</strong> The contract says a rejected string leaves the caller's
+    variable alone, so every <code>return 0</code> must happen before the
+    write.</li>
+  <li><strong>Leading zeros are fine.</strong> <code>"007"</code> is
+    <code>7</code>. The arithmetic gives you that for free — do not add a rule
+    against it.</li>
+</ul>
+
+<details>
+<summary>Still stuck? A bigger nudge</summary>
+
+<pre><code>if (s == NULL || *s == '\0') {
+    return 0;
+}
+
+int negative = 0;
+if (*s == '+' || *s == '-') {
+    negative = (*s == '-');
+    s++;
+}
+if (*s == '\0') {
+    return 0;                 /* a sign and nothing else */
+}
+
+long long value = 0;
+for (; *s != '\0'; s++) {
+    if (/* *s is not a digit */) {
+        return 0;
+    }
+    value = value * 10 + (*s - '0');
+}
+
+*out = (int)(negative ? -value : value);
+return 1;</code></pre>
+
+<p>Note the second <code>*s == '\0'</code> check. Without it, a lone
+  <code>"-"</code> reaches the loop, the loop's condition is false immediately,
+  and zero digits are accepted as the number <code>0</code>.</p>
+
+</details>
+
+<h2>Check yourself before you press Go</h2>
+
+<table>
+  <tr><th>Input</th><th>Result</th></tr>
+  <tr><td><code>0</code></td><td>ok, 0</td></tr>
+  <tr><td><code>007</code></td><td>ok, 7</td></tr>
+  <tr><td><code>+58</code></td><td>ok, 58</td></tr>
+  <tr><td><code>-42</code></td><td>ok, −42</td></tr>
+  <tr><td><code>""</code></td><td>bad</td></tr>
+  <tr><td><code>-</code></td><td>bad</td></tr>
+  <tr><td><code>12a</code></td><td>bad — <em>not</em> 12</td></tr>
+  <tr><td><code>1 2</code></td><td>bad — no spaces allowed</td></tr>
+  <tr><td><code>--5</code></td><td>bad — one sign only</td></tr>
+</table>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_parse_int.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

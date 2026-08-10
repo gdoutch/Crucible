@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — ASIL Determination · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · easy</p>
+  <h1>ASIL Determination</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The idea</h2>
+
+<p>Two correct answers, and choosing between them is the actual content of the
+  exercise. One transcribes the standard's table; the other computes it from
+  the rule the table happens to obey. They agree on all thirty-six cells.</p>
+
+<h2>The table version — what the reference ships</h2>
+
+<pre><code>/* ISO 26262-3 Table 4, written out cell by cell. */
+static const char *const ASIL[3][4][3] = {
+    /*        C1    C2    C3   */
+    {   /* S1 */
+        { "QM", "QM", "QM" },   /* E1 */
+        { "QM", "QM", "QM" },   /* E2 */
+        { "QM", "QM", "A"  },   /* E3 */
+        { "QM", "A",  "B"  },   /* E4 */
+    },
+    {   /* S2 */
+        { "QM", "QM", "QM" },
+        { "QM", "QM", "A"  },
+        { "QM", "A",  "B"  },
+        { "A",  "B",  "C"  },
+    },
+    {   /* S3 */
+        { "QM", "QM", "A"  },
+        { "QM", "A",  "B"  },
+        { "A",  "B",  "C"  },
+        { "B",  "C",  "D"  },
+    },
+};
+
+const char *asil_for(int severity, int exposure, int controllability)
+{
+    return ASIL[severity - 1][exposure - 1][controllability - 1];
+}</code></pre>
+
+<p>The <code>- 1</code>s convert the standard's 1-based classes to C's 0-based
+  indices. Doing that conversion in one place, at the point of use, is what
+  keeps the table itself readable as the table.</p>
+
+<p><code>const char *const</code> — a constant pointer to constant characters.
+  The inner <code>const</code> stops the strings being modified, the outer one
+  stops the array's entries being reassigned, and together they let the whole
+  thing live in read-only memory.</p>
+
+<h2>The computed version</h2>
+
+<p>Every axis contributes equally and additively, so the rung of the ladder is
+  a linear function of the sum:</p>
+
+<pre><code>const char *asil_for(int severity, int exposure, int controllability)
+{
+    static const char *const LADDER[] = { "QM", "A", "B", "C", "D" };
+
+    int rung = severity + exposure + controllability - 6;
+    if (rung &lt; 0) {
+        rung = 0;
+    }
+    return LADDER[rung];
+}</code></pre>
+
+<p>Where the <code>6</code> comes from: the anchor <code>S3 E4 C3</code> sums
+  to <code>10</code> and must land on rung <code>4</code> (D), so the offset is
+  <code>10 - 4 = 6</code>. Check the other end: <code>S1 E1 C1</code> sums to
+  <code>3</code>, giving <code>-3</code>, clamped to <code>0</code> — QM. And
+  every step down any axis reduces the sum by one, which reduces the rung by
+  one, which is precisely the stated rule.</p>
+
+<div class="trap">
+<p>The clamp is not optional. Ten of the thirty-six cells produce a negative
+  rung — as low as <code>-3</code> — and <code>LADDER[-3]</code> reads memory
+  before the array.
+  This is the single most likely bug in the computed version, and — because
+  what it reads is usually some other string constant — it can print something
+  that looks almost plausible.</p>
+</div>
+
+<h2>So which should you write?</h2>
+
+<p>The computed version is nine lines against forty and cannot contain a
+  mistyped cell. In most code that settles it.</p>
+
+<p>In safety code it does not, and the reason is worth internalising:</p>
+
+<div class="note">
+<p>The table can be checked against the standard <strong>by inspection, one
+  cell at a time</strong>. The formula can only be checked by an argument —
+  and an argument that the formula reproduces the table is a proof someone has
+  to construct, review and re-review whenever anything changes.</p>
+</div>
+
+<p>An assessor's question is not "is this correct?" but "how do you know, and
+  can you show me?". Thirty-six cells against thirty-six cells is a review that
+  terminates. Confirming that a linear formula reproduces a table from a
+  standard is a review that requires the reviewer to be as clever as the
+  author, and to stay that clever under time pressure.</p>
+
+<p>There is also a durability argument. The linearity is an <em>observed
+  property</em> of this edition's table, not a rule the standard states. If a
+  future edition perturbs one cell, the table version needs one edit and the
+  formula version needs rewriting — and, worse, the formula version's failure
+  would be silent, because nothing in it names the cell that changed.</p>
+
+<p>This is a general pattern, not a quirk of ISO 26262. Wherever the
+  specification is an enumeration, prefer code shaped like an enumeration.
+  Cleverness that compresses a specification is buying brevity with
+  auditability, and in this domain that is the wrong way round.</p>
+
+<h2>The table, and how the rule generates it</h2>
+
+<p>Every cell, with the rung in parentheses:</p>
+
+<table class="trace">
+  <tr><th></th><th colspan="3">S1</th><th colspan="3">S2</th><th colspan="3">S3</th></tr>
+  <tr><th></th><th>C1</th><th>C2</th><th>C3</th><th>C1</th><th>C2</th><th>C3</th><th>C1</th><th>C2</th><th>C3</th></tr>
+  <tr><th>E1</th><td>QM</td><td>QM</td><td>QM</td><td>QM</td><td>QM</td><td>QM</td><td>QM</td><td>QM</td><td>A</td></tr>
+  <tr><th>E2</th><td>QM</td><td>QM</td><td>QM</td><td>QM</td><td>QM</td><td>A</td><td>QM</td><td>A</td><td>B</td></tr>
+  <tr><th>E3</th><td>QM</td><td>QM</td><td>A</td><td>QM</td><td>A</td><td>B</td><td>A</td><td>B</td><td>C</td></tr>
+  <tr><th>E4</th><td>QM</td><td>A</td><td>B</td><td>A</td><td>B</td><td>C</td><td>B</td><td>C</td><td>D</td></tr>
+</table>
+
+<p>Exactly half the cells — eighteen of thirty-six — are QM. That is the shape
+  of the domain, not an
+  accident: most hazards in most situations do not need a safety requirement,
+  and the ones that do are concentrated in the corner where severe, frequent
+  and uncontrollable meet.</p>
+
+<h2>Returning the string</h2>
+
+<p>Both versions return a pointer to a string literal, which has static storage
+  duration — it exists for the whole run, so the harness can read it after the
+  function returns. The failure mode to avoid:</p>
+
+<pre><code>char buffer[4];                  /* automatic storage */
+snprintf(buffer, sizeof buffer, "%s", "B");
+return buffer;                   /* dangling as soon as we return */</code></pre>
+
+<p>The lifetime ends at the closing brace. The pointer usually still <em>looks
+  </em> valid for a moment, which is why this bug survives testing and fails in
+  production.</p>
+
+<p>Note also what the function does <em>not</em> do: it returns
+  <code>"QM"</code>, not <code>"ASIL QM"</code>. QM is not an ASIL, and the
+  harness renders it accordingly — a presentation decision that belongs in the
+  presentation layer.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(1)</strong> either way: three subtractions and an array index, or
+  an addition, a comparison and an index. The table costs about 300 bytes of
+  read-only data. Neither is measurable, which is exactly why the choice can be
+  made on reviewability alone.</p>
+
+<h2>Wrong turns worth recognising</h2>
+
+<div class="trap">
+<p><strong>Forgetting the <code>- 1</code>s.</strong>
+  <code>ASIL[severity][exposure][controllability]</code> with 1-based inputs
+  reads one plane, one row and one column too far — off the end of the array
+  for <code>S3</code>. It compiles, and it produces garbage that occasionally
+  looks like an answer.</p>
+</div>
+
+<div class="trap">
+<p><strong>Validating inputs that cannot be invalid.</strong> The problem
+  guarantees the ranges, so a defensive branch here is unreachable code. In
+  certified work unreachable code is a finding in itself — you are asked to
+  show every line is exercised. Where the guarantee is real, rely on it and
+  say so in a comment.</p>
+</div>
+
+<div class="trap">
+<p><strong>Treating the axes as unequal.</strong> Severity feels more important
+  than exposure, so it is tempting to weight it. The rule says one step is one
+  step, whichever axis it is on, and the three cells in the <em>one step down
+  each axis in turn</em> test are all ASIL C precisely to pin that down.</p>
+</div>
+
+<footer>
+  <p><a href="safety_asil.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> for a fresh data set.</p>
+</footer>
+
+</main>
+</body>
+</html>

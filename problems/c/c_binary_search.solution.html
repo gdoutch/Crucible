@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Binary Search · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>Binary Search</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The idea</h2>
+
+<p>Maintain a window <code>[low, high]</code> with the invariant:
+  <strong>if the target is in the array at all, its index is inside this
+  window.</strong> Look at the middle element. Because the array is sorted,
+  comparing it with the target tells you which half of the window still
+  satisfies the invariant, and the other half can be discarded whole.</p>
+
+<p>The window loses at least half its elements every iteration, so an array of
+  a million entries is exhausted in twenty comparisons.</p>
+
+<h2>The code</h2>
+
+<pre><code>int binary_search(const int *values, int count, int target)
+{
+    int low = 0;
+    int high = count - 1;
+
+    while (low &lt;= high) {
+        int mid = low + (high - low) / 2;
+        if (values[mid] == target) {
+            return mid;
+        }
+        if (values[mid] &lt; target) {
+            low = mid + 1;
+        } else {
+            high = mid - 1;
+        }
+    }
+    return -1;
+}</code></pre>
+
+<h2>The three details that have to agree</h2>
+
+<p>This is a nine-line function with a reputation for being hard to get right,
+  and the reason is that three separate decisions all encode the same choice.
+  Here the window is <strong>inclusive at both ends</strong>, so:</p>
+
+<table>
+  <tr><th>Decision</th><th>Value</th><th>Because</th></tr>
+  <tr>
+    <td><code>high</code> starts at</td>
+    <td><code>count - 1</code></td>
+    <td>It must be a valid index. <code>count</code> is one past the end.</td>
+  </tr>
+  <tr>
+    <td>Loop while</td>
+    <td><code>low &lt;= high</code></td>
+    <td>When they are equal the window still holds one unexamined element.
+      Using <code>&lt;</code> skips it — and that element is very often the
+      answer.</td>
+  </tr>
+  <tr>
+    <td>Updates</td>
+    <td><code>mid ± 1</code></td>
+    <td><code>mid</code> has just been compared and is not the target, so it
+      belongs in neither half. Excluding it is also what guarantees the window
+      shrinks.</td>
+  </tr>
+</table>
+
+<div class="trap">
+<p><strong>Termination depends on that <code>± 1</code>.</strong> Suppose you
+  wrote <code>low = mid</code>. With <code>low = 0, high = 1</code>,
+  <code>mid</code> is <code>0</code>; if the target is larger, <code>low</code>
+  becomes <code>0</code> again and the state has not changed. The loop spins
+  forever, and Crucible reports <code>TIMEOUT</code> on that case rather than a
+  wrong answer.</p>
+</div>
+
+<h2>Walking a case</h2>
+
+<p>The <em>last element</em> test: <code>1 3 5 7 9 11 13</code>, target
+  <code>13</code>.</p>
+
+<table class="trace">
+  <tr><th>low</th><th>high</th><th>mid</th><th>values[mid]</th><th>Action</th></tr>
+  <tr><td>0</td><td>6</td><td>3</td><td>7</td><td>7 &lt; 13 → <code>low = 4</code></td></tr>
+  <tr><td>4</td><td>6</td><td>5</td><td>11</td><td>11 &lt; 13 → <code>low = 6</code></td></tr>
+  <tr><td>6</td><td>6</td><td>6</td><td>13</td><td>found → return <strong>6</strong></td></tr>
+</table>
+
+<p>The last row is the one that matters. With <code>low &lt; high</code> as the
+  condition, the loop would have exited before that third iteration and
+  returned <code>-1</code> for a value that is plainly in the array. That is why
+  this specific case is in the fixed set.</p>
+
+<h2>Why the empty array needs no guard</h2>
+
+<p><code>count</code> is <code>0</code>, so <code>high</code> is initialised to
+  <code>-1</code>, and <code>0 &lt;= -1</code> is false on the first evaluation.
+  The body never runs, <code>values</code> — which may legitimately be
+  <code>NULL</code> — is never dereferenced, and the function returns
+  <code>-1</code>.</p>
+
+<p>The negative <code>high</code> looks alarming but is never used as an index.
+  This is the payoff of the inclusive convention: the empty window is
+  represented naturally, rather than needing a case of its own.</p>
+
+<h2>The overflow in the midpoint</h2>
+
+<p><code>low + (high - low) / 2</code> and <code>(low + high) / 2</code> give
+  the same answer for every input this problem can produce. They differ when
+  <code>low + high</code> exceeds <code>INT_MAX</code> — which needs an array of
+  more than a billion elements, so roughly 4 GB of <code>int</code>s. Not
+  reachable here; very reachable in a 64-bit service, and this exact bug lived
+  in <code>java.util.Arrays.binarySearch</code> from 1997 until 2006.</p>
+
+<p><code>high - low</code> is a non-negative difference between two values that
+  both fit, so it cannot overflow; halving it and adding to <code>low</code>
+  lands inside the window by construction. It is the same number of machine
+  instructions. Write it this way out of habit and the question never
+  arises.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(log n)</strong> comparisons, <strong>O(1)</strong> space. The
+  iterative form uses no stack; the recursive form is tail-recursive and
+  usually optimised into this loop anyway.</p>
+
+<p>For contrast: a linear scan is O(n). On the 7-element fixed case that is
+  7 comparisons against 3 — nothing. On a million elements it is a million
+  against twenty.</p>
+
+<h2>Wrong turns worth recognising</h2>
+
+<div class="trap">
+<p><strong>Returning the wrong "not found" value.</strong> Returning
+  <code>low</code> at the end — the insertion point — is what
+  <code>std::lower_bound</code> does and is genuinely more useful, but this
+  problem asks for <code>-1</code>.</p>
+</div>
+
+<div class="trap">
+<p><strong>Assuming a unique answer.</strong> With duplicates, this returns
+  <em>some</em> index holding the target, not necessarily the first. Finding the
+  <em>first</em> is a different algorithm: do not return early on a match; move
+  <code>high = mid - 1</code> and remember the position, and keep going. The
+  fixed tests here use distinct values, so the distinction never shows — worth
+  knowing before you copy this into something that matters.</p>
+</div>
+
+<div class="trap">
+<p><strong>Searching an unsorted array.</strong> The result is not "slower"; it
+  is meaningless. Binary search's every step is an inference from the ordering.
+  Here the harness guarantees ascending input.</p>
+</div>
+
+<footer>
+  <p><a href="c_binary_search.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

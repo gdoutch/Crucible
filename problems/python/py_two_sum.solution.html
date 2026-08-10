@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Two Sum · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · Python · easy</p>
+  <h1>Two Sum</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The idea</h2>
+
+<p>Trade memory for time. Instead of searching for a partner, compute what the
+  partner must be — <code>target - value</code> — and ask a dictionary whether
+  you have already passed it. One pass, one dict, constant-time lookups.</p>
+
+<h2>The code</h2>
+
+<pre><code>def two_sum(numbers, target):
+    """Return (i, j) with i &lt; j and numbers[i] + numbers[j] == target."""
+    seen = {}
+    for index, value in enumerate(numbers):
+        complement = target - value
+        if complement in seen:
+            return (seen[complement], index)
+        seen.setdefault(value, index)
+    return None</code></pre>
+
+<p>Five lines, and three of them encode a rule from the specification.</p>
+
+<h2>Look up before you insert</h2>
+
+<p>The order of the last two statements in the loop is the whole reason the
+  "same element twice" rule is respected.</p>
+
+<p>At the moment of the lookup, <code>seen</code> contains only elements at
+  indices strictly less than <code>index</code>. So any hit is a genuinely
+  different element, and its index is necessarily smaller — which delivers
+  <code>i &lt; j</code> without a single comparison.</p>
+
+<div class="trap">
+<p>Insert first and <code>[4]</code> with <code>target = 8</code> returns
+  <code>(0, 0)</code>: the element pairs with itself. The <em>single number</em>
+  fixed case (<code>[5]</code>, target 5) is a milder version of the same
+  trap.</p>
+</div>
+
+<h2><code>setdefault</code>, not plain assignment</h2>
+
+<p><code>seen.setdefault(value, index)</code> stores <code>index</code> only if
+  <code>value</code> is not already a key. So for repeated values the dict
+  remembers the <strong>earliest</strong> position.</p>
+
+<p>Why that is the right choice: the stored index becomes the <code>i</code> of
+  any pair found later. Since every later element sees the same dict, keeping
+  the earliest index yields the smallest possible <code>i</code> — and it can
+  never lose a solution, because if a later duplicate could pair with something,
+  the earlier one could too.</p>
+
+<p>With <code>seen[value] = index</code> instead, <code>[3, 3, 4]</code> with
+  target 7 would return <code>(1, 2)</code> where <code>(0, 2)</code> is the
+  better answer. No shipped test distinguishes them, but the randomised cases
+  can — and the specification asks for the tightest pair.</p>
+
+<h2>Walking the fixed cases</h2>
+
+<h3><code>[3, 3]</code>, target 6 → <code>(0, 1)</code></h3>
+
+<table class="trace">
+  <tr><th>index</th><th>value</th><th>complement</th><th>in seen?</th><th>Action</th></tr>
+  <tr><td>0</td><td>3</td><td>3</td><td>no — dict is empty</td><td>record <code>3 → 0</code></td></tr>
+  <tr><td>1</td><td>3</td><td>3</td><td><strong>yes → 0</strong></td><td>return <code>(0, 1)</code></td></tr>
+</table>
+
+<p>Two equal values at different positions are a valid pair, and the
+  lookup-before-insert discipline is what lets index 1 find index 0 without
+  index 0 having found itself.</p>
+
+<h3><code>[]</code> and <code>[5]</code> → <code>None</code></h3>
+
+<p>The empty list never enters the loop. The single element looks up its
+  complement in an empty dict, misses, records itself, and falls out of the
+  loop. Both reach the final <code>return None</code>.</p>
+
+<p>That trailing <code>return None</code> is explicit on purpose. Python would
+  return <code>None</code> anyway by falling off the end of the function, but
+  writing it says the absence of a pair is a designed outcome rather than an
+  oversight.</p>
+
+<h2>"Smallest second index" comes free</h2>
+
+<p>The function returns the moment it finds a match. The <code>index</code> it
+  returns on is therefore the first position in the whole list that has a
+  partner behind it — which is exactly the smallest possible <code>j</code>. No
+  candidate list, no <code>min</code>, no sorting.</p>
+
+<p>The nested-loop version does <em>not</em> get this for free. Iterating
+  <code>i</code> in the outer loop and <code>j</code> in the inner one finds
+  pairs in order of smallest <code>i</code>, not smallest <code>j</code>, and
+  returns a different (still valid) pair when several exist.</p>
+
+<h2>Cost</h2>
+
+<table>
+  <tr><th>Approach</th><th>Time</th><th>Space</th></tr>
+  <tr><td>Nested loops</td><td>O(n²)</td><td>O(1)</td></tr>
+  <tr><td>Sort, then two pointers</td><td>O(n log n)</td>
+      <td>O(n) — and the sort destroys the indices you were asked for, so you
+        would have to carry them alongside</td></tr>
+  <tr><td><strong>Dict of seen values</strong></td><td><strong>O(n)</strong> average</td>
+      <td><strong>O(n)</strong></td></tr>
+</table>
+
+<p>"Average" is the honest qualifier: dict lookups are O(1) amortised, with a
+  pathological worst case if every key collides. For integers, Python's hash is
+  the value itself and this does not arise in practice.</p>
+
+<h2>Wrong turns worth recognising</h2>
+
+<div class="trap">
+<p><strong>Returning values instead of indices.</strong> <code>(3, 3)</code>
+  rather than <code>(0, 1)</code>. The harness prints what you return, so this
+  fails visibly — but it is worth noticing that the values are the easy half and
+  the indices are what makes the problem worth asking.</p>
+</div>
+
+<div class="trap">
+<p><strong><code>if complement in numbers</code>.</strong> Using the list
+  membership test instead of the dict looks like the same thing and is O(n) per
+  element — quietly restoring the quadratic behaviour the dict was there to
+  avoid. It also finds the element itself, and then <code>numbers.index()</code>
+  returns the first match rather than the one you meant.</p>
+</div>
+
+<div class="trap">
+<p><strong>Building the whole dict first, then scanning.</strong> Two passes,
+  and the self-pairing problem comes back: every element's complement lookup can
+  now find the element itself, so you need an explicit
+  <code>seen[complement] != index</code> guard. The single-pass version deletes
+  that whole category of bug.</p>
+</div>
+
+<footer>
+  <p><a href="py_two_sum.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

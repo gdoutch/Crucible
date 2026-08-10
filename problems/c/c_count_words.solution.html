@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Count the Words · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · easy</p>
+  <h1>Count the Words</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The idea</h2>
+
+<p>This is the smallest interesting state machine there is. Two states —
+  <em>inside a word</em> and <em>outside a word</em> — and one counter that
+  ticks on a single transition: outside → inside.</p>
+
+<p>Framing it that way makes every awkward case disappear. Leading spaces are
+  just time spent in the outside state. A run of ten spaces is one transition
+  into the outside state and nine no-ops. A trailing space ends a word that was
+  already counted when it started. The empty string performs no transitions at
+  all. None of these need code; they are consequences of counting the right
+  event.</p>
+
+<h2>The code</h2>
+
+<pre><code>int count_words(const char *s)
+{
+    int words = 0;
+    int inside = 0;
+
+    for (; *s != '\0'; s++) {
+        if (*s == ' ' || *s == '\t') {
+            inside = 0;
+        } else if (!inside) {
+            inside = 1;
+            words++;
+        }
+    }
+
+    return words;
+}</code></pre>
+
+<p><code>inside</code> starts at <code>0</code> because before you have read
+  anything you are, by definition, not in a word. That single initialisation is
+  what makes a leading space and a leading letter behave correctly without a
+  branch for either.</p>
+
+<p>The <code>else if (!inside)</code> arm handles the only interesting
+  transition. The fourth combination — a non-space while already inside — falls
+  off the end of the chain and does nothing, which is exactly right.</p>
+
+<h2>Walking a case</h2>
+
+<p>Input <code>"&nbsp;&nbsp;hi&nbsp;&nbsp;you"</code> (two spaces, <code>hi</code>,
+  two spaces, <code>you</code>):</p>
+
+<table class="trace">
+  <tr><th>Char</th><th>Branch taken</th><th>inside</th><th>words</th></tr>
+  <tr><td>—</td><td>start</td><td>0</td><td>0</td></tr>
+  <tr><td><code>' '</code></td><td>space</td><td>0</td><td>0</td></tr>
+  <tr><td><code>' '</code></td><td>space</td><td>0</td><td>0</td></tr>
+  <tr><td><code>h</code></td><td><strong>transition</strong></td><td>1</td><td><strong>1</strong></td></tr>
+  <tr><td><code>i</code></td><td>none</td><td>1</td><td>1</td></tr>
+  <tr><td><code>' '</code></td><td>space</td><td>0</td><td>1</td></tr>
+  <tr><td><code>' '</code></td><td>space</td><td>0</td><td>1</td></tr>
+  <tr><td><code>y</code></td><td><strong>transition</strong></td><td>1</td><td><strong>2</strong></td></tr>
+  <tr><td><code>o</code></td><td>none</td><td>1</td><td>2</td></tr>
+  <tr><td><code>u</code></td><td>none</td><td>1</td><td>2</td></tr>
+</table>
+
+<p>Two transitions, two words. Notice that the second space of each pair does
+  nothing — setting a flag that is already clear is idempotent, and that is the
+  whole reason runs of separators need no counting logic.</p>
+
+<h2>The fixed cases, and what each one breaks</h2>
+
+<table>
+  <tr><th>Case</th><th>Which wrong solution it catches</th></tr>
+  <tr>
+    <td><em>empty string</em></td>
+    <td>"Count spaces, add one" returns <code>1</code>. So does anything that
+      assumes there is at least one word.</td>
+  </tr>
+  <tr>
+    <td><em>spaces only</em></td>
+    <td>Also <code>1</code> under the naive counter, and a favourite of
+      solutions that increment on every separator run.</td>
+  </tr>
+  <tr>
+    <td><em>one word</em>, <em>two words</em></td>
+    <td>The base cases. If these fail, the transition logic itself is
+      inverted.</td>
+  </tr>
+</table>
+
+<h2>Cost</h2>
+
+<p><strong>O(n)</strong> time, <strong>O(1)</strong> space — two
+  <code>int</code>s regardless of how long the line is. Nothing is allocated
+  and the caller's string is not touched.</p>
+
+<h2>Variations you might reach for</h2>
+
+<div class="note">
+<p><strong><code>isspace()</code> instead of an explicit test.</strong>
+  Reasonable, but it changes the specification: <code>isspace</code> also
+  treats <code>\n</code>, <code>\r</code>, <code>\v</code> and <code>\f</code>
+  as separators. The problem says spaces and tabs, and the harness has already
+  stripped the newline off the line it read, so the two agree on this input —
+  but be deliberate about it rather than lucky. If you do use it, cast:
+  <code>isspace((unsigned char)*s)</code>.</p>
+</div>
+
+<div class="note">
+<p><strong><code>strtok</code>.</strong> It would work, and it would also
+  destroy the caller's buffer by writing terminators into it — impossible here,
+  since the parameter is <code>const char *</code>. It also keeps state in a
+  static variable, which makes it unusable from more than one thread. Reaching
+  for it on a problem this size is a bad trade.</p>
+</div>
+
+<div class="trap">
+<p><strong>Counting on the wrong edge.</strong> Counting the inside → outside
+  transition instead misses the last word whenever the line does not end in a
+  space. It passes <em>two words</em> if that test happens to have a trailing
+  space and fails otherwise — a genuinely confusing failure to debug, which is
+  why counting on entry is the habit to build.</p>
+</div>
+
+<footer>
+  <p><a href="c_count_words.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

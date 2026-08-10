@@ -1,0 +1,52 @@
+{
+  "id": "uml_sequence_trace",
+  "title": "Trace From a Sequence Diagram",
+  "language": "python",
+  "difficulty": "medium",
+  "topics": [
+    "UML",
+    "sequence diagrams",
+    "control flow"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Emit the message trace this sequence diagram describes.\n\n## The diagram\n\n```\nsequenceDiagram\n    participant Client\n    participant OrderService\n    participant Inventory\n    participant PaymentGateway\n    participant Notifier\n\n    Client->>OrderService: place\n    OrderService->>Inventory: reserve\n\n    alt out of stock\n        Inventory-->>OrderService: unavailable\n        OrderService-->>Client: unavailable\n    else in stock\n        Inventory-->>OrderService: reserved\n\n        loop at most 3 attempts, stopping at the first acceptance\n            OrderService->>PaymentGateway: charge\n            alt accepted\n                PaymentGateway-->>OrderService: accepted\n            else declined\n                PaymentGateway-->>OrderService: declined\n            end\n        end\n\n        alt payment accepted\n            OrderService->>Notifier: confirm\n            OrderService-->>Client: confirmed\n        else every attempt declined\n            OrderService->>Inventory: release\n            OrderService-->>Client: declined\n        end\n    end\n```\n\n*Guides \u2192 Diagram* (**F2**) draws it, which is much easier to read than the\nsource.\n\n## Your function\n\n```\ndef place_order(send, reply, in_stock, declines):\n```\n\n`send(sender, receiver, message)` records a **call** -- a solid arrow,\n`->>`. `reply(sender, receiver, message)` records a **return** -- a dashed\narrow, `-->>`. Both are given to you by the harness, which prints what you\nrecorded. Call them in the order the diagram runs; return nothing.\n\n- `in_stock` is a bool, selecting the outer `alt`.\n- `declines` is how many charge attempts the gateway turns down before\n  accepting: `0` means the first attempt is accepted, `3` means all three are\n  declined.\n\n## Watch out\n\n- **Solid and dashed are different arrows.** A call is not a return, and the\n  harness prints them differently.\n- **The payment fragment is inside the `in stock` branch.** With no stock the\n  gateway is never asked, whatever `declines` says.\n- The loop stops at the first acceptance -- it does not always run three\n  times.\n- After three declines the reservation is released before the client is told.\n  A fragment's exit is as much a part of the diagram as its entry.\n- Spell the participants and messages exactly as the diagram does.",
+  "starter_code": "def place_order(send, reply, in_stock, declines):\n    \"\"\"Record the messages of the sequence diagram, in order.\n\n    send(sender, receiver, message)   a call    (solid arrow)\n    reply(sender, receiver, message)  a return  (dashed arrow)\n    \"\"\"\n    # your code here\n",
+  "harness": "\"\"\"Reads: \"yes\"/\"no\" for stock, then the number of declined attempts.\"\"\"\nimport sys\n\nfrom solution import place_order\n\n\ndef main():\n    data = sys.stdin.read().split()\n    if len(data) < 2:\n        return\n\n    in_stock = data[0] == \"yes\"\n    declines = int(data[1])\n\n    trace = []\n\n    def send(sender, receiver, message):\n        trace.append(f\"{sender} -> {receiver}: {message}\")\n\n    def reply(sender, receiver, message):\n        trace.append(f\"{sender} --> {receiver}: {message}\")\n\n    place_order(send, reply, in_stock, declines)\n\n    for line in trace:\n        print(line)\n\n\nmain()\n",
+  "reference_solution_b64": "ZGVmIHBsYWNlX29yZGVyKHNlbmQsIHJlcGx5LCBpbl9zdG9jaywgZGVjbGluZXMpOgogICAgIiIiV2FsayB0aGUgZGlhZ3JhbSB0b3AgdG8gYm90dG9tLCBvbmUgZnJhZ21lbnQgYXQgYSB0aW1lLiIiIgogICAgc2VuZCgiQ2xpZW50IiwgIk9yZGVyU2VydmljZSIsICJwbGFjZSIpCiAgICBzZW5kKCJPcmRlclNlcnZpY2UiLCAiSW52ZW50b3J5IiwgInJlc2VydmUiKQoKICAgIGlmIG5vdCBpbl9zdG9jazoKICAgICAgICByZXBseSgiSW52ZW50b3J5IiwgIk9yZGVyU2VydmljZSIsICJ1bmF2YWlsYWJsZSIpCiAgICAgICAgcmVwbHkoIk9yZGVyU2VydmljZSIsICJDbGllbnQiLCAidW5hdmFpbGFibGUiKQogICAgICAgIHJldHVybgoKICAgIHJlcGx5KCJJbnZlbnRvcnkiLCAiT3JkZXJTZXJ2aWNlIiwgInJlc2VydmVkIikKCiAgICBhY2NlcHRlZCA9IEZhbHNlCiAgICBmb3IgYXR0ZW1wdCBpbiByYW5nZSgzKToKICAgICAgICBzZW5kKCJPcmRlclNlcnZpY2UiLCAiUGF5bWVudEdhdGV3YXkiLCAiY2hhcmdlIikKICAgICAgICBpZiBhdHRlbXB0IDwgZGVjbGluZXM6CiAgICAgICAgICAgIHJlcGx5KCJQYXltZW50R2F0ZXdheSIsICJPcmRlclNlcnZpY2UiLCAiZGVjbGluZWQiKQogICAgICAgIGVsc2U6CiAgICAgICAgICAgIHJlcGx5KCJQYXltZW50R2F0ZXdheSIsICJPcmRlclNlcnZpY2UiLCAiYWNjZXB0ZWQiKQogICAgICAgICAgICBhY2NlcHRlZCA9IFRydWUKICAgICAgICAgICAgYnJlYWsKCiAgICBpZiBhY2NlcHRlZDoKICAgICAgICBzZW5kKCJPcmRlclNlcnZpY2UiLCAiTm90aWZpZXIiLCAiY29uZmlybSIpCiAgICAgICAgcmVwbHkoIk9yZGVyU2VydmljZSIsICJDbGllbnQiLCAiY29uZmlybWVkIikKICAgIGVsc2U6CiAgICAgICAgc2VuZCgiT3JkZXJTZXJ2aWNlIiwgIkludmVudG9yeSIsICJyZWxlYXNlIikKICAgICAgICByZXBseSgiT3JkZXJTZXJ2aWNlIiwgIkNsaWVudCIsICJkZWNsaW5lZCIpCg==",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random scenarios for the checkout sequence.\n\nThe whole input space is eight pairs, so the generator samples distinct ones\nrather than rolling each independently -- four identical cases would be four\ncopies of one test. Which trace each pair produces is the reference\nsolution's business, not this file's.\n\"\"\"\n\nSCENARIOS = [(stock, declines)\n             for stock in (\"yes\", \"no\")\n             for declines in (0, 1, 2, 3)]\n\n\ndef generate(rng, count):\n    chosen = rng.sample(SCENARIOS, min(count, len(SCENARIOS)))\n    while len(chosen) < count:\n        chosen.append(rng.choice(SCENARIOS))\n    return [_case(pair, index + 1) for index, pair in enumerate(chosen)]\n\n\ndef _case(pair, index):\n    stock, declines = pair\n    in_stock = stock == \"yes\"\n    return {\n        \"name\": \"scenario #%d: %s, %d decline(s)\" % (\n            index, \"in stock\" if in_stock else \"out of stock\", declines),\n        \"stdin\": \"%s %d\\n\" % (stock, declines),\n        \"description\": (\"The gateway is never reached, so the decline count \"\n                        \"does not matter.\" if not in_stock else\n                        \"The gateway declines %d time(s) before it settles.\"\n                        % declines),\n    }\n"
+  },
+  "tests": [
+    {
+      "name": "in stock, accepted first time",
+      "stdin": "yes 0\n",
+      "expected_stdout": "Client -> OrderService: place\nOrderService -> Inventory: reserve\nInventory --> OrderService: reserved\nOrderService -> PaymentGateway: charge\nPaymentGateway --> OrderService: accepted\nOrderService -> Notifier: confirm\nOrderService --> Client: confirmed",
+      "description": "The shortest path through the in-stock branch: the loop runs once."
+    },
+    {
+      "name": "out of stock",
+      "stdin": "no 0\n",
+      "expected_stdout": "Client -> OrderService: place\nOrderService -> Inventory: reserve\nInventory --> OrderService: unavailable\nOrderService --> Client: unavailable",
+      "description": "Four messages. Everything from `charge` onwards is inside the other branch."
+    },
+    {
+      "name": "out of stock, declines ignored",
+      "stdin": "no 3\n",
+      "expected_stdout": "Client -> OrderService: place\nOrderService -> Inventory: reserve\nInventory --> OrderService: unavailable\nOrderService --> Client: unavailable",
+      "description": "Identical to the case above. The gateway is inside the in-stock branch, so it is never asked and the decline count cannot matter."
+    },
+    {
+      "name": "one decline, then accepted",
+      "stdin": "yes 1\n",
+      "expected_stdout": "Client -> OrderService: place\nOrderService -> Inventory: reserve\nInventory --> OrderService: reserved\nOrderService -> PaymentGateway: charge\nPaymentGateway --> OrderService: declined\nOrderService -> PaymentGateway: charge\nPaymentGateway --> OrderService: accepted\nOrderService -> Notifier: confirm\nOrderService --> Client: confirmed",
+      "description": "The loop goes round twice and stops on the acceptance rather than running its full three."
+    },
+    {
+      "name": "every attempt declined",
+      "stdin": "yes 3\n",
+      "expected_stdout": "Client -> OrderService: place\nOrderService -> Inventory: reserve\nInventory --> OrderService: reserved\nOrderService -> PaymentGateway: charge\nPaymentGateway --> OrderService: declined\nOrderService -> PaymentGateway: charge\nPaymentGateway --> OrderService: declined\nOrderService -> PaymentGateway: charge\nPaymentGateway --> OrderService: declined\nOrderService -> Inventory: release\nOrderService --> Client: declined",
+      "description": "Three charges, then the reservation is released before the client is told."
+    }
+  ]
+}

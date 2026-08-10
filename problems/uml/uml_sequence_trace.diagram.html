@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Diagram — Trace From a Sequence Diagram · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide diagram">
+
+<header>
+  <p class="crumb">Crucible · Python · medium</p>
+  <h1>Trace From a Sequence Diagram</h1>
+  <p class="kind">Diagram</p>
+  <p class="lede">The specification. Everything the tests check is on this
+    picture.</p>
+</header>
+
+<pre class="mermaid">sequenceDiagram
+    participant Client
+    participant OrderService
+    participant Inventory
+    participant PaymentGateway
+    participant Notifier
+
+    Client->>OrderService: place
+    OrderService->>Inventory: reserve
+
+    alt out of stock
+        Inventory-->>OrderService: unavailable
+        OrderService-->>Client: unavailable
+    else in stock
+        Inventory-->>OrderService: reserved
+
+        loop at most 3 attempts, stopping at the first acceptance
+            OrderService->>PaymentGateway: charge
+            alt accepted
+                PaymentGateway-->>OrderService: accepted
+            else declined
+                PaymentGateway-->>OrderService: declined
+            end
+        end
+
+        alt payment accepted
+            OrderService->>Notifier: confirm
+            OrderService-->>Client: confirmed
+        else every attempt declined
+            OrderService->>Inventory: release
+            OrderService-->>Client: declined
+        end
+    end</pre>
+
+<p class="mermaid-note">Not drawn? The block above is the diagram's source —
+  the same text that is in the problem statement — and rendering it needs a
+  script this page fetches from a CDN. Offline, read it as text:
+  <code>A-&gt;&gt;B: m</code> is a call and <code>A--&gt;&gt;B: m</code> is a
+  return.</p>
+
+<h2>Reading the notation</h2>
+
+<table>
+  <tr><th>On the diagram</th><th>Means</th><th>You call</th></tr>
+  <tr>
+    <td><code>A-&gt;&gt;B: m</code>, solid arrowhead</td>
+    <td>A <strong>calls</strong> B</td>
+    <td><code>send("A", "B", "m")</code></td>
+  </tr>
+  <tr>
+    <td><code>A--&gt;&gt;B: m</code>, dashed line</td>
+    <td>A <strong>returns</strong> to B</td>
+    <td><code>reply("A", "B", "m")</code></td>
+  </tr>
+  <tr>
+    <td><code>alt</code> … <code>else</code> … <code>end</code></td>
+    <td>Exactly one branch runs</td>
+    <td><code>if</code> / <code>else</code></td>
+  </tr>
+  <tr>
+    <td><code>loop</code> … <code>end</code></td>
+    <td>The body repeats while the label's condition holds</td>
+    <td><code>for</code> with a <code>break</code></td>
+  </tr>
+</table>
+
+<h2>The three shapes the trace can take</h2>
+
+<div class="note">
+<p><strong>Fragments nest, and nesting is scope.</strong> Everything from
+  <code>charge</code> onwards sits inside the <code>in stock</code> branch, so
+  a request that cannot be reserved never reaches the gateway — whatever the
+  decline count says.</p>
+</div>
+
+<ol>
+  <li><strong>Out of stock</strong> — four messages, and the payment fragment
+    is never entered.</li>
+  <li><strong>In stock, some attempt accepted</strong> — the loop runs once per
+    attempt and stops on the acceptance rather than always going round three
+    times. Then the notifier is told and the client is confirmed.</li>
+  <li><strong>In stock, all three declined</strong> — the loop exhausts its
+    three attempts, the reservation is <em>released</em>, and the client is
+    told it was declined. That release is easy to miss: unwinding a fragment
+    is as much a part of the diagram as entering it.</li>
+</ol>
+
+<h2>The one message that is not on the diagram twice</h2>
+
+<p><code>Client-&gt;&gt;OrderService: place</code> is the trigger, and you emit
+  it yourself — the harness records what you send and prints it, and does not
+  add anything of its own. The last message of every run is the matching
+  <code>OrderService--&gt;&gt;Client</code> return, whichever branch produced
+  it.</p>
+
+<footer>
+  <p><a href="uml_sequence_trace.hint.html">Hint →</a> ·
+     <a href="uml_sequence_trace.solution.html">Worked solution →</a></p>
+</footer>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  /* Progressive enhancement: with no network the <pre> above simply stays
+     as the diagram's source text, which is the same specification. */
+  if (window.mermaid) {
+    var dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    mermaid.initialize({ startOnLoad: true, theme: dark ? "dark" : "default" });
+  }
+</script>
+</body>
+</html>

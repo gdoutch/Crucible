@@ -12,7 +12,7 @@ from pathlib import Path
 from tkinter import font as tkfont
 from tkinter import messagebox, ttk
 
-from .. import languages, randomise, runner, workspace
+from .. import guides, languages, randomise, runner, workspace
 from ..problem import Library, Problem, TestCase, load_library
 from ..randomise import GeneratedSuite
 from ..runner import ERROR, FAIL, PASS, SKIPPED, TIMEOUT, SubmissionResult, TestOutcome
@@ -103,6 +103,9 @@ class CrucibleApp(tk.Tk):
         self._cancel = threading.Event()
         self._override_gate: set[str] = set()
         self._autosave_job: str | None = None
+        #: Problems whose worked solution has already been opened this
+        #: session, so the "are you sure" is asked once rather than every time.
+        self._revealed: set[str] = set()
 
         self._build_menu()
         self._build_toolbar()
@@ -114,6 +117,8 @@ class CrucibleApp(tk.Tk):
         self.bind("<Control-Return>", lambda _e: self._on_go())
         self.bind("<Control-s>", lambda _e: self._save_draft(force=True))
         self.bind("<Control-r>", lambda _e: self._on_new_data())
+        self.bind("<F1>", lambda _e: self._open_guide(guides.HINT))
+        self.bind("<F2>", lambda _e: self._open_guide(guides.DIAGRAM))
 
         self._start_verify_worker()
         self.after(60, self._pump)
@@ -148,6 +153,27 @@ class CrucibleApp(tk.Tk):
         run_menu.add_command(label="New data set\tCtrl+R", command=self._on_new_data)
         menubar.add_cascade(label="Run", menu=run_menu)
 
+        # Guides open in the browser rather than in a pane: they are documents,
+        # and the point of reading one is to have it beside the editor rather
+        # than on top of it.
+        self.guides_menu = tk.Menu(menubar, tearoff=0, **opts)
+        #: Menu order, and the order `_refresh_guides_menu` walks to set each
+        #: entry's state -- one list so the two cannot drift apart.
+        self._guide_order = (guides.DIAGRAM, guides.HINT, guides.SOLUTION)
+        self.guides_menu.add_command(
+            label="Diagram for this problem\tF2",
+            command=lambda: self._open_guide(guides.DIAGRAM))
+        self.guides_menu.add_command(
+            label="Hint for this problem\tF1",
+            command=lambda: self._open_guide(guides.HINT))
+        self.guides_menu.add_command(
+            label="Worked solution for this problem…",
+            command=lambda: self._open_guide(guides.SOLUTION))
+        self.guides_menu.add_separator()
+        self.guides_menu.add_command(label="What are these?",
+                                     command=self._show_guides_help)
+        menubar.add_cascade(label="Guides", menu=self.guides_menu)
+
         view_menu = tk.Menu(menubar, tearoff=0, **opts)
         view_menu.add_command(label="Toggle light / dark theme",
                               command=self._toggle_theme)
@@ -177,6 +203,7 @@ class CrucibleApp(tk.Tk):
         menubar.add_cascade(label="Help", menu=help_menu)
 
         self.configure(menu=menubar)
+        self._refresh_guides_menu()
 
     def _build_toolbar(self) -> None:
         bar = ttk.Frame(self, padding=(12, 10, 12, 6))
@@ -408,6 +435,9 @@ class CrucibleApp(tk.Tk):
 
         self._refresh_toolchain_label()
         self._populate_problem_tree()
+        # Covers the case where the tree ended up with nothing to select, so
+        # `_on_problem_selected` never ran to do this itself.
+        self._refresh_guides_menu()
 
         for problem in self._library.problems:
             self._request_preparation(problem, priority=5, with_data=False)
@@ -516,6 +546,7 @@ class CrucibleApp(tk.Tk):
         self._show_test_cases(problem)
         self._refresh_banner()
         self._refresh_go_button()
+        self._refresh_guides_menu()
         self.editor.focus_editor()
 
     def _render_statement(self, problem: Problem) -> None:
@@ -1138,6 +1169,96 @@ class CrucibleApp(tk.Tk):
             "expected output is captured from the reference solution, so the\n"
             "two can never disagree. Ctrl+R draws a new data set.\n\n"
             "See README.md for the full schema and a worked example.",
+            parent=self)
+
+    # ------------------------------------------------------------------
+    # guides
+    # ------------------------------------------------------------------
+
+    def _refresh_guides_menu(self) -> None:
+        """Grey out a guide the current problem does not ship.
+
+        A problem without guides is not broken, so the entries are disabled
+        rather than hidden -- the menu stays the same shape, and it is obvious
+        that the pages are a thing that could exist here.
+        """
+        available = guides.find_all(self._problem) if self._problem else {}
+        for index, kind in enumerate(self._guide_order):
+            self.guides_menu.entryconfigure(
+                index, state="normal" if kind in available else "disabled")
+
+    def _open_guide(self, kind: str) -> None:
+        problem = self._problem
+        if problem is None:
+            return
+
+        guide = guides.find(problem, kind)
+        if guide is None:
+            path = guides.guide_path(problem, kind)
+            messagebox.showinfo(
+                f"No {guides.KINDS[kind].lower()} for this problem",
+                f"{problem.title} does not ship a "
+                f"{guides.KINDS[kind].lower()} page.\n\n"
+                f"One would live at:\n{path}\n\n"
+                "See Guides → What are these? for the convention.",
+                parent=self)
+            return
+
+        if kind == guides.SOLUTION and not self._confirm_reveal(problem):
+            return
+
+        if not guides.open_in_browser(guide):
+            messagebox.showerror(
+                "Could not open the guide",
+                f"No browser could be launched for:\n{guide.path}\n\n"
+                "The page is an ordinary HTML file -- open it by hand.",
+                parent=self)
+
+    def _confirm_reveal(self, problem: Problem) -> bool:
+        """Ask once per problem before showing the whole answer.
+
+        The app's one rule is that the reference solution is never shown. A
+        worked solution is a deliberate exception to that, so it is worth
+        making it a deliberate act -- and worth pointing at the hint, which is
+        what most people actually wanted.
+        """
+        if problem.id in self._revealed:
+            return True
+        has_hint = guides.find(problem, guides.HINT) is not None
+        nudge = ("\n\nThe hint (F1) gives you the idea without the code."
+                 if has_hint else "")
+        if not messagebox.askyesno(
+                "Show the worked solution?",
+                f"This opens the complete answer to {problem.title}, with the "
+                f"code and an explanation of every part of it.{nudge}\n\n"
+                "Open it?",
+                parent=self):
+            return False
+        self._revealed.add(problem.id)
+        return True
+
+    def _show_guides_help(self) -> None:
+        messagebox.showinfo(
+            "About the guides",
+            "Pages that open in your browser rather than in the app:\n\n"
+            "  Diagram          the problem's specification, drawn. Only the\n"
+            "                   problems whose spec IS a diagram have one\n"
+            "  Hint             the idea, the traps, and the cases to think\n"
+            "                   about -- no answer in it\n"
+            "  Worked solution  the whole answer, a trace of it running, and\n"
+            "                   the wrong turns worth recognising\n\n"
+            "They live beside the problem file and are found by name:\n\n"
+            "  c_sum_array.json\n"
+            "  c_sum_array.hint.html\n"
+            "  c_sum_array.solution.html\n\n"
+            "There is nothing to register -- drop the files next to the JSON\n"
+            "and this menu picks them up. They share problems/guides.css.\n\n"
+            "A diagram page renders its Mermaid source with a script fetched\n"
+            "from a CDN. With no network it shows the source instead, which\n"
+            "is the same specification in text -- and that text is in the\n"
+            "problem statement too, so the app never needs the network.\n\n"
+            "'python -m crucible --guides' lists which problems are missing\n"
+            "a hint or a worked solution.",
             parent=self)
 
     def _show_about(self) -> None:

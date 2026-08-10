@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Diagram — State Machine From a Diagram · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide diagram">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>State Machine From a Diagram</h1>
+  <p class="kind">Diagram</p>
+  <p class="lede">The specification. Everything the tests check is on this
+    picture.</p>
+</header>
+
+<pre class="mermaid">stateDiagram-v2
+    [*] --> Draft
+    Draft --> Review: submit
+    Review --> Draft: reject
+    Review --> Approved: approve
+    Approved --> Draft: revise
+    Approved --> Published: publish
+    Published --> Archived: archive
+    Archived --> [*]</pre>
+
+<p class="mermaid-note">Not drawn? The block above is the diagram's source —
+  the same text that is in the problem statement — and rendering it needs a
+  script this page fetches from a CDN. Offline, read it as text: each line is
+  <code>from --&gt; to: event</code>.</p>
+
+<h2>The same thing as a table</h2>
+
+<p>Six arrows. Everything else is a refusal.</p>
+
+<table>
+  <tr><th>From</th><th>Event</th><th>To</th></tr>
+  <tr><td>Draft</td><td><code>submit</code></td><td>Review</td></tr>
+  <tr><td>Review</td><td><code>reject</code></td><td>Draft</td></tr>
+  <tr><td>Review</td><td><code>approve</code></td><td>Approved</td></tr>
+  <tr><td>Approved</td><td><code>revise</code></td><td>Draft</td></tr>
+  <tr><td>Approved</td><td><code>publish</code></td><td>Published</td></tr>
+  <tr><td>Published</td><td><code>archive</code></td><td>Archived</td></tr>
+</table>
+
+<div class="note">
+<p>Five states and six event names make thirty pairs. Six of them are arrows;
+  the other twenty-four return <code>-1</code>. That ratio is why a table beats
+  a nest of <code>if</code>s — you write what the diagram draws, and the
+  default handles everything it does not.</p>
+</div>
+
+<h2>Reading the notation</h2>
+
+<ul>
+  <li><code>[*] --&gt; Draft</code> — the <strong>initial</strong> pseudostate.
+    A new document starts in Draft; the harness does this for you.</li>
+  <li><code>Archived --&gt; [*]</code> — the <strong>final</strong> state.
+    Nothing leaves it, which is why every event after <code>archive</code> is
+    refused.</li>
+  <li><code>Approved --&gt; Draft: revise</code> — the arrow that makes this a
+    cycle rather than a pipeline. A document can pass through Review any
+    number of times.</li>
+</ul>
+
+<footer>
+  <p><a href="uml_state_machine.hint.html">Hint →</a> ·
+     <a href="uml_state_machine.solution.html">Worked solution →</a></p>
+</footer>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  /* Progressive enhancement: with no network the <pre> above simply stays
+     as the diagram's source text, which is the same specification. */
+  if (window.mermaid) {
+    var dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    mermaid.initialize({ startOnLoad: true, theme: dark ? "dark" : "default" });
+  }
+</script>
+</body>
+</html>

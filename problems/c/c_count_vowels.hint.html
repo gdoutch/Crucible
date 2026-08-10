@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Count the Vowels · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · easy</p>
+  <h1>Count the Vowels</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>Walk a C string, and count the characters that are one of
+  <code>a e i o u</code> in either case. <code>y</code> does not count.
+  Everything else — spaces, digits, punctuation — is simply not a vowel.</p>
+
+<h2>The shape of it</h2>
+
+<p>A C string ends at the <code>'\0'</code> byte, so the loop condition writes
+  itself. Either walk an index up to <code>strlen</code>, or walk the pointer
+  itself and stop when the character it points at is the terminator. The second
+  is the idiomatic one:</p>
+
+<pre><code>for (; *s != '\0'; s++) {
+    /* is *s a vowel? */
+}</code></pre>
+
+<p><code>s</code> is your own copy of the pointer — advancing it does not
+  disturb the caller's.</p>
+
+<h2>Deciding "is this a vowel"</h2>
+
+<p>Two decisions in one, and it is easier if you separate them:</p>
+
+<ol>
+  <li><strong>Normalise the case.</strong> Fold the character to lower case
+    once, then you only have five letters to test rather than ten.</li>
+  <li><strong>Test the five.</strong> A <code>switch</code> with five
+    fall-through labels, a chain of <code>||</code>, or
+    <code>strchr("aeiou", c)</code> — all fine. Pick whichever you find
+    clearest.</li>
+</ol>
+
+<div class="trap">
+<p><strong>The <code>&lt;ctype.h&gt;</code> trap.</strong> If you call
+  <code>tolower(*s)</code> with a plain <code>char</code>, you have written
+  undefined behaviour. On most platforms <code>char</code> is signed, so a byte
+  above 127 arrives as a negative number, and <code>tolower</code> is only
+  defined for values representable as <code>unsigned char</code> or for
+  <code>EOF</code>. The fix is one cast, and it belongs on
+  <em>every</em> <code>&lt;ctype.h&gt;</code> call you ever write.</p>
+</div>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li>The empty string returns <code>0</code>. Does your loop cope with
+    <code>*s</code> being <code>'\0'</code> immediately?</li>
+  <li><code>rhythm</code> returns <code>0</code>. Did <code>y</code> sneak into
+    your list?</li>
+  <li>Does <code>AEIOU</code> return <code>5</code>? Case folding is easy to
+    forget in one direction only.</li>
+</ul>
+
+<details>
+<summary>Still stuck? A bigger nudge</summary>
+
+<p>Skeleton, with the decision left to you:</p>
+
+<pre><code>int count = 0;
+for (; *s != '\0'; s++) {
+    int c = tolower((unsigned char)*s);
+    if (/* c is one of the five */) {
+        count++;
+    }
+}
+return count;</code></pre>
+
+<p>For the condition, the shortest honest version is
+  <code>c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u'</code>.
+  There is no prize for compressing it.</p>
+
+</details>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_count_vowels.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,58 @@
+{
+  "id": "uml_state_machine",
+  "title": "State Machine From a Diagram",
+  "language": "c",
+  "difficulty": "medium",
+  "topics": [
+    "UML",
+    "state machines",
+    "tables"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Implement the state machine this diagram describes.\n\n## The diagram\n\n```\nstateDiagram-v2\n    [*] --> Draft\n    Draft --> Review: submit\n    Review --> Draft: reject\n    Review --> Approved: approve\n    Approved --> Draft: revise\n    Approved --> Published: publish\n    Published --> Archived: archive\n    Archived --> [*]\n```\n\n*Guides \u2192 Diagram* (**F2**) draws it.\n\n## Your function\n\n```\nenum doc_state { DRAFT, REVIEW, APPROVED, PUBLISHED, ARCHIVED };\n\nint transition(int state, const char *event);\n```\n\nReturn the state reached from `state` on `event`, or `-1` if the diagram has\nno arrow for that pair.\n\nThe harness starts the document in `DRAFT`, feeds you one event per line, and\nprints the state name after each -- or `REFUSED` when you return `-1`, leaving\nthe state where it was.\n\n## Watch out\n\n- Every pair the diagram does not draw is a refusal. There are five states and\n  six events, so thirty combinations, and only six of them are arrows.\n- `Archived` has no outgoing arrow. Once there, everything is refused.\n- An event name that is not on the diagram at all -- `frobnicate` -- is\n  refused like any other pair, not a crash.\n- `event` is a C string, so `==` compares pointers. You want `strcmp`.\n- A diagram is a table. Writing it as one -- an array of\n  `{from, event, to}` rows -- gets you a function that is checkable against\n  the picture line by line. A nest of `if` statements does the same job and\n  cannot be read next to the diagram.",
+  "starter_code": "#include <string.h>\n\nenum doc_state { DRAFT, REVIEW, APPROVED, PUBLISHED, ARCHIVED };\n\n/* Return the state reached from `state` on `event`, or -1 if the diagram\n * has no such transition.\n */\nint transition(int state, const char *event)\n{\n    /* your code here */\n    (void)state;\n    (void)event;\n    return -1;\n}\n",
+  "harness": "#include <stdio.h>\n\n/* Same enum as the candidate's, plus a count the candidate does not need.\n * Appending STATE_COUNT leaves the other five values unchanged.\n */\nenum doc_state { DRAFT, REVIEW, APPROVED, PUBLISHED, ARCHIVED, STATE_COUNT };\n\nstatic const char *const STATE_NAMES[STATE_COUNT] = {\n    \"Draft\", \"Review\", \"Approved\", \"Published\", \"Archived\"\n};\n\n/* Provided by the candidate in solution.c */\nint transition(int state, const char *event);\n\nint main(void)\n{\n    char event[64];\n    int state = DRAFT;\n\n    while (scanf(\"%63s\", event) == 1) {\n        int next = transition(state, event);\n\n        if (next < 0) {\n            printf(\"REFUSED\\n\");\n            continue;\n        }\n        if (next >= STATE_COUNT) {\n            printf(\"INVALID (%d is not a state)\\n\", next);\n            return 1;\n        }\n        state = next;\n        printf(\"%s\\n\", STATE_NAMES[state]);\n    }\n    return 0;\n}\n",
+  "reference_solution_b64": "I2luY2x1ZGUgPHN0ZGRlZi5oPgojaW5jbHVkZSA8c3RyaW5nLmg+CgplbnVtIGRvY19zdGF0ZSB7IERSQUZULCBSRVZJRVcsIEFQUFJPVkVELCBQVUJMSVNIRUQsIEFSQ0hJVkVEIH07CgpzdHJ1Y3QgYXJyb3cgewogICAgaW50IGZyb207CiAgICBjb25zdCBjaGFyICpldmVudDsKICAgIGludCB0bzsKfTsKCi8qIE9uZSByb3cgcGVyIGFycm93IG9uIHRoZSBkaWFncmFtLCBpbiB0aGUgb3JkZXIgdGhlIGRpYWdyYW0gZHJhd3MgdGhlbS4gKi8Kc3RhdGljIGNvbnN0IHN0cnVjdCBhcnJvdyBBUlJPV1NbXSA9IHsKICAgIHsgRFJBRlQsICAgICAic3VibWl0IiwgIFJFVklFVyAgICB9LAogICAgeyBSRVZJRVcsICAgICJyZWplY3QiLCAgRFJBRlQgICAgIH0sCiAgICB7IFJFVklFVywgICAgImFwcHJvdmUiLCBBUFBST1ZFRCAgfSwKICAgIHsgQVBQUk9WRUQsICAicmV2aXNlIiwgIERSQUZUICAgICB9LAogICAgeyBBUFBST1ZFRCwgICJwdWJsaXNoIiwgUFVCTElTSEVEIH0sCiAgICB7IFBVQkxJU0hFRCwgImFyY2hpdmUiLCBBUkNISVZFRCAgfSwKfTsKCmludCB0cmFuc2l0aW9uKGludCBzdGF0ZSwgY29uc3QgY2hhciAqZXZlbnQpCnsKICAgIHNpemVfdCBjb3VudCA9IHNpemVvZiBBUlJPV1MgLyBzaXplb2YgQVJST1dTWzBdOwoKICAgIGZvciAoc2l6ZV90IGkgPSAwOyBpIDwgY291bnQ7IGkrKykgewogICAgICAgIGlmIChBUlJPV1NbaV0uZnJvbSA9PSBzdGF0ZQogICAgICAgICAgICAmJiBzdHJjbXAoQVJST1dTW2ldLmV2ZW50LCBldmVudCkgPT0gMCkgewogICAgICAgICAgICByZXR1cm4gQVJST1dTW2ldLnRvOwogICAgICAgIH0KICAgIH0KICAgIHJldHVybiAtMTsKfQo=",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random event sequences for the review workflow.\n\nThe alphabet includes one event the diagram never draws, so a solution that\nassumes every name it is handed is one of the six meets a counter-example\nwithout the generator having to know which pairs are legal -- deciding that is\nthe reference solution's job, not this file's.\n\"\"\"\n\nEVENTS = (\"submit\", \"reject\", \"approve\", \"revise\", \"publish\", \"archive\",\n          \"frobnicate\")\n\n\ndef generate(rng, count):\n    return [_case(rng, index + 1) for index in range(count)]\n\n\ndef _case(rng, index):\n    length = rng.randint(5, 10)\n    events = [rng.choice(EVENTS) for _ in range(length)]\n    return {\n        \"name\": \"random walk #%d\" % index,\n        \"stdin\": \"\".join(event + \"\\n\" for event in events),\n        \"description\": \"A random sequence of events, legal and not. The \"\n                       \"state after each one comes from the diagram.\",\n    }\n"
+  },
+  "tests": [
+    {
+      "name": "no events at all",
+      "stdin": "",
+      "expected_stdout": "",
+      "description": "Nothing to print. The document is still in Draft, but nothing asked."
+    },
+    {
+      "name": "the happy path",
+      "stdin": "submit\napprove\npublish\narchive\n",
+      "expected_stdout": "Review\nApproved\nPublished\nArchived",
+      "description": "Straight down the diagram, one arrow at a time."
+    },
+    {
+      "name": "refused in Draft",
+      "stdin": "approve\n",
+      "expected_stdout": "REFUSED",
+      "description": "`approve` is an arrow out of Review, not out of Draft. The state has to stay where it was."
+    },
+    {
+      "name": "rejected back to Draft",
+      "stdin": "submit\nreject\nsubmit\napprove\n",
+      "expected_stdout": "Review\nDraft\nReview\nApproved",
+      "description": "The cycle in the diagram: a document can go round more than once."
+    },
+    {
+      "name": "Archived is terminal",
+      "stdin": "submit\napprove\npublish\narchive\nsubmit\nrevise\n",
+      "expected_stdout": "Review\nApproved\nPublished\nArchived\nREFUSED\nREFUSED",
+      "description": "No arrow leaves Archived, so everything after it is refused."
+    },
+    {
+      "name": "an event that is not on the diagram",
+      "stdin": "submit\nfrobnicate\napprove\n",
+      "expected_stdout": "Review\nREFUSED\nApproved",
+      "description": "An unknown name is refused like any other pair the diagram does not draw -- not a crash, and it must not disturb the state."
+    }
+  ]
+}

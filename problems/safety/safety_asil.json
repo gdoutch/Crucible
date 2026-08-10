@@ -1,0 +1,58 @@
+{
+  "id": "safety_asil",
+  "title": "ASIL Determination",
+  "language": "c",
+  "difficulty": "easy",
+  "topics": [
+    "safety",
+    "ISO 26262",
+    "tables"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Work out the ASIL for a hazard, the way ISO 26262 does.\n\nAn automotive hazard is classified on three axes, and the three together fix\nhow much rigour the software controlling it needs.\n\n| Axis | Range | Meaning |\n| --- | --- | --- |\n| Severity | `S1`..`S3` | how badly it hurts, `S3` being life-threatening |\n| Exposure | `E1`..`E4` | how often the situation arises, `E4` being most of the time |\n| Controllability | `C1`..`C3` | how likely a driver is to cope, `C3` being not at all |\n\nThe result is an **ASIL** -- `A`, `B`, `C` or `D`, `D` demanding the most --\nor **`QM`**, meaning quality management alone is enough and no safety\nrequirement attaches.\n\n## The rule\n\n- The worst combination, `S3 E4 C3`, is **ASIL D**.\n- Reducing *any one* of the three axes by one class reduces the ASIL by one\n  step down the ladder `D, C, B, A, QM`.\n- The ladder stops at `QM`. Two steps below `A` is still `QM`.\n\nSo `S3 E4 C2` is ASIL C, `S3 E3 C2` is ASIL B, and `S1 E1 C1` is QM.\n\n## Your function\n\n```\nconst char *asil_for(int severity, int exposure, int controllability);\n```\n\nReturn one of the string literals `\"QM\"`, `\"A\"`, `\"B\"`, `\"C\"`, `\"D\"`. The\nthree arguments are always in range, so there is nothing to validate.\n\nThe harness reads triples written `S2 E4 C3`, one per line, and prints\n`ASIL C` -- or bare `QM`, because QM is not an ASIL.\n\n## Watch out\n\n- Return a **string literal**, not a pointer into a local buffer. A local\n  array stops existing when your function returns, and the harness reads the\n  pointer after that.\n- The floor is real. Most of the table is `QM`, and a solution that indexes a\n  ladder without clamping walks off the front of it.\n- `QM` prints as `QM`, not as `ASIL QM`. That is the harness's job, not\n  yours -- you return `\"QM\"` either way.",
+  "starter_code": "/* Return the ASIL for this hazard classification: one of\n * \"QM\", \"A\", \"B\", \"C\" or \"D\".\n *\n * severity is 1..3, exposure is 1..4, controllability is 1..3.\n */\nconst char *asil_for(int severity, int exposure, int controllability)\n{\n    /* your code here */\n    (void)severity;\n    (void)exposure;\n    (void)controllability;\n    return \"QM\";\n}\n",
+  "harness": "#include <stdio.h>\n#include <string.h>\n\n/* Provided by the candidate in solution.c */\nconst char *asil_for(int severity, int exposure, int controllability);\n\nint main(void)\n{\n    int severity, exposure, controllability;\n\n    while (scanf(\" S%d E%d C%d\", &severity, &exposure, &controllability) == 3) {\n        const char *result = asil_for(severity, exposure, controllability);\n\n        if (result == NULL) {\n            printf(\"(null)\\n\");\n        } else if (strcmp(result, \"QM\") == 0) {\n            printf(\"QM\\n\");\n        } else {\n            printf(\"ASIL %s\\n\", result);\n        }\n    }\n    return 0;\n}\n",
+  "reference_solution_b64": "LyogSVNPIDI2MjYyLTMgVGFibGUgNCwgd3JpdHRlbiBvdXQgY2VsbCBieSBjZWxsLgogKgogKiBUaGVyZSBpcyBhIGNsb3NlZCBmb3JtIC0tIHRoZSBBU0lMIGlzIG9uZSBzdGVwIHVwIHRoZSBsYWRkZXIgZm9yIGV2ZXJ5CiAqIGNsYXNzIGFib3ZlIHRoZSBRTSBmbG9vciAtLSBidXQgYSB0YWJsZSB0cmFuc2NyaWJlZCBmcm9tIHRoZSBzdGFuZGFyZCBjYW4KICogYmUgY2hlY2tlZCBhZ2FpbnN0IHRoZSBzdGFuZGFyZCBieSBleWUsIG9uZSBjZWxsIGF0IGEgdGltZSwgYW5kIHRoYXQgaXMKICogd2hhdCBhbiBhc3Nlc3NvciB3aWxsIHdhbnQgdG8gZG8uCiAqLwpzdGF0aWMgY29uc3QgY2hhciAqY29uc3QgQVNJTFszXVs0XVszXSA9IHsKICAgIC8qICAgICAgICBDMSAgICBDMiAgICBDMyAgICovCiAgICB7ICAgLyogUzEgKi8KICAgICAgICB7ICJRTSIsICJRTSIsICJRTSIgfSwgICAvKiBFMSAqLwogICAgICAgIHsgIlFNIiwgIlFNIiwgIlFNIiB9LCAgIC8qIEUyICovCiAgICAgICAgeyAiUU0iLCAiUU0iLCAiQSIgIH0sICAgLyogRTMgKi8KICAgICAgICB7ICJRTSIsICJBIiwgICJCIiAgfSwgICAvKiBFNCAqLwogICAgfSwKICAgIHsgICAvKiBTMiAqLwogICAgICAgIHsgIlFNIiwgIlFNIiwgIlFNIiB9LAogICAgICAgIHsgIlFNIiwgIlFNIiwgIkEiICB9LAogICAgICAgIHsgIlFNIiwgIkEiLCAgIkIiICB9LAogICAgICAgIHsgIkEiLCAgIkIiLCAgIkMiICB9LAogICAgfSwKICAgIHsgICAvKiBTMyAqLwogICAgICAgIHsgIlFNIiwgIlFNIiwgIkEiICB9LAogICAgICAgIHsgIlFNIiwgIkEiLCAgIkIiICB9LAogICAgICAgIHsgIkEiLCAgIkIiLCAgIkMiICB9LAogICAgICAgIHsgIkIiLCAgIkMiLCAgIkQiICB9LAogICAgfSwKfTsKCmNvbnN0IGNoYXIgKmFzaWxfZm9yKGludCBzZXZlcml0eSwgaW50IGV4cG9zdXJlLCBpbnQgY29udHJvbGxhYmlsaXR5KQp7CiAgICByZXR1cm4gQVNJTFtzZXZlcml0eSAtIDFdW2V4cG9zdXJlIC0gMV1bY29udHJvbGxhYmlsaXR5IC0gMV07Cn0K",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random hazard classifications.\n\nEvery triple in range is a legal input and there are only thirty-six of them,\nso each case draws a handful of distinct ones. The generator states no\nexpected ASIL: that is the reference solution's job, which is what stops this\nfile from becoming a second, disagreeing copy of the standard's table.\n\"\"\"\n\nTRIPLES = [(s, e, c)\n           for s in (1, 2, 3)\n           for e in (1, 2, 3, 4)\n           for c in (1, 2, 3)]\n\n\ndef generate(rng, count):\n    return [_case(rng, index + 1) for index in range(count)]\n\n\ndef _case(rng, index):\n    chosen = rng.sample(TRIPLES, rng.randint(4, 7))\n    lines = [\"S%d E%d C%d\" % triple for triple in chosen]\n    return {\n        \"name\": \"random classifications #%d\" % index,\n        \"stdin\": \"\".join(line + \"\\n\" for line in lines),\n        \"description\": \"%d hazards drawn from the thirty-six the three axes \"\n                       \"allow.\" % len(chosen),\n    }\n"
+  },
+  "tests": [
+    {
+      "name": "the worst case",
+      "stdin": "S3 E4 C3\n",
+      "expected_stdout": "ASIL D",
+      "description": "Life-threatening, near-constant exposure, uncontrollable. The anchor the rest of the table hangs from."
+    },
+    {
+      "name": "the mildest case",
+      "stdin": "S1 E1 C1\n",
+      "expected_stdout": "QM",
+      "description": "Three steps below the floor, and the floor is where it stops."
+    },
+    {
+      "name": "one step down each axis in turn",
+      "stdin": "S2 E4 C3\nS3 E3 C3\nS3 E4 C2\n",
+      "expected_stdout": "ASIL C\nASIL C\nASIL C",
+      "description": "All three are one step from S3 E4 C3, so all three are ASIL C. The axes are interchangeable, which is the whole content of the rule."
+    },
+    {
+      "name": "across the QM boundary",
+      "stdin": "S1 E3 C2\nS1 E3 C3\n",
+      "expected_stdout": "QM\nASIL A",
+      "description": "Adjacent cells: one class of controllability is the difference between no safety requirement and ASIL A."
+    },
+    {
+      "name": "the floor does not go negative",
+      "stdin": "S1 E1 C3\nS1 E2 C1\nS2 E1 C2\n",
+      "expected_stdout": "QM\nQM\nQM",
+      "description": "All well below A. A ladder index that is allowed to go negative reads off the front of the array here."
+    },
+    {
+      "name": "a scattering",
+      "stdin": "S2 E2 C3\nS3 E1 C3\nS2 E3 C2\nS3 E2 C3\nS1 E4 C3\n",
+      "expected_stdout": "ASIL A\nASIL A\nASIL A\nASIL B\nASIL B",
+      "description": ""
+    }
+  ]
+}

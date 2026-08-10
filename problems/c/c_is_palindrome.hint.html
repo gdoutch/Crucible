@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Palindrome Check · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>Palindrome Check</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p><code>1</code> or <code>0</code>: does the string read the same both ways
+  once you ignore case and everything that is not a letter or a digit? So
+  <code>A man, a plan, a canal: Panama</code> counts.</p>
+
+<h2>The tempting approach, and the better one</h2>
+
+<p>You could build a cleaned-up copy — strip the punctuation, lower-case
+  everything — and then compare it with its reverse. That works. It also needs a
+  buffer, and a decision about how big, and a plan for what happens if the input
+  is longer than you guessed.</p>
+
+<p>The alternative does the cleaning <em>as it goes</em>: two indices walking
+  inwards, each one skipping over anything it should be ignoring. No copy, no
+  allocation, and the empty string needs no thought.</p>
+
+<h2>Two pointers, three possible moves</h2>
+
+<p>At every step, look at the character on the left and the character on the
+  right. Exactly one of these applies, and the order you test them in matters:</p>
+
+<ol>
+  <li>The left character is not alphanumeric → <strong>advance the left index
+    only</strong> and start again. Do not compare yet.</li>
+  <li>The right character is not alphanumeric → <strong>retreat the right index
+    only</strong> and start again.</li>
+  <li>Both are alphanumeric → now a comparison is meaningful. If they differ
+    (case-insensitively) the answer is <code>0</code> immediately. If they
+    match, move <em>both</em> inwards.</li>
+</ol>
+
+<p>If the indices meet or cross without ever finding a mismatch, it is a
+  palindrome.</p>
+
+<div class="trap">
+<p><strong>Do not skip both sides in one step.</strong> Advancing the left index
+  and retreating the right one when only the left character is punctuation
+  throws away a character on the right that was never examined. Handle one side
+  per iteration — that is why the list above is an <code>if / else if / else
+  if</code> chain rather than three independent <code>if</code>s.</p>
+</div>
+
+<h2>Details that will cost you a test case</h2>
+
+<ul>
+  <li><strong>Where does the right index start?</strong> If you use
+    <code>strlen(s)</code> directly, that is the index of the terminator — so
+    compare <code>s[j - 1]</code> rather than <code>s[j]</code>, or start at
+    <code>strlen(s) - 1</code> and worry about the empty string.</li>
+  <li><strong><code>size_t</code> is unsigned.</strong> <code>strlen("") - 1</code>
+    is not <code>-1</code>; it is a colossal positive number. Same trap as
+    <em>Reverse a String In Place</em>.</li>
+  <li><strong>Cast for <code>&lt;ctype.h&gt;</code>.</strong>
+    <code>isalnum((unsigned char)s[i])</code> and
+    <code>tolower((unsigned char)s[i])</code>. Passing a plain
+    <code>char</code> is undefined behaviour for bytes above 127.</li>
+  <li><strong>The empty string is a palindrome</strong> — the loop simply never
+    runs.</li>
+</ul>
+
+<details>
+<summary>Still stuck? A bigger nudge</summary>
+
+<pre><code>size_t i = 0;
+size_t j = strlen(s);        /* one PAST the last character */
+
+while (i &lt; j) {
+    if (/* s[i] is not alphanumeric */) {
+        i++;
+    } else if (/* s[j - 1] is not alphanumeric */) {
+        j--;
+    } else if (/* the two differ, ignoring case */) {
+        return 0;
+    } else {
+        i++;
+        j--;
+    }
+}
+return 1;</code></pre>
+
+<p>Keeping <code>j</code> one past the end means <code>strlen("") == 0</code>
+  needs no special case: <code>0 &lt; 0</code> is false and you return
+  <code>1</code>. The cost is remembering the <code>- 1</code> every time you
+  read through <code>j</code>.</p>
+
+</details>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li>Empty string → <code>1</code>.</li>
+  <li>Single character → <code>1</code>.</li>
+  <li><code>A man, a plan, a canal: Panama</code> → <code>1</code>.</li>
+  <li><code>ab</code> → <code>0</code>; <code>aba</code> → <code>1</code>.</li>
+  <li><code>!!!</code> — nothing but punctuation → <code>1</code>, and no
+    infinite loop.</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_is_palindrome.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Parse an Integer · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>Parse an Integer</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The idea</h2>
+
+<p>A three-phase parser: optional sign, then one-or-more digits, then end of
+  string. Each phase either consumes what it expects or rejects the whole input.
+  The value is accumulated as you go and written out only once every phase has
+  succeeded.</p>
+
+<p>The interesting part is not the arithmetic. It is that the function has two
+  results — <em>did it work</em> and <em>what was the value</em> — and keeps
+  them separate, so that no legal integer has to be sacrificed as an error
+  code.</p>
+
+<h2>The code</h2>
+
+<pre><code>#include &lt;stddef.h&gt;
+
+int parse_int(const char *s, int *out)
+{
+    if (s == NULL || *s == '\0') {
+        return 0;
+    }
+
+    int negative = 0;
+    if (*s == '+' || *s == '-') {
+        negative = (*s == '-');
+        s++;
+    }
+    if (*s == '\0') {
+        return 0;
+    }
+
+    long long value = 0;
+    for (; *s != '\0'; s++) {
+        if (*s &lt; '0' || *s &gt; '9') {
+            return 0;
+        }
+        value = value * 10 + (*s - '0');
+    }
+
+    *out = (int)(negative ? -value : value);
+    return 1;
+}</code></pre>
+
+<h2>Phase by phase</h2>
+
+<h3>The empty check</h3>
+
+<p>An empty string has no digits, so it is rejected before anything else
+  happens. The <code>s == NULL</code> test is defensive — the harness never
+  passes null — but it costs one comparison and turns a crash into a clean
+  rejection.</p>
+
+<h3>The sign</h3>
+
+<p><code>negative = (*s == '-')</code> stores the result of a comparison
+  directly, which in C is already <code>0</code> or <code>1</code>. The pointer
+  advances past the sign, and because this is <code>if</code> rather than
+  <code>while</code>, a second sign in <code>"--5"</code> is left for the digit
+  loop to reject.</p>
+
+<h3>The "sign and nothing else" check</h3>
+
+<div class="trap">
+<p>This is the check people leave out. Without it, <code>"-"</code> arrives at
+  the loop with <code>*s == '\0'</code>, the loop condition is false on the
+  first evaluation, zero iterations run, and <code>value</code> is still
+  <code>0</code> — so the function reports success and hands back
+  <code>0</code>. The <em>a lone sign</em> test case exists for precisely
+  this.</p>
+<p>The general principle: a <code>for</code> loop expresses "zero or more". The
+  grammar says "one or more". The gap between the two has to be closed by an
+  explicit check, either before the loop or by counting digits and testing
+  afterwards.</p>
+</div>
+
+<h3>The digit loop</h3>
+
+<p>The loop runs to the terminator and rejects anything that is not a digit
+  <em>on the way</em>. That single arrangement is what enforces the "nothing
+  after the digits" rule — there is no early exit that could leave trailing
+  characters unexamined. <code>"12a"</code> consumes <code>1</code> and
+  <code>2</code>, meets <code>a</code>, and returns <code>0</code>.</p>
+
+<p>Compare with the shape that gives <code>atoi</code> its behaviour:</p>
+
+<pre><code>while (*s &gt;= '0' &amp;&amp; *s &lt;= '9') {    /* stops AT the bad character */
+    value = value * 10 + (*s - '0');
+    s++;
+}
+/* ...and if you forget to check *s == '\0' here, "12a" is accepted as 12 */</code></pre>
+
+<p>Both shapes can be made correct. The first is correct by construction; the
+  second is correct only if you remember to add the check.</p>
+
+<h3><code>*s - '0'</code></h3>
+
+<p>C guarantees that <code>'0'</code> through <code>'9'</code> have consecutive,
+  increasing values in every execution character set. Subtracting <code>'0'</code>
+  therefore maps the character to its numeric value portably. No such guarantee
+  exists for letters — on EBCDIC, <code>'a'</code> to <code>'z'</code> is not
+  contiguous — which is why <code>c - 'a'</code> is a portability bug and
+  <code>c - '0'</code> is not.</p>
+
+<h3>The write, last</h3>
+
+<p><code>*out</code> is assigned on the final line, after every rejection path
+  has been passed. That honours the contract: a caller who ignored the return
+  value still has whatever was in their variable, rather than a half-parsed
+  prefix. Writing as you go — <code>*out = value;</code> inside the loop — would
+  leave <code>12</code> in the caller's variable for the input
+  <code>"12a"</code>, which is the worst of both worlds.</p>
+
+<h2>Why <code>long long</code> for the accumulator</h2>
+
+<p>The problem promises every test value fits in an <code>int</code>, so
+  <code>int</code> would pass. Accumulating in <code>long long</code> is still
+  worth doing: signed overflow in C is <em>undefined behaviour</em>, not a
+  wrap-around, and a compiler is entitled to assume it never happens. Given
+  <code>value * 10 + digit</code> on an <code>int</code>, one long input turns
+  the whole function into nonsense the optimiser is allowed to reshape freely.
+  The wider accumulator keeps that off the table for anything up to 18 digits.</p>
+
+<p>A production parser would go further and detect the overflow — that is what
+  <code>strtol</code> does, reporting it through <code>errno == ERANGE</code>.
+  Note also that <code>-value</code> where <code>value</code> is
+  <code>long long</code> handles <code>INT_MIN</code> correctly:
+  <code>2147483648</code> is representable there, whereas negating
+  <code>INT_MIN</code> as an <code>int</code> is itself undefined.</p>
+
+<h2>Test-by-test</h2>
+
+<table>
+  <tr><th>Input</th><th>Which line decides it</th><th>Result</th></tr>
+  <tr><td><code>"0"</code></td><td>loop runs once, value 0</td><td>ok 0</td></tr>
+  <tr><td><code>""</code></td><td>the first <code>*s == '\0'</code></td><td>bad</td></tr>
+  <tr><td><code>"-"</code></td><td>the second <code>*s == '\0'</code></td><td>bad</td></tr>
+  <tr><td><code>"+58"</code></td><td>sign consumed, two digits</td><td>ok 58</td></tr>
+  <tr><td><code>"12a"</code></td><td>the range test, on <code>a</code></td><td>bad</td></tr>
+</table>
+
+<h2>Cost</h2>
+
+<p><strong>O(n)</strong> in the length of the string, <strong>O(1)</strong>
+  space. One pass, no allocation, no lookahead.</p>
+
+<h2>Wrong turns worth recognising</h2>
+
+<div class="trap">
+<p><strong><code>isdigit(*s)</code> without the cast.</strong> Same
+  <code>&lt;ctype.h&gt;</code> hazard as elsewhere: the argument must be
+  representable as <code>unsigned char</code>. <code>isdigit((unsigned
+  char)*s)</code> is fine; the explicit <code>&lt;'0' || &gt;'9'</code> range
+  test avoids the question entirely and is locale-independent, which for a
+  decimal parser is a feature.</p>
+</div>
+
+<div class="trap">
+<p><strong>Accepting whitespace.</strong> <code>strtol</code> skips leading
+  spaces; this specification does not. <code>" 42"</code> must be rejected.</p>
+</div>
+
+<div class="trap">
+<p><strong>Rejecting leading zeros.</strong> <code>"007"</code> is a valid way
+  to write 7. The accumulator handles it without help — adding a rule against it
+  is inventing a requirement.</p>
+</div>
+
+<footer>
+  <p><a href="c_parse_int.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

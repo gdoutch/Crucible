@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Primes up to N · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>Primes up to N</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The idea</h2>
+
+<p>The sieve of Eratosthenes, and its defining feature is what it does
+  <em>not</em> do: it never tests a number for primality. It keeps a flag per
+  number, walks upwards, and every time it reaches a number that has not been
+  crossed out it declares it prime and crosses out all of its multiples.</p>
+
+<p>The reasoning is airtight. When the walk arrives at <code>v</code>, every
+  prime below <code>v</code> has already crossed out all of its own multiples.
+  So if <code>v</code> is still standing, no prime below it divides <code>v</code>
+  — and a composite number always has a prime factor below itself. Therefore
+  <code>v</code> is prime.</p>
+
+<h2>The code</h2>
+
+<pre><code>#include &lt;stdlib.h&gt;
+
+int primes_up_to(int n, int *out)
+{
+    if (n &lt; 2) {
+        return 0;
+    }
+
+    char *composite = calloc((size_t)n + 1, sizeof *composite);
+    if (composite == NULL) {
+        return 0;
+    }
+
+    int found = 0;
+    for (int value = 2; value &lt;= n; value++) {
+        if (composite[value]) {
+            continue;
+        }
+        out[found++] = value;
+        for (long long multiple = (long long)value * value;
+             multiple &lt;= n;
+             multiple += value) {
+            composite[multiple] = 1;
+        }
+    }
+
+    free(composite);
+    return found;
+}</code></pre>
+
+<h2>Watching it run for n = 30</h2>
+
+<table class="trace">
+  <tr><th>value</th><th>State</th><th>Crossed out</th></tr>
+  <tr><td>2</td><td>clear → <strong>prime</strong></td><td>4 6 8 10 12 … 30</td></tr>
+  <tr><td>3</td><td>clear → <strong>prime</strong></td><td>9 12 15 18 21 24 27 30</td></tr>
+  <tr><td>4</td><td>crossed out by 2</td><td>skipped entirely</td></tr>
+  <tr><td>5</td><td>clear → <strong>prime</strong></td><td>25 30</td></tr>
+  <tr><td>6</td><td>crossed out</td><td>—</td></tr>
+  <tr><td>7</td><td>clear → <strong>prime</strong></td><td>49 &gt; 30, so none</td></tr>
+  <tr><td>8…30</td><td colspan="2">the survivors — 11, 13, 17, 19, 23, 29 — are recorded; none crosses anything out, since every square exceeds 30</td></tr>
+</table>
+
+<p>Two things to notice. From 7 onwards the inner loop never runs at all: once
+  <code>value² &gt; n</code>, there is nothing left to mark. And the primes land
+  in <code>out</code> in ascending order automatically, because the outer loop
+  visits the numbers in order — no sorting step is needed.</p>
+
+<h2>Why the inner loop starts at <code>value * value</code></h2>
+
+<p>The natural first multiple is <code>2 · value</code>. But every multiple
+  <code>k · value</code> with <code>k &lt; value</code> has a factor smaller
+  than <code>value</code>, and that smaller factor — or a prime dividing it —
+  already had its turn in the outer loop and already crossed the number out. The
+  first multiple that <em>cannot</em> have been reached that way is
+  <code>value · value</code>.</p>
+
+<p>Concretely, when <code>value</code> is 7: 14 fell to 2, 21 fell to 3, 28 fell
+  to 2, 35 fell to 5, 42 fell to 2. The first new casualty is 49.</p>
+
+<h2>The overflow, which is the real trap</h2>
+
+<div class="trap">
+<p>Written as <code>int multiple = value * value;</code>, the multiplication is
+  performed in <code>int</code>. Once <code>value</code> exceeds 46340 the
+  product exceeds <code>INT_MAX</code>, and signed overflow in C is undefined
+  behaviour — not a wrap to a negative number you can reason about. In practice
+  you get a large negative value, the condition <code>multiple &lt;= n</code> is
+  true, and <code>composite[multiple]</code> writes to memory far before the
+  allocation.</p>
+</div>
+
+<p>Note carefully where the cast goes:</p>
+
+<table>
+  <tr><th>Expression</th><th>Verdict</th></tr>
+  <tr><td><code>(long long)value * value</code></td>
+      <td>Correct. The first operand is widened, so the second is promoted to
+        match and the multiplication happens in 64 bits.</td></tr>
+  <tr><td><code>(long long)(value * value)</code></td>
+      <td>Useless. The <code>int</code> multiplication overflows first; the cast
+        widens the damage.</td></tr>
+</table>
+
+<p>Keeping <code>multiple</code> itself a <code>long long</code> matters too:
+  <code>multiple += value</code> must not overflow either, and the loop exits on
+  the first value above <code>n</code>, which for <code>n</code> near
+  <code>INT_MAX</code> is a number that does not fit in an <code>int</code>.</p>
+
+<p>The alternative is to stop the outer loop early —
+  <code>for (int value = 2; (long long)value * value &lt;= n; value++)</code>
+  for the crossing-out phase, then collect the survivors in a second pass. Same
+  arithmetic care required, one more loop.</p>
+
+<h2>Memory</h2>
+
+<ul>
+  <li><strong><code>calloc</code>, not <code>malloc</code>.</strong> "Not crossed
+    out" is the starting state, and <code>calloc</code> zeroes the block.
+    <code>malloc</code> hands you whatever was in that memory, and a stray
+    non-zero byte would silently omit a prime.</li>
+  <li><strong><code>char</code>, not <code>int</code>.</strong> One byte per
+    number instead of four. For <code>n</code> = 10 million that is 10 MB
+    against 40 MB — and the sieve is memory-bound, so the small array is also
+    the faster one.</li>
+  <li><strong><code>(size_t)n + 1</code>.</strong> The cast happens before the
+    addition, so the arithmetic is done in <code>size_t</code>. Indices run
+    from 0 to <code>n</code> inclusive, hence the <code>+ 1</code>; slots 0 and
+    1 are never used and are not worth the index arithmetic to reclaim.</li>
+  <li><strong><code>sizeof *composite</code></strong> rather than
+    <code>sizeof(char)</code>. It re-derives the size from the variable, so
+    changing the type cannot desynchronise the allocation.</li>
+  <li><strong><code>free</code> before returning.</strong> One allocation, one
+    release, on every path that allocated. Here that is the single successful
+    return, because the failure path returns before allocating and the
+    null-check path has nothing to release.</li>
+</ul>
+
+<h2>The <code>n &lt; 2</code> guard</h2>
+
+<p>It has to come first, and not only because the answer is zero. With
+  <code>n = -5</code>, reaching <code>calloc((size_t)n + 1, 1)</code> converts
+  the negative to a huge <code>size_t</code> and asks for roughly 18 exabytes —
+  which fails, so the null check catches it, but only by luck. Rejecting the
+  input up front is the honest version. Three of the five fixed cases —
+  <em>zero</em>, <em>one</em> and <em>negative</em> — take this path.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(n log log n)</strong> time — near-linear; the log log factor comes
+  from summing <code>n/p</code> over the primes <code>p</code> up to
+  <code>n</code> — and <strong>O(n)</strong> space for the flags.</p>
+
+<p>Trial division, testing each number against every candidate divisor up to its
+  square root, is O(n√n). For <code>n</code> = 1,000,000 that is the difference
+  between a few milliseconds and several seconds.</p>
+
+<h2>Wrong turns worth recognising</h2>
+
+<div class="trap">
+<p><strong>Trial division dressed up as a sieve.</strong> Allocating the flag
+  array and then filling it by testing each number for primality gets the memory
+  cost of a sieve and the running time of trial division.</p>
+</div>
+
+<div class="trap">
+<p><strong>Off-by-one at the top.</strong> The problem says "up to
+  <strong>and including</strong> <code>n</code>". Both the allocation
+  (<code>n + 1</code> slots) and the loop bound (<code>value &lt;= n</code>)
+  depend on it. The <em>two</em> fixed case catches a solution that stops at
+  <code>n - 1</code>.</p>
+</div>
+
+<div class="trap">
+<p><strong>Leaking the scratch array.</strong> An early <code>return</code> from
+  the middle of the loop — say a bounds check you added — that skips the
+  <code>free</code>. One allocation per call, and this function may be called
+  once per test case.</p>
+</div>
+
+<footer>
+  <p><a href="c_sieve.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

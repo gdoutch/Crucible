@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Count the Vowels · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · easy</p>
+  <h1>Count the Vowels</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The idea</h2>
+
+<p>One pass, one counter. The only real content is the membership test, and the
+  trick to keeping that readable is to fold the case <em>first</em> so the test
+  has five arms instead of ten.</p>
+
+<h2>The code</h2>
+
+<pre><code>#include &lt;ctype.h&gt;
+
+int count_vowels(const char *s)
+{
+    int count = 0;
+    for (; *s != '\0'; s++) {
+        switch (tolower((unsigned char)*s)) {
+        case 'a':
+        case 'e':
+        case 'i':
+        case 'o':
+        case 'u':
+            count++;
+            break;
+        default:
+            break;
+        }
+    }
+    return count;
+}</code></pre>
+
+<p>The <code>switch</code> uses deliberate fall-through: <code>case 'a':</code>
+  has no body, so control falls to the next label, and all five converge on the
+  single <code>count++</code>. That is the one place fall-through is
+  uncontroversial — grouping labels that share an action — and a compiler
+  warning about implicit fall-through will not fire on empty cases.</p>
+
+<p>An <code>if</code> chain is exactly as good:</p>
+
+<pre><code>int c = tolower((unsigned char)*s);
+if (c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u') {
+    count++;
+}</code></pre>
+
+<p>So is <code>strchr("aeiou", c) != NULL</code>, with one caveat worth knowing:
+  <code>strchr</code> also matches the terminating <code>'\0'</code> of its
+  first argument, so if <code>c</code> could ever be zero it would report a
+  false match. Here it cannot, because the loop has already stopped at the
+  terminator — but that is a real bug in other people's code.</p>
+
+<h2>The cast is the point of the problem</h2>
+
+<div class="note">
+<p><code>tolower((unsigned char)*s)</code> — not <code>tolower(*s)</code>.</p>
+</div>
+
+<p>Every function in <code>&lt;ctype.h&gt;</code> takes an <code>int</code>, and
+  the standard says the value must either be <code>EOF</code> or be
+  representable as an <code>unsigned char</code>. Plain <code>char</code> is
+  signed on x86 and ARM64 alike, so the byte <code>0xC3</code> — the first byte
+  of <code>é</code> in UTF-8 — arrives as <code>-61</code>. Passing that is
+  undefined behaviour. In a typical implementation <code>tolower</code> indexes
+  a lookup table with the value, so a negative argument reads memory before the
+  start of the table.</p>
+
+<p>The cast to <code>unsigned char</code> reinterprets the byte as
+  <code>0..255</code>, and the implicit promotion to <code>int</code> then
+  keeps it positive. It costs nothing at runtime and it is correct everywhere.</p>
+
+<p>You can also skip <code>&lt;ctype.h&gt;</code> entirely and test both cases
+  by hand — <code>*s == 'a' || *s == 'A' || ...</code>. Ten comparisons instead
+  of five, but no locale and no cast to get wrong. Either answer is a good
+  answer; the bad answer is <code>tolower(*s)</code> unqualified.</p>
+
+<h2>Why the fixed cases are the ones they are</h2>
+
+<table>
+  <tr><th>Case</th><th>What it is defending</th></tr>
+  <tr>
+    <td><em>empty string</em></td>
+    <td><code>*s</code> is <code>'\0'</code> on the first test, the body never
+      runs, <code>0</code> comes back. A <code>do…while</code> here would
+      examine the terminator once before checking anything.</td>
+  </tr>
+  <tr>
+    <td><em>no vowels</em> (<code>rhythm</code>)</td>
+    <td><code>y</code> is not a vowel in this problem. It is the classic
+      "sometimes y" ambiguity, pinned down by a test so it cannot be argued
+      about.</td>
+  </tr>
+</table>
+
+<h2>Cost</h2>
+
+<p><strong>O(n)</strong> in the length of the string, <strong>O(1)</strong>
+  space. Note that walking the pointer avoids the trap of writing
+  <code>for (size_t i = 0; i &lt; strlen(s); i++)</code>, which re-measures the
+  string on every iteration and turns a linear loop into a quadratic one.
+  Compilers can sometimes hoist that call out, but only when they can prove the
+  string is not modified — do not rely on it.</p>
+
+<h2>Wrong turns worth recognising</h2>
+
+<div class="trap">
+<p><strong>Counting bytes, not characters.</strong> This function counts ASCII
+  vowels. Accented vowels in UTF-8 are multi-byte sequences and will not match,
+  which is the right behaviour for this problem and the wrong behaviour for a
+  real text processor. Knowing which one you have written is the skill.</p>
+</div>
+
+<div class="trap">
+<p><strong>Modifying the string.</strong> The parameter is
+  <code>const char *</code>. Calling something like
+  <code>*s = tolower(*s)</code> to normalise in place will not compile, and
+  that is the <code>const</code> doing its job — the caller's buffer is not
+  yours to rewrite.</p>
+</div>
+
+<footer>
+  <p><a href="c_count_vowels.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

@@ -6,6 +6,8 @@
                                        on any failure (use this in CI)
     python -m crucible --list          list the problems that loaded
     python -m crucible --toolchains    report which compilers were found
+    python -m crucible --guides        report problems missing a hint or a
+                                       worked solution, exit 1 if any are
 
 On Windows, Crucible.cmd double-clicks straight into the GUI.
 
@@ -21,7 +23,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from . import languages, randomise, runner
+from . import guides, languages, randomise, runner
 from .problem import Problem, load_library
 
 #: Repository root -- the package lives one level below it.
@@ -70,6 +72,44 @@ def cmd_list(root: Path) -> int:
         print(f"  [{problem.language_id:<6}] {problem.title}")
         print(f"           {problem.difficulty}, {visible} visible test(s)"
               f"{extra}{random_note}  id={problem.id}")
+    return 0
+
+
+def cmd_guides(root: Path) -> int:
+    """Report which problems are missing a hint or a worked solution.
+
+    Guides are found by filename, so there is no registry to fall out of step
+    with the problems -- but nothing warns you about a problem you forgot to
+    write them for either. This is that warning, and it exits non-zero so it
+    can sit in CI beside `--verify`.
+    """
+    library = load_library(root)
+    for error in library.errors:
+        print(f"  ! {error}")
+    if not library.problems:
+        print(f"No problems found under {root}")
+        return 1
+
+    incomplete = 0
+    for problem in library.problems:
+        absent = guides.missing(problem)
+        if not absent:
+            extra = ("  (+diagram)"
+                     if guides.find(problem, guides.DIAGRAM) else "")
+            print(f"  OK    {problem.title}{extra}")
+            continue
+        incomplete += 1
+        print(f"  MISSING {problem.title}  -- no "
+              f"{', '.join(guides.KINDS[kind].lower() for kind in absent)}")
+        for kind in absent:
+            print(f"           expected {guides.guide_path(problem, kind)}")
+
+    print()
+    if incomplete:
+        print(f"{incomplete} of {len(library.problems)} problem(s) are missing "
+              f"a guide.")
+        return 1
+    print(f"All {len(library.problems)} problems have both guides.")
     return 0
 
 
@@ -171,6 +211,9 @@ def main(argv: list[str] | None = None) -> int:
                        help="list available problems and exit")
     group.add_argument("--toolchains", action="store_true",
                        help="report detected compilers and exit")
+    group.add_argument("--guides", action="store_true",
+                       help="report which problems are missing a hint or a "
+                            "worked solution; exit 1 if any are")
     args = parser.parse_args(argv)
 
     root = args.problems.expanduser().resolve()
@@ -179,6 +222,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_toolchains()
     if args.list:
         return cmd_list(root)
+    if args.guides:
+        return cmd_guides(root)
     if args.verify:
         return cmd_verify(root, args.seed)
 

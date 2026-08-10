@@ -1,0 +1,272 @@
+/* Crucible guide pages.
+ *
+ * Every `*.hint.html` and `*.solution.html` beside a problem file links to
+ * this one stylesheet with a relative path -- `../guides.css` from a problem
+ * directory one level down, which is where all the shipped problems live.
+ *
+ * The pages are opened straight off disk with file://, so there is nothing
+ * here that needs a server, a font download or a script. If the stylesheet
+ * fails to load the pages are still ordinary readable HTML.
+ *
+ * Colours track the two app themes: the light palette is the default and the
+ * dark one is swapped in under prefers-color-scheme, so a guide launched from
+ * a dark editor does not arrive as a white rectangle.
+ */
+
+:root {
+    --page:        #f6f7fa;
+    --card:        #ffffff;
+    --ink:         #1d2029;
+    --ink-muted:   #5c6373;
+    --rule:        #dfe3ec;
+    --accent:      #2f6fd0;
+    --code-bg:     #f0f2f7;
+    --code-ink:    #24303f;
+    --hint-tint:   #b06a00;
+    --hint-wash:   #fff5e2;
+    --sol-tint:    #1c7a55;
+    --sol-wash:    #e6f6ef;
+    --warn-wash:   #fdeef0;
+    --warn-tint:   #a52a3c;
+    --dia-tint:    #2f6fd0;
+    --dia-wash:    #e8f0fd;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --page:      #1b1d23;
+        --card:      #22252d;
+        --ink:       #e4e6ec;
+        --ink-muted: #989fb2;
+        --rule:      #343849;
+        --accent:    #7aa2f7;
+        --code-bg:   #1a1c22;
+        --code-ink:  #d8dbe4;
+        --hint-tint: #e0a458;
+        --hint-wash: #2e2718;
+        --sol-tint:  #5ed4a8;
+        --sol-wash:  #162b25;
+        --warn-wash: #2f1d22;
+        --warn-tint: #f7768e;
+        --dia-tint:  #7aa2f7;
+        --dia-wash:  #1c2740;
+    }
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    padding: 2.5rem 1.25rem 5rem;
+    background: var(--page);
+    color: var(--ink);
+    font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+}
+
+.guide {
+    max-width: 46rem;
+    margin: 0 auto;
+}
+
+/* ---------------------------------------------------------------- header */
+
+.crumb {
+    margin: 0 0 .4rem;
+    font-size: .78rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+}
+
+h1 {
+    margin: 0;
+    font-size: 2rem;
+    line-height: 1.2;
+    letter-spacing: -.01em;
+}
+
+.kind {
+    display: inline-block;
+    margin: .85rem 0 0;
+    padding: .2rem .7rem;
+    border-radius: 999px;
+    font-size: .82rem;
+    font-weight: 600;
+}
+
+.hint .kind     { background: var(--hint-wash); color: var(--hint-tint); }
+.solution .kind { background: var(--sol-wash);  color: var(--sol-tint);  }
+.diagram .kind  { background: var(--dia-wash);  color: var(--dia-tint);  }
+
+.lede {
+    margin: 1.4rem 0 0;
+    font-size: 1.1rem;
+    color: var(--ink-muted);
+}
+
+header {
+    padding-bottom: 1.6rem;
+    border-bottom: 1px solid var(--rule);
+}
+
+/* ---------------------------------------------------------------- content */
+
+h2 {
+    margin: 2.4rem 0 .8rem;
+    font-size: 1.18rem;
+    letter-spacing: -.005em;
+}
+
+h3 {
+    margin: 1.8rem 0 .5rem;
+    font-size: 1rem;
+}
+
+p, li { margin: .7rem 0; }
+
+ul, ol { padding-left: 1.4rem; }
+
+li > ul, li > ol { margin: .3rem 0; }
+
+strong { font-weight: 600; }
+
+a { color: var(--accent); }
+
+code {
+    font-family: "Cascadia Mono", Consolas, "SF Mono", Menlo, monospace;
+    font-size: .9em;
+    background: var(--code-bg);
+    color: var(--code-ink);
+    padding: .1em .35em;
+    border-radius: 4px;
+}
+
+pre {
+    margin: 1rem 0;
+    padding: 1rem 1.1rem;
+    overflow-x: auto;
+    background: var(--code-bg);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    line-height: 1.55;
+}
+
+pre code {
+    padding: 0;
+    background: none;
+    font-size: .875rem;
+}
+
+/* -------------------------------------------------------------- diagrams */
+
+/* A Mermaid block starts life as its own source in a <pre>, and is replaced
+ * in place by an <svg> if the renderer loads. Both states have to look
+ * deliberate, because the un-rendered one is what an offline reader gets --
+ * and it is still the complete specification.
+ */
+pre.mermaid {
+    margin: 1.6rem 0 .8rem;
+    padding: 1.2rem;
+    text-align: center;
+    background: var(--card);
+}
+
+pre.mermaid svg {
+    max-width: 100%;
+    height: auto;
+}
+
+.mermaid-note {
+    margin: 0 0 1.5rem;
+    font-size: .85rem;
+    color: var(--ink-muted);
+}
+
+/* --------------------------------------------------------------- callouts */
+
+.note, .trap {
+    margin: 1.3rem 0;
+    padding: .9rem 1.1rem;
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    background: var(--card);
+}
+
+.trap {
+    border-left-color: var(--warn-tint);
+    background: var(--warn-wash);
+}
+
+.note > :first-child, .trap > :first-child { margin-top: 0; }
+.note > :last-child,  .trap > :last-child  { margin-bottom: 0; }
+
+/* A stronger nudge, folded away so the first read stays gentle. */
+details {
+    margin: 1.3rem 0;
+    padding: .2rem 1.1rem;
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+}
+
+summary {
+    margin: 0 -1.1rem;
+    padding: .75rem 1.1rem;
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--accent);
+}
+
+details[open] summary {
+    margin-bottom: .2rem;
+    border-bottom: 1px solid var(--rule);
+}
+
+/* ----------------------------------------------------------------- tables */
+
+table {
+    width: 100%;
+    margin: 1.1rem 0;
+    border-collapse: collapse;
+    font-size: .92rem;
+}
+
+th, td {
+    padding: .45rem .6rem;
+    text-align: left;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+}
+
+th {
+    font-size: .78rem;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+}
+
+td code { white-space: nowrap; }
+
+.trace td:first-child { color: var(--ink-muted); white-space: nowrap; }
+
+/* ----------------------------------------------------------------- footer */
+
+footer {
+    margin-top: 3rem;
+    padding-top: 1.2rem;
+    border-top: 1px solid var(--rule);
+    font-size: .92rem;
+    color: var(--ink-muted);
+}
+
+footer a { font-weight: 600; }
+
+/* ------------------------------------------------------------------ print */
+
+@media print {
+    body { background: #fff; color: #000; padding: 0; }
+    details { border: 0; }
+    details:not([open]) > *:not(summary) { display: revert; }
+    pre { background: #f4f4f4; }
+}

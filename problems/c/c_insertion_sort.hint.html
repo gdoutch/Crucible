@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Sort an Array In Place · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>Sort an Array In Place</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>Ascending order, in the caller's own array, with no return value. And
+  written by hand — <code>qsort</code> passes the tests and skips the
+  exercise.</p>
+
+<h2>Think of a hand of cards</h2>
+
+<p>Insertion sort is the way most people sort a dealt hand without being taught
+  to. The cards on the left are already in order; you pick up the next one and
+  slide it left past everything bigger until it is in the right place.</p>
+
+<p>So the invariant is: <strong>after processing index <code>i</code>, the
+  elements <code>values[0..i]</code> are sorted among themselves.</strong> They
+  are not in their final positions — later elements can still land among them —
+  but they are in order relative to each other. Start with
+  <code>i = 0</code>, which is trivially sorted, and grow the sorted region one
+  element at a time.</p>
+
+<h2>The inner loop is a shift, not a swap</h2>
+
+<p>Here is where people go wrong. To insert a value you need a gap for it, and
+  you make the gap by <strong>moving the bigger elements one place right</strong>
+  — working from the right-hand end of the sorted region backwards, so nothing
+  is overwritten before it has been copied.</p>
+
+<p>That means you must save the value you are inserting <em>before</em> you
+  start shifting. Its slot is the first one to be overwritten.</p>
+
+<pre><code>sorted region        the value being placed
+┌───────────────┐   ┌───┐
+│ 2   5   9     │   │ 4 │   key = 4, saved out of the way
+└───────────────┘   └───┘
+      9 moves right ──────►     2   5   _   9
+      5 moves right ──────►     2   _   5   9
+      2 is not bigger; stop.    2   4   5   9</code></pre>
+
+<h2>The inner loop's two exit conditions</h2>
+
+<p>Stop shifting when either:</p>
+<ul>
+  <li>you find an element that is <strong>not</strong> greater than the value
+    you are placing — everything to its left is smaller still, so the gap is
+    where the value belongs; or</li>
+  <li>you run off the front of the array, meaning the value is smaller than
+    everything and belongs at index <code>0</code>.</li>
+</ul>
+
+<div class="trap">
+<p><strong>Order those two tests carefully.</strong>
+  <code>while (values[j] &gt; key &amp;&amp; j &gt;= 0)</code> reads
+  <code>values[-1]</code> before it checks whether <code>j</code> is still
+  valid. C's <code>&amp;&amp;</code> evaluates left to right and short-circuits,
+  so the bounds test has to come <em>first</em>.</p>
+</div>
+
+<h2>Details</h2>
+
+<ul>
+  <li>The outer loop starts at <code>1</code>, not <code>0</code> — a
+    one-element region is already sorted.</li>
+  <li>Use <code>&gt;</code>, not <code>&gt;=</code>, in the shift condition.
+    With <code>&gt;=</code> equal elements are shuffled past each other for no
+    reason, which costs time and loses stability.</li>
+  <li><code>count</code> may be <code>0</code> with <code>values ==
+    NULL</code>, and may be <code>1</code>. Check that your loops simply do not
+    run rather than adding guards.</li>
+</ul>
+
+<details>
+<summary>Still stuck? A bigger nudge</summary>
+
+<pre><code>for (int i = 1; i &lt; count; i++) {
+    int key = values[i];          /* save it before the slot is clobbered */
+    int j = i - 1;
+
+    while (/* j is still valid AND values[j] is bigger than key */) {
+        values[j + 1] = values[j];    /* shift right */
+        j--;
+    }
+
+    values[j + 1] = key;          /* the gap is at j + 1, not j */
+}</code></pre>
+
+<p>The <code>j + 1</code> at the end catches people. When the loop stops,
+  <code>j</code> points at the element that should stay to the <em>left</em> of
+  the key (or at <code>-1</code>), so the gap is the slot after it.</p>
+
+</details>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_insertion_sort.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

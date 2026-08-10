@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Edit Distance · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · hard</p>
+  <h1>Edit Distance</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The idea</h2>
+
+<p>Levenshtein distance by dynamic programming. Define</p>
+
+<div class="note">
+<p><code>d[i][j]</code> = the edit distance between the first <em>i</em>
+  characters of <code>a</code> and the first <em>j</em> characters of
+  <code>b</code>.</p>
+</div>
+
+<p>Then every cell is answerable from three neighbours, because whatever the
+  optimal edit sequence for <code>(i, j)</code> is, its <em>last</em> step must
+  be one of exactly three things:</p>
+
+<table>
+  <tr><th>Last step</th><th>Leaves you at</th><th>Cost</th></tr>
+  <tr><td>Delete <code>a[i−1]</code></td><td><code>d[i−1][j]</code></td><td>+1</td></tr>
+  <tr><td>Insert <code>b[j−1]</code></td><td><code>d[i][j−1]</code></td><td>+1</td></tr>
+  <tr><td>Keep or replace</td><td><code>d[i−1][j−1]</code></td>
+      <td>+0 if the characters match, +1 if they differ</td></tr>
+</table>
+
+<p>Take the cheapest. Because the three sub-problems are strictly smaller, and
+  because each is solved once and reused, the whole table fills in
+  O(<em>n</em>·<em>m</em>) time.</p>
+
+<h2>The base cases carry real information</h2>
+
+<p><code>d[0][j] = j</code>: turning the empty string into a <em>j</em>-character
+  string requires <em>j</em> insertions and there is no cheaper way.
+  <code>d[i][0] = i</code>: <em>i</em> deletions. These are not padding — the
+  entire table is built out of them, and a first row of zeros produces answers
+  that are far too small everywhere.</p>
+
+<h2>The code</h2>
+
+<pre><code>#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+
+static int smallest_of(int a, int b, int c)
+{
+    int smallest = (a &lt; b) ? a : b;
+    return (smallest &lt; c) ? smallest : c;
+}
+
+int edit_distance(const char *a, const char *b)
+{
+    size_t len_a = strlen(a);
+    size_t len_b = strlen(b);
+
+    int *previous = malloc((len_b + 1) * sizeof *previous);
+    int *current = malloc((len_b + 1) * sizeof *current);
+    if (previous == NULL || current == NULL) {
+        free(previous);
+        free(current);
+        return -1;
+    }
+
+    for (size_t j = 0; j &lt;= len_b; j++) {
+        previous[j] = (int)j;
+    }
+
+    for (size_t i = 1; i &lt;= len_a; i++) {
+        current[0] = (int)i;
+        for (size_t j = 1; j &lt;= len_b; j++) {
+            int replace_cost = (a[i - 1] == b[j - 1]) ? 0 : 1;
+            current[j] = smallest_of(previous[j] + 1,
+                                     current[j - 1] + 1,
+                                     previous[j - 1] + replace_cost);
+        }
+        int *swap = previous;
+        previous = current;
+        current = swap;
+    }
+
+    int result = previous[len_b];
+    free(previous);
+    free(current);
+    return result;
+}</code></pre>
+
+<h2>The full table, for kitten → sitting</h2>
+
+<p>Rows are prefixes of <code>kitten</code>, columns prefixes of
+  <code>sitting</code>. Row 0 and column 0 are the base cases.</p>
+
+<table class="trace">
+<tr><th></th><th>ε</th><th>s</th><th>i</th><th>t</th><th>t</th><th>i</th><th>n</th><th>g</th></tr>
+<tr><th>ε</th><td>0</td><td>1</td><td>2</td><td>3</td><td>4</td><td>5</td><td>6</td><td>7</td></tr>
+<tr><th>k</th><td>1</td><td><strong>1</strong></td><td>2</td><td>3</td><td>4</td><td>5</td><td>6</td><td>7</td></tr>
+<tr><th>i</th><td>2</td><td>2</td><td><strong>1</strong></td><td>2</td><td>3</td><td>4</td><td>5</td><td>6</td></tr>
+<tr><th>t</th><td>3</td><td>3</td><td>2</td><td><strong>1</strong></td><td>2</td><td>3</td><td>4</td><td>5</td></tr>
+<tr><th>t</th><td>4</td><td>4</td><td>3</td><td>2</td><td><strong>1</strong></td><td>2</td><td>3</td><td>4</td></tr>
+<tr><th>e</th><td>5</td><td>5</td><td>4</td><td>3</td><td>2</td><td><strong>2</strong></td><td>3</td><td>4</td></tr>
+<tr><th>n</th><td>6</td><td>6</td><td>5</td><td>4</td><td>3</td><td>3</td><td><strong>2</strong></td><td><strong>3</strong></td></tr>
+</table>
+
+<p>Bottom right: <strong>3</strong>. Reading the diagonal backwards recovers the
+  edits — replace <code>k</code>→<code>s</code>, replace
+  <code>e</code>→<code>i</code>, insert <code>g</code>.</p>
+
+<p>Look at the cell for <code>ki</code> vs <code>si</code> (row 2, column 2). Its
+  three candidates are <code>previous[2] + 1 = 3</code> (delete),
+  <code>current[1] + 1 = 3</code> (insert), and
+  <code>previous[1] + 0 = 1</code> (the <code>i</code>s match, so free). The
+  diagonal wins, and the earlier replacement of <code>k</code> is carried
+  forward without being paid for twice.</p>
+
+<h2>The two-row optimisation</h2>
+
+<p>Every cell reads only <code>previous[j]</code>, <code>previous[j-1]</code> and
+  <code>current[j-1]</code> — nothing from more than one row back. So rows
+  <code>0..i-2</code> can be discarded as soon as row <code>i-1</code> is
+  complete.</p>
+
+<p>The mechanics:</p>
+
+<ul>
+  <li><code>previous</code> is seeded with row 0 — <code>0, 1, 2, …</code>, the
+    insertions.</li>
+  <li>Each row sets <code>current[0] = i</code> first. That is the first-column
+    base case, and it must be written before the inner loop, because
+    <code>current[1]</code> reads <code>current[0]</code>.</li>
+  <li>At the end of the row the two pointers are swapped, so the row just
+    finished becomes <code>previous</code> and the buffer holding the row before
+    it is recycled as the new <code>current</code>.</li>
+</ul>
+
+<div class="trap">
+<p>Because of that final swap, the answer is in <code>previous</code> and not
+  in <code>current</code> when the loop ends. Reading <code>current[len_b]</code>
+  gives you row <code>len_a - 1</code>, off by one row — which is off by
+  approximately one in the answer, so it passes the empty and identical cases
+  and fails <code>kitten</code>/<code>sitting</code>.</p>
+</div>
+
+<p>Memory drops from O(<em>n</em>·<em>m</em>) to O(<em>m</em>). The price is that
+  you can no longer walk the table backwards to recover the actual sequence of
+  edits — for that you need the whole thing, or Hirschberg's algorithm, which
+  gets the sequence in linear space by divide and conquer.</p>
+
+<h2>The empty-string cases</h2>
+
+<table>
+  <tr><th>Case</th><th>Path through the code</th></tr>
+  <tr>
+    <td><em>both empty</em></td>
+    <td>The seeding loop writes <code>previous[0] = 0</code>. The outer loop
+      never runs. <code>previous[0]</code> is returned: <code>0</code>.</td>
+  </tr>
+  <tr>
+    <td><em>first empty</em> (<code>""</code>/<code>abcd</code>)</td>
+    <td>Outer loop never runs; the answer comes straight from the seeded row —
+      <code>previous[4] = 4</code>. This case is a direct test of the base
+      row.</td>
+  </tr>
+  <tr>
+    <td><em>second empty</em> (<code>abcde</code>/<code>""</code>)</td>
+    <td><code>len_b</code> is 0, so the inner loop never runs and each row does
+      nothing but <code>current[0] = i</code>. The final
+      <code>previous[0]</code> is <code>5</code>. This tests the first-column
+      base case, and it is where forgetting <code>current[0] = i</code> shows
+      up.</td>
+  </tr>
+  <tr>
+    <td><em>identical</em></td>
+    <td>Every diagonal step is free, so the minimum tracks the diagonal from
+      corner to corner and arrives at <code>0</code>.</td>
+  </tr>
+</table>
+
+<p>Notice that both single-empty cases are handled by the seeding and the base
+  cases alone, with no special-case code. Allocating <code>len_b + 1</code>
+  entries — never zero — is what makes that work.</p>
+
+<h2>Memory discipline</h2>
+
+<p>Two allocations, and both are freed on both exits. The failure path uses the
+  fact that <code>free(NULL)</code> is defined to do nothing, so it can release
+  both without checking which one succeeded. Returning <code>-1</code> for
+  allocation failure is a sentinel the caller here never sees — a distance can
+  never be negative, so it is at least unambiguous.</p>
+
+<p>The <code>free(previous); free(current);</code> at the end frees both buffers
+  regardless of how many times they were swapped: the two pointers always name
+  the two blocks, just possibly the other way round.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(n · m)</strong> time, <strong>O(min(n, m))</strong> space if you
+  also swap the arguments so the shorter string drives the row length — a
+  worthwhile addition not made here.</p>
+
+<p>There is no substantially faster general algorithm; the problem is believed
+  to require quadratic time under the strong exponential time hypothesis. When
+  you only care whether the distance is below some threshold <em>k</em>, the
+  band of cells within <em>k</em> of the diagonal is enough, giving
+  O(<em>k</em>·<em>n</em>).</p>
+
+<h2>Wrong turns worth recognising</h2>
+
+<div class="trap">
+<p><strong>A first row of zeros.</strong> The single most common failure. It
+  encodes "the empty string is free to become anything", and the resulting
+  answers are much too small everywhere. Both empty-string cases catch it
+  immediately.</p>
+</div>
+
+<div class="trap">
+<p><strong>Indexing the strings with <code>i</code> and <code>j</code>.</strong>
+  The table is offset by one from the strings. <code>d[i][j]</code> concerns
+  <code>a[i - 1]</code> and <code>b[j - 1]</code>. Using <code>a[i]</code> reads
+  one character too far — and at <code>i == len_a</code> that is the
+  terminator, which compares unequal to everything and quietly adds
+  replacements.</p>
+</div>
+
+<div class="trap">
+<p><strong>Plain recursion without memoisation.</strong> The recurrence
+  transcribes directly into a three-way recursive call, and it is exponential —
+  the same subproblems are recomputed astronomically often.
+  <code>kitten</code>/<code>sitting</code> would take a noticeable moment; two
+  twenty-character strings would not finish. The table <em>is</em> the
+  memoisation.</p>
+</div>
+
+<footer>
+  <p><a href="c_edit_distance.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

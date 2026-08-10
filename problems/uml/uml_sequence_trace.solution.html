@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Trace From a Sequence Diagram · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · Python · medium</p>
+  <h1>Trace From a Sequence Diagram</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The idea</h2>
+
+<p>Walk the diagram from top to bottom. Each arrow is one call; each fragment
+  is one control structure; nesting on the page is nesting in the code. Done
+  faithfully, the function ends up looking like the picture rotated ninety
+  degrees.</p>
+
+<h2>The code</h2>
+
+<pre><code>def place_order(send, reply, in_stock, declines):
+    """Walk the diagram top to bottom, one fragment at a time."""
+    send("Client", "OrderService", "place")
+    send("OrderService", "Inventory", "reserve")
+
+    if not in_stock:
+        reply("Inventory", "OrderService", "unavailable")
+        reply("OrderService", "Client", "unavailable")
+        return
+
+    reply("Inventory", "OrderService", "reserved")
+
+    accepted = False
+    for attempt in range(3):
+        send("OrderService", "PaymentGateway", "charge")
+        if attempt &lt; declines:
+            reply("PaymentGateway", "OrderService", "declined")
+        else:
+            reply("PaymentGateway", "OrderService", "accepted")
+            accepted = True
+            break
+
+    if accepted:
+        send("OrderService", "Notifier", "confirm")
+        reply("OrderService", "Client", "confirmed")
+    else:
+        send("OrderService", "Inventory", "release")
+        reply("OrderService", "Client", "declined")</code></pre>
+
+<h2>Fragment by fragment</h2>
+
+<h3>The two messages above every fragment</h3>
+
+<p><code>place</code> and <code>reserve</code> are outside the outer
+  <code>alt</code>, so they happen on every path. Every one of the eight
+  scenarios starts with the same two lines.</p>
+
+<h3>The outer <code>alt</code>, and the early return</h3>
+
+<p>The out-of-stock branch is handled first and returns, which is a flattening
+  of the diagram rather than a change to it — the alternative is to put the
+  entire rest of the function inside an <code>else</code> and indent it. Both
+  are faithful; the early return keeps the nesting shallow enough to read.</p>
+
+<div class="note">
+<p>This is where the <em>out of stock, declines ignored</em> test bites. The
+  gateway sits inside the in-stock branch, so <code>no 3</code> must produce
+  exactly what <code>no 0</code> produces. A solution that reads the diagram as
+  a flat list of messages and gates each one separately gets a spurious
+  <code>charge</code> here.</p>
+</div>
+
+<h3>The loop, and why it is not three iterations</h3>
+
+<p>The label reads "at most 3 attempts, stopping at the first acceptance", so
+  the loop needs both a bound and an exit. <code>range(3)</code> is the bound;
+  <code>break</code> is the exit.</p>
+
+<p><code>attempt &lt; declines</code> is the gateway's whole behaviour.
+  Attempts <code>0</code> to <code>declines - 1</code> are declined and the
+  next one succeeds:</p>
+
+<table>
+  <tr><th><code>declines</code></th><th>Attempts made</th><th>Outcome</th></tr>
+  <tr><td>0</td><td>1</td><td>accepted on the first</td></tr>
+  <tr><td>1</td><td>2</td><td>accepted on the second</td></tr>
+  <tr><td>2</td><td>3</td><td>accepted on the third</td></tr>
+  <tr><td>3</td><td>3</td><td>never accepted — the loop exhausts</td></tr>
+</table>
+
+<p>When <code>declines</code> is <code>3</code> the condition is true for
+  <code>0</code>, <code>1</code> and <code>2</code>, the <code>break</code>
+  never runs, and <code>accepted</code> is still <code>False</code> below.
+  That single comparison covers all four columns without a special case.</p>
+
+<h3>The flag</h3>
+
+<p><code>accepted</code> exists because the fragment <em>below</em> the loop
+  branches on <em>how the loop ended</em>, and Python does not otherwise tell
+  you. The idiomatic alternative is <code>for … else</code>:</p>
+
+<pre><code>for attempt in range(3):
+    send("OrderService", "PaymentGateway", "charge")
+    if attempt &gt;= declines:
+        reply("PaymentGateway", "OrderService", "accepted")
+        break
+    reply("PaymentGateway", "OrderService", "declined")
+else:
+    send("OrderService", "Inventory", "release")
+    reply("OrderService", "Client", "declined")
+    return
+
+send("OrderService", "Notifier", "confirm")
+reply("OrderService", "Client", "confirmed")</code></pre>
+
+<p>The <code>else</code> runs only when the loop was <em>not</em> broken out
+  of, which is exactly "no attempt was accepted". It is shorter and it is a
+  construct many readers have to stop and remember. The flag is the better
+  answer in code someone else maintains.</p>
+
+<h3>The unwind</h3>
+
+<p><code>release</code> is the arrow that puts back what <code>reserve</code>
+  took. Missing it is the most common error on this problem, because a diagram
+  read for its happy path does not draw attention to the branch that cleans
+  up.</p>
+
+<p>In real systems that arrow is the difference between a failed checkout and
+  stock that is reserved forever. It is worth noticing that the diagram
+  <em>tells you about the bug</em> — the information was there to be read.</p>
+
+<h2>Walking a case</h2>
+
+<p><code>yes 1</code> — in stock, one decline:</p>
+
+<table class="trace">
+  <tr><th>#</th><th>Where in the diagram</th><th>Line printed</th></tr>
+  <tr><td>1</td><td>above the fragments</td><td><code>Client -&gt; OrderService: place</code></td></tr>
+  <tr><td>2</td><td>above the fragments</td><td><code>OrderService -&gt; Inventory: reserve</code></td></tr>
+  <tr><td>3</td><td><code>alt</code>, in-stock branch</td><td><code>Inventory --&gt; OrderService: reserved</code></td></tr>
+  <tr><td>4</td><td>loop, attempt 0</td><td><code>OrderService -&gt; PaymentGateway: charge</code></td></tr>
+  <tr><td>5</td><td>0 &lt; 1, declined</td><td><code>PaymentGateway --&gt; OrderService: declined</code></td></tr>
+  <tr><td>6</td><td>loop, attempt 1</td><td><code>OrderService -&gt; PaymentGateway: charge</code></td></tr>
+  <tr><td>7</td><td>1 not &lt; 1, accepted → break</td><td><code>PaymentGateway --&gt; OrderService: accepted</code></td></tr>
+  <tr><td>8</td><td>final <code>alt</code>, accepted</td><td><code>OrderService -&gt; Notifier: confirm</code></td></tr>
+  <tr><td>9</td><td>final <code>alt</code>, accepted</td><td><code>OrderService --&gt; Client: confirmed</code></td></tr>
+</table>
+
+<h2>Why the harness owns <code>send</code> and <code>reply</code></h2>
+
+<p>They are passed in rather than imported, so your file has no say in what a
+  message looks like or where it goes. That is the same arrangement as the
+  harness owning <code>main</code> in the C problems: the thing being observed
+  cannot alter the observation.</p>
+
+<p>It also makes the exercise about the <em>order</em> of the calls and nothing
+  else — no formatting to get wrong, no output to buffer.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(1)</strong>. At most eleven messages, whatever the input. Worth
+  saying because it makes the point that this problem has no algorithm in it at
+  all: the entire difficulty is reading the specification correctly, which is
+  true of a great deal of real work.</p>
+
+<h2>Wrong turns worth recognising</h2>
+
+<div class="trap">
+<p><strong>Always running three attempts.</strong> <code>range(3)</code> with
+  no <code>break</code> produces three <code>charge</code> lines even when the
+  first is accepted. The loop's label is part of the specification.</p>
+</div>
+
+<div class="trap">
+<p><strong>Charging when out of stock.</strong> Reading the diagram as a
+  checklist rather than a nesting. The two <code>no</code> cases exist to catch
+  exactly this.</p>
+</div>
+
+<div class="trap">
+<p><strong>Using <code>send</code> for the returns.</strong> The dashed arrows
+  are replies. Six of the eleven possible messages are dashed, so this shows up
+  immediately — but it is worth knowing the distinction is real: a return
+  belongs to the call that caused it, and drawing it as a call implies an
+  independent message the receiver has to be prepared for.</p>
+</div>
+
+<div class="trap">
+<p><strong>Emitting the reply from the wrong end.</strong>
+  <code>Inventory --&gt; OrderService: reserved</code> flows from Inventory
+  back to OrderService — the reverse of the call that provoked it. Copying the
+  participant order from the call line gets it backwards.</p>
+</div>
+
+<footer>
+  <p><a href="uml_sequence_trace.hint.html">← Back to the hint</a> ·
+     <a href="uml_sequence_trace.diagram.html">The diagram</a> ·
+     Press <strong>Ctrl+R</strong> for a fresh data set.</p>
+</footer>
+
+</main>
+</body>
+</html>

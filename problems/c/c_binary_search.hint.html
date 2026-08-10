@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Binary Search · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>Binary Search</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>The index of <code>target</code> in an ascending sorted array, or
+  <code>-1</code>. A linear scan gets the right answers and misses the point;
+  the exercise is the halving.</p>
+
+<h2>The idea in one sentence</h2>
+
+<p>Keep a window of the array that <em>could still contain</em> the target,
+  look at its middle element, and throw away the half that cannot.</p>
+
+<p>Two variables define the window — call them <code>low</code> and
+  <code>high</code> — and everything hinges on what exactly they mean. Pick one
+  meaning and hold to it, because almost every binary-search bug is really an
+  inconsistency between the initialisation, the loop condition and the
+  updates.</p>
+
+<h2>The convention that causes the fewest mistakes</h2>
+
+<p><strong><code>low</code> and <code>high</code> are both valid indices, and
+  the window is inclusive at both ends.</strong> Then:</p>
+
+<table>
+  <tr><th>Question</th><th>Answer forced by the convention</th></tr>
+  <tr><td>Where does <code>high</code> start?</td>
+      <td><code>count - 1</code> — the last valid index, not <code>count</code>.</td></tr>
+  <tr><td>Is a one-element window still worth checking?</td>
+      <td>Yes: <code>low == high</code> names a real element nobody has looked
+        at. So the loop must keep going while <code>low &lt;= high</code>.</td></tr>
+  <tr><td>After ruling out <code>mid</code>, what is the new window?</td>
+      <td><code>mid</code> itself is excluded, so <code>mid + 1</code> or
+        <code>mid - 1</code> — never <code>mid</code>.</td></tr>
+</table>
+
+<p>Get any one of those three out of step with the other two and you have
+  either an infinite loop or a missed element.</p>
+
+<div class="trap">
+<p><strong>The infinite loop is the likely failure, not a wrong answer.</strong>
+  If the window ever fails to shrink — say you set <code>low = mid</code>
+  instead of <code>mid + 1</code> — a two-element window can repeat forever.
+  Crucible times each case out separately, so watch for
+  <code>TIMEOUT</code>.</p>
+</div>
+
+<h2>Computing the middle</h2>
+
+<p>Write it as <code>low + (high - low) / 2</code> rather than
+  <code>(low + high) / 2</code>. The two are equal for every input this problem
+  will give you, but the second overflows once the indices get large enough to
+  sum past <code>INT_MAX</code>. It is a famous bug — it sat in the JDK's
+  binary search for nine years — and the safe form costs nothing.</p>
+
+<h2>The two edge cases in the fixed tests</h2>
+
+<ul>
+  <li><strong>Empty array.</strong> <code>count</code> is <code>0</code>, so
+    <code>high</code> starts at <code>-1</code>, and <code>0 &lt;= -1</code> is
+    false. The loop never runs, nothing is dereferenced, <code>-1</code> comes
+    back. You should not need an explicit guard — check that you do not.</li>
+  <li><strong>Last element.</strong> Finding the value at index
+    <code>count - 1</code> is where an <code>i &lt; count</code>-style
+    off-by-one shows up.</li>
+</ul>
+
+<details>
+<summary>Still stuck? A bigger nudge</summary>
+
+<pre><code>int low = 0;
+int high = count - 1;
+
+while (low &lt;= high) {
+    int mid = low + (high - low) / 2;
+    if (values[mid] == target) {
+        return mid;
+    }
+    if (values[mid] &lt; target) {
+        /* the target, if present, is to the right of mid */
+    } else {
+        /* ... to the left */
+    }
+}
+return -1;</code></pre>
+
+<p>Fill in the two branches. Each one must move <code>low</code> or
+  <code>high</code> <em>past</em> <code>mid</code>, because <code>mid</code> has
+  just been ruled out.</p>
+
+</details>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li>Empty array → <code>-1</code>, no crash.</li>
+  <li>Single element, present → <code>0</code>; absent → <code>-1</code>.</li>
+  <li>First element and last element are both findable.</li>
+  <li>A target smaller than everything, and one larger than everything, both
+    return <code>-1</code> rather than looping.</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_binary_search.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>
