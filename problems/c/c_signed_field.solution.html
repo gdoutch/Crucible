@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Extract a Signed Sensor Reading · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · hard</p>
+  <h1>Extract a Signed Sensor Reading</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>int extract_signed_field(unsigned int reg, int start, int width)
+{
+    unsigned int mask = (width == 32) ? 0xFFFFFFFFu : (1u &lt;&lt; width) - 1u;
+    unsigned int field = (reg &gt;&gt; start) &amp; mask;
+    unsigned int sign_bit = 1u &lt;&lt; (width - 1);
+
+    if (field &amp; sign_bit) {
+        field -= sign_bit &lt;&lt; 1;
+    }
+    return (int)field;
+}</code></pre>
+
+<p>The first two lines are <a href="c_bitfield_extract.solution.html">Extract
+  a Register Field</a> exactly. The rest is what turns an unsigned field into
+  the signed number it represents.</p>
+
+<h2>What "sign-extend" actually means</h2>
+
+<p>A <code>width</code>-bit two's-complement value only means something
+  different from its plain unsigned reading when the top bit — bit
+  <code>width - 1</code> — is set. When it is, the value the bits represent is
+  <code>field - 2^width</code>, not <code>field</code>. Four bits,
+  concretely:</p>
+
+<table class="trace">
+  <tr><th>Bits</th><th>Unsigned</th><th>Two's complement</th></tr>
+  <tr><td>0111</td><td>7</td><td>7 (top bit clear -- no change)</td></tr>
+  <tr><td>1000</td><td>8</td><td>8 − 16 = −8</td></tr>
+  <tr><td>1111</td><td>15</td><td>15 − 16 = −1</td></tr>
+</table>
+
+<p><code>sign_bit</code> is <code>1u &lt;&lt; (width - 1)</code> — the top bit
+  of the field, on its own. <code>sign_bit &lt;&lt; 1</code> is
+  <code>2^width</code>, computed by shifting that same bit one further rather
+  than writing a second, separate <code>1u &lt;&lt; width</code> — which
+  matters, because <code>width</code> itself can be 32, and a fresh
+  <code>1u &lt;&lt; width</code> would hit the same undefined shift as the
+  mask. <code>sign_bit &lt;&lt; 1</code> shifts by a constant <code>1</code>
+  instead, which is always safe: shifting a 1 bit out of the top of an
+  unsigned type is well defined, it just discards it, giving <code>0</code> —
+  and at <code>width == 32</code> that is exactly the right answer, because
+  subtracting <code>0</code> leaves the full 32-bit pattern to be
+  reinterpreted by the final cast, which is what a full-width field needs
+  anyway.</p>
+
+<h2>The trap: whose top bit?</h2>
+
+<div class="trap">
+<p>The sign bit is bit <code>width - 1</code> of <code>field</code> — the
+  value <em>after</em> shifting and masking — never bit 31 of <code>reg</code>
+  itself. A 12-bit reading packed into a 16-bit register shares that register
+  with four other bits that have nothing to do with this field's sign; a
+  reading packed into the low byte of a 32-bit register shares it with 24
+  bits that have even less to do with it.</p>
+<p>Two of the fixed tests use the same upper bits of <code>reg</code> and
+  differ only in the field itself, specifically so that "which bit did you
+  actually test" cannot be dodged by accident:</p>
+<ul>
+  <li><code>extract_signed_field(0xABCDEF7F, 0, 8)</code> — bit 31 of the
+    register is <code>1</code>, but the field is bits 0-7, and its own top
+    bit (bit 7 of the field, value <code>0x7F</code>) is <code>0</code>. The
+    field is positive: <code>127</code>. Testing bit 31 instead of bit 7 gets
+    this backwards.</li>
+  <li><code>extract_signed_field(0x23CDEF80, 0, 8)</code> — the mirror image:
+    bit 31 of the register is now <code>0</code>, but the field's own top bit
+    is <code>1</code> (<code>0x80</code>). The field is negative:
+    <code>-128</code>. Testing bit 31 gets this one backwards too, in the
+    other direction.</li>
+</ul>
+<p>Together the pair rules out "test some fixed bit of the register" entirely
+  — whichever bit a wrong implementation happens to test, one of the two
+  cases sets it to disagree with the field's actual sign.</p>
+</div>
+
+<h2>The other trap, carried over</h2>
+
+<p><code>width == 32</code> needs the mask formula's special case for the
+  same reason it does in
+  <a href="c_bitfield_extract.solution.html">Extract a Register Field</a> and
+  <a href="c_bitfield_write.solution.html">Write a Register Field</a>:
+  <code>1u &lt;&lt; 32</code> is undefined behaviour, not a value that
+  saturates usefully. <code>extract_signed_field(0xFFFFFFFF, 0, 32)</code> —
+  the whole register reinterpreted as signed — is <code>-1</code>, and is one
+  of the fixed tests.</p>
+
+<h2>An alternative worth knowing: shift, don't subtract</h2>
+
+<p>The classic version of this trick sign-extends with two shifts instead of a
+  branch and a subtraction:</p>
+
+<pre><code>int shifted = (int)(reg &lt;&lt; (32 - start - width));  /* field's sign bit -&gt; bit 31 */
+return shifted &gt;&gt; (32 - width);                     /* arithmetic shift back down */</code></pre>
+
+<p>Left-shifting puts the field's own top bit exactly on bit 31 of a 32-bit
+  value; right-shifting a <em>signed</em> value back down copies that bit into
+  every position it passes over, which is sign extension in hardware, for
+  free. It is neat, and it is the same implementation-defined territory as the
+  shift version of <a href="c_count_set_bits.solution.html">Count the Set
+  Bits</a>: right-shifting a negative signed <code>int</code> is not required
+  by the standard to sign-extend, even though every mainstream compiler does
+  exactly that. The branch-and-subtract version above stays in unsigned
+  arithmetic until the one cast at the very end, which is why it is the one
+  written out as the primary answer here.</p>
+
+<h2>Cost</h2>
+
+<p>A handful of operators and one branch, no loop: <strong>O(1)</strong> time
+  and space for any <code>width</code>.</p>
+
+<footer>
+  <p><a href="c_signed_field.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

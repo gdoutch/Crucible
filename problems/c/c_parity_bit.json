@@ -1,0 +1,58 @@
+{
+  "id": "c_parity_bit",
+  "title": "Compute the Parity Bit",
+  "language": "c",
+  "difficulty": "easy",
+  "topics": [
+    "bitwise",
+    "embedded",
+    "error-detection"
+  ],
+  "timeout_seconds": 5,
+  "statement": "A parity bit is the cheapest error check there is. Add one extra bit chosen\nso the total number of set bits comes out even, and a receiver that counts an\nodd number back knows -- with no further information -- that something in\ntransit got corrupted. UART links have used it for decades; it is the whole\nidea behind a checksum, reduced to one bit.\n\n## Your function\n\n```\nint even_parity(unsigned int value);\n```\n\nReturn the parity bit that would make `value`'s bit count even if it were\nappended: `1` if `value` has an **odd** number of set bits, `0` if it already\nhas an **even** number (zero counts as even).\n\n`even_parity(0x00000001)` is `1` -- one bit set, which is odd.\n`even_parity(0x00000003)` is `0` -- two bits set, which is even.\n\n## A different bit trick to the one you may already know\n\n*Count the Set Bits* solves a similar-looking problem by removing one bit at\na time and counting. That works here too -- compute the population count and\nreturn `count & 1` -- but there is a faster way that never counts anything.\n\nParity is invariant under **XOR-folding**: XOR the top half of the value into\nthe bottom half, and the parity of what is left is the same as the parity of\nthe whole thing, because XOR-ing two bits together is exactly \"are these two\ndifferent\", which is exactly what parity already tracks one bit at a time.\nHalve it again, and again, and five folds take 32 bits down to 1.\n\n## Watch out\n\n- The parameter is `unsigned int` so that a right shift is always a **logical**\n  shift -- zeros come in from the top, never copies of a sign bit. Keep any\n  working variable you introduce unsigned too, for the same reason *Count the\n  Set Bits* insists on it.\n",
+  "starter_code": "int even_parity(unsigned int value)\n{\n    /* your code here */\n    (void)value;\n    return 0;\n}\n",
+  "harness": "#include <stdio.h>\n\n/* Provided by the candidate in solution.c */\nint even_parity(unsigned int value);\n\nint main(void)\n{\n    unsigned int value;\n    if (scanf(\"%x\", &value) != 1) {\n        return 1;\n    }\n    printf(\"%d\\n\", even_parity(value));\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random values, plus ones built from a chosen number of set bits so both\nparities show up on purpose rather than by luck.\"\"\"\n\n\ndef generate(rng, count):\n    builders = (_anything, _chosen_bit_count, _one_bit)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, value, description=\"\"):\n    return {\"name\": name, \"stdin\": \"%X\\n\" % value, \"description\": description}\n\n\ndef _anything(rng, index):\n    return _case(\"a random value #%d\" % index, rng.randrange(0, 2 ** 32))\n\n\ndef _chosen_bit_count(rng, index):\n    n = rng.randint(0, 32)\n    positions = rng.sample(range(32), n)\n    value = 0\n    for bit in positions:\n        value |= 1 << bit\n    parity = \"even\" if n % 2 == 0 else \"odd\"\n    return _case(\"exactly %d bit(s) set #%d\" % (n, index), value,\n                 \"%d set bits is %s.\" % (n, parity))\n\n\ndef _one_bit(rng, index):\n    bit = rng.randrange(32)\n    return _case(\"one bit alone #%d\" % index, 1 << bit,\n                 \"A single set bit is always odd parity.\")\n"
+  },
+  "tests": [
+    {
+      "name": "nothing set",
+      "stdin": "0\n",
+      "expected_stdout": "0"
+    },
+    {
+      "name": "one bit set",
+      "stdin": "1\n",
+      "expected_stdout": "1"
+    },
+    {
+      "name": "two bits set",
+      "stdin": "3\n",
+      "expected_stdout": "0"
+    },
+    {
+      "name": "eight bits set",
+      "stdin": "FF\n",
+      "expected_stdout": "0"
+    },
+    {
+      "name": "the top bit, alone",
+      "stdin": "80000000\n",
+      "expected_stdout": "1"
+    },
+    {
+      "name": "every bit set",
+      "stdin": "FFFFFFFF\n",
+      "expected_stdout": "0",
+      "description": "32 is even -- and the value most likely to break a fold written with a signed working variable."
+    },
+    {
+      "name": "every bit except the top one",
+      "stdin": "7FFFFFFF\n",
+      "expected_stdout": "1"
+    }
+  ],
+  "reference_solution_b64": "aW50IGV2ZW5fcGFyaXR5KHVuc2lnbmVkIGludCB2YWx1ZSkKewogICAgdW5zaWduZWQgaW50IHYgPSB2YWx1ZTsKCiAgICB2IF49IHYgPj4gMTY7CiAgICB2IF49IHYgPj4gODsKICAgIHYgXj0gdiA+PiA0OwogICAgdiBePSB2ID4+IDI7CiAgICB2IF49IHYgPj4gMTsKICAgIHJldHVybiAoaW50KSh2ICYgMXUpOwp9Cg=="
+}

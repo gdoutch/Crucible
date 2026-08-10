@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Write a Register Field (Read-Modify-Write) · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>Write a Register Field (Read-Modify-Write)</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The idea</h2>
+
+<p>Clear the field's old bits, then OR the new ones in — and mask the new
+  value first, so only its low <code>width</code> bits can ever reach the
+  register:</p>
+
+<pre><code>unsigned int set_field(unsigned int reg, int start, int width,
+                       unsigned int value)
+{
+    unsigned int mask = (width == 32) ? 0xFFFFFFFFu : (1u &lt;&lt; width) - 1u;
+
+    reg &amp;= ~(mask &lt;&lt; start);
+    reg |= (value &amp; mask) &lt;&lt; start;
+    return reg;
+}</code></pre>
+
+<h2>Walking it through</h2>
+
+<p><code>set_field(0xB5, 2, 3, 0x6)</code> — write <code>110</code> into a
+  3-bit field at bit 2 of <code>0xB5</code> (<code>1011 0101</code>):</p>
+
+<table class="trace">
+  <tr><th>Step</th><th>Value</th><th>Binary</th></tr>
+  <tr><td>reg</td><td>0xB5</td><td>1011 0101</td></tr>
+  <tr><td>mask &lt;&lt; start</td><td>0x1C</td><td>0001 1100</td></tr>
+  <tr><td>reg &amp;= ~(mask &lt;&lt; start)</td><td>0xA1</td><td>1010 0001</td></tr>
+  <tr><td>(value &amp; mask) &lt;&lt; start</td><td>0x18</td><td>0001 1000</td></tr>
+  <tr><td>result</td><td>0xB9</td><td>1011 1001</td></tr>
+</table>
+
+<p>The clear step zeroed exactly bits 2-4 and left the rest of
+  <code>0xB5</code> untouched — the <code>1011</code> in the top nibble and
+  the <code>01</code> at the bottom both survive unchanged. The set step then
+  had a clean field to write into.</p>
+
+<h2>Trap 1: clearing before setting is not optional</h2>
+
+<div class="trap">
+<p>Drop the clear line and keep only <code>reg |= (value &amp; mask) &lt;&lt; start</code>,
+  and the function still passes any test where the field starts at zero — OR
+  into zero is indistinguishable from assignment. It fails the moment the
+  field is not already zero and the new value has a 0 where the old value had
+  a 1, because OR can only ever turn bits on.</p>
+<p><code>set_field(0xF0, 4, 4, 0)</code> is the test built around exactly
+  this: field <code>1111</code>, new value <code>0000</code>. The clear step
+  gets <code>0x00</code>; skip it and the answer comes back <code>0xF0</code>,
+  unchanged, because there was nothing in an OR-only version capable of
+  turning those bits back off.</p>
+</div>
+
+<h2>Trap 2: mask the incoming value, not only the register</h2>
+
+<div class="trap">
+<p><code>reg |= value &lt;&lt; start;</code> — dropping just the
+  <code>&amp; mask</code> on <code>value</code> — passes any test where
+  <code>value</code> already fits in <code>width</code> bits, which is most
+  of them if you are testing your own code with values you picked. Nothing in
+  the type system stops a caller handing over something wider.</p>
+<p><code>set_field(0x0F, 8, 4, 0xFF)</code> is built to catch it: the field is
+  4 bits at position 8, and <code>value</code> is a full byte,
+  <code>0xFF</code>. Masked, only <code>0xF</code> goes into the field and the
+  answer is <code>0x0F0F</code>. Unmasked, all eight bits of <code>0xFF</code>
+  land at position 8, and bits 12-15 — a field this call was never supposed to
+  touch — pick up ones they should not have, giving <code>0xFF0F</code>.</p>
+</div>
+
+<h2>The mask formula, once more</h2>
+
+<p>Both operations lean on the same mask as
+  <a href="c_bitfield_extract.solution.html">Extract a Register Field</a>, for
+  the same reason: <code>(1u &lt;&lt; width) - 1u</code> is undefined at
+  <code>width == 32</code>, because the shift amount reaches the type's own
+  bit width. <code>set_field(reg, 0, 32, value)</code> — a whole-register
+  overwrite — is a legitimate call, so the special case has to be there:</p>
+
+<pre><code>unsigned int mask = (width == 32) ? 0xFFFFFFFFu : (1u &lt;&lt; width) - 1u;</code></pre>
+
+<p>At <code>width == 32</code> the clear step becomes
+  <code>reg &amp;= ~0xFFFFFFFFu</code>, which is <code>reg &amp;= 0</code> —
+  the whole register is discarded — and the set step ORs in
+  <code>value</code> untouched. The two lines still do the right thing; they
+  just needed a mask that was actually <code>0xFFFFFFFF</code> to do it with.</p>
+
+<h2>Cost</h2>
+
+<p>Four operators, no loop, regardless of <code>width</code>:
+  <strong>O(1)</strong> time and space.</p>
+
+<footer>
+  <p><a href="c_bitfield_write.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

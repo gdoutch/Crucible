@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Extract a Register Field · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · easy</p>
+  <h1>Extract a Register Field</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The idea</h2>
+
+<p>Shift the field down to bit 0, then mask off anything else that came down
+  with it. Two operators, in that order:</p>
+
+<pre><code>unsigned int extract_field(unsigned int reg, int start, int width)
+{
+    unsigned int mask = (width == 32) ? 0xFFFFFFFFu : (1u &lt;&lt; width) - 1u;
+
+    return (reg &gt;&gt; start) &amp; mask;
+}</code></pre>
+
+<h2>Walking it through</h2>
+
+<p>Take <code>extract_field(0xD6, 2, 4)</code> — bits 2-5 of
+  <code>0xD6</code>. In binary, <code>0xD6</code> is <code>1101 0110</code>:</p>
+
+<table class="trace">
+  <tr><th>Step</th><th>Value</th><th>Binary</th></tr>
+  <tr><td>reg</td><td>0xD6</td><td>1101 0110</td></tr>
+  <tr><td>reg &gt;&gt; 2</td><td>0x35</td><td>0011 0101</td></tr>
+  <tr><td>mask (width 4)</td><td>0x0F</td><td>0000 1111</td></tr>
+  <tr><td>result</td><td>0x05</td><td>0000 0101</td></tr>
+</table>
+
+<p>Shifting right by 2 walks bits 2-5 down to bits 0-3, dragging bits 6-7
+  along underneath them. The mask throws those away, leaving exactly the four
+  bits that made up the field.</p>
+
+<h2>The mask, and why <code>width == 32</code> needs its own line</h2>
+
+<div class="trap">
+<p><code>(1u &lt;&lt; width) - 1u</code> is the standard way to build "N ones in
+  a row", and it is correct for every <code>width</code> from 1 to 31. At
+  <code>width = 32</code> it breaks, because <code>1u &lt;&lt; 32</code> shifts
+  a 32-bit value by an amount equal to its own bit width — which C makes
+  undefined, not merely "big". There is no guaranteed result at all, let alone
+  a useful one.</p>
+<p>On the compiler this app builds submissions with, the shift instruction
+  the compiler emits takes its count modulo 32 in hardware, so
+  <code>1u &lt;&lt; 32</code> behaves like <code>1u &lt;&lt; 0</code>, giving
+  <code>1u</code>. Subtract one and the "mask" is <code>0</code>: every bit of
+  the field gets thrown away instead of kept, and a width-32 read of any
+  register comes back <code>0</code>. That is a real, reproducible failure on
+  this toolchain, not a hypothetical one — which is exactly why it is worth
+  routing around rather than relying on: a different compiler, a different
+  optimisation level, or a future compiler version is free to do something
+  else entirely with the same undefined shift.</p>
+</div>
+
+<p>The fix is to stop asking the shift to cover a case it cannot:</p>
+
+<pre><code>unsigned int mask = (width == 32) ? 0xFFFFFFFFu : (1u &lt;&lt; width) - 1u;</code></pre>
+
+<p><code>reg &gt;&gt; start</code> never has this problem on its own. The
+  precondition guarantees <code>start &lt; 32</code> whenever <code>width</code>
+  is at least 1, so the shift amount for the register itself never reaches 32
+  — only the mask calculation, which shifts by <code>width</code> rather than
+  <code>start</code>, can hit the boundary.</p>
+
+<h2>Why right-justify at all</h2>
+
+<p>The alternative would be to return the field still sitting at its original
+  bit position — <code>reg &amp; (mask &lt;&lt; start)</code> — but that pushes
+  the shifting onto every caller, and it means a 1-bit field comes back as
+  either <code>0</code> or <code>1u &lt;&lt; start</code> rather than a plain
+  <code>0</code> or <code>1</code>. Right-justifying once, here, is the same
+  work done in one place instead of at every call site.</p>
+
+<h2>Cost</h2>
+
+<p>Two operators, no loop: <strong>O(1)</strong> time, <strong>O(1)</strong>
+  space, for any <code>width</code> up to the full register.</p>
+
+<h2>A wrong turn worth recognising</h2>
+
+<div class="trap">
+<p><strong>Looping a bit at a time instead of shifting once.</strong> It is
+  possible to extract a field by testing and copying one bit per iteration,
+  and it gives the right answer — but it hides the two-operator shape that
+  makes this pattern recognisable everywhere else it shows up, including in
+  <a href="c_bitfield_write.solution.html">Write a Register Field</a>, which
+  builds directly on the mask computed the same way here.</p>
+</div>
+
+<footer>
+  <p><a href="c_bitfield_extract.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

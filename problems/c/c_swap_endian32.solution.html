@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Byte-Swap a Register (Endianness) · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · easy</p>
+  <h1>Byte-Swap a Register (Endianness)</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>unsigned int swap_endian32(unsigned int value)
+{
+    return ((value &amp; 0x000000FFu) &lt;&lt; 24) |
+           ((value &amp; 0x0000FF00u) &lt;&lt; 8)  |
+           ((value &amp; 0x00FF0000u) &gt;&gt; 8)  |
+           ((value &amp; 0xFF000000u) &gt;&gt; 24);
+}</code></pre>
+
+<p>Four independent operations on the same <code>value</code>, combined with
+  OR. Nothing here depends on the order they run in, which is what makes this
+  version safe to write as one expression instead of four statements that
+  each mutate a running total.</p>
+
+<h2>Walking it through</h2>
+
+<p><code>swap_endian32(0x12345678)</code> -- each byte isolated, then moved:</p>
+
+<table class="trace">
+  <tr><th>Byte</th><th>Masked</th><th>Shift</th><th>Moved</th></tr>
+  <tr><td>0x78 (lowest)</td><td>0x00000078</td><td>&lt;&lt; 24</td><td>0x78000000</td></tr>
+  <tr><td>0x56</td><td>0x00005600</td><td>&lt;&lt; 8</td><td>0x00560000</td></tr>
+  <tr><td>0x34</td><td>0x00340000</td><td>&gt;&gt; 8</td><td>0x00003400</td></tr>
+  <tr><td>0x12 (highest)</td><td>0x12000000</td><td>&gt;&gt; 24</td><td>0x00000012</td></tr>
+</table>
+
+<p>OR the "moved" column together: <code>0x78000000 | 0x00560000 |
+  0x00003400 | 0x00000012 = 0x78563412</code>. Each byte lands in exactly one
+  final position, so the four ORs never collide.</p>
+
+<h2>Why mask before shifting, not after</h2>
+
+<p>Masking first confines each byte to its own field before it moves, so
+  shifting it can never spill into a neighbour -- the bits above and below the
+  masked byte are already zero, and shifting zero produces more zero.
+  Shifting first and masking the result afterwards works out identically for
+  this particular function, because <code>unsigned int</code> shifts are
+  well-defined and simply discard whatever falls off either end -- but
+  mask-then-shift is the version that generalises, including to problems like
+  <a href="c_bitfield_write.solution.html">Write a Register Field</a> where
+  the value being masked is not already confined to the type's full width.</p>
+
+<h2>Why it is its own inverse</h2>
+
+<p>Swapping reverses a specific pairing -- (0,3) and (1,2) -- and reversing the
+  same pairing a second time returns every byte to where it started. That
+  makes <code>swap_endian32</code> an <strong>involution</strong>: the same
+  function converts a value in either direction between big-endian and
+  little-endian byte order, because "swap the bytes" does not need to know
+  which direction it is being asked to go.</p>
+
+<div class="note">
+<p>This is also a fast way to sanity-check your own implementation before
+  running the tests: <code>swap_endian32(swap_endian32(x))</code> must equal
+  <code>x</code> for every <code>x</code>. If it does not, the four
+  mask/shift pairs are not exact mirrors of each other.</p>
+</div>
+
+<h2>At work, reach for the intrinsic</h2>
+
+<p>This exercise is worth writing out by hand once. In real code, the
+  platform already has a single instruction for it: <code>__builtin_bswap32</code>
+  on GCC and Clang, <code>_byteswap_ulong</code> on MSVC, or
+  <code>htonl</code>/<code>ntohl</code> from <code>&lt;arpa/inet.h&gt;</code>
+  on POSIX systems specifically for network byte order. Any of them compiles
+  to one <code>bswap</code> instruction, with no masks to get backwards.</p>
+
+<h2>Cost</h2>
+
+<p>Four masks, four shifts, three ORs -- fixed regardless of the input:
+  <strong>O(1)</strong> time and space.</p>
+
+<footer>
+  <p><a href="c_swap_endian32.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

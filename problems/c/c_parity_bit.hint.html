@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Compute the Parity Bit · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · easy</p>
+  <h1>Compute the Parity Bit</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>Whether <code>value</code> has an odd or an even number of set bits --
+  <code>1</code> for odd, <code>0</code> for even. That is all "the parity
+  bit" is: the one extra bit that would make the total count even if you
+  appended it.</p>
+
+<h2>The way you already know</h2>
+
+<p>If you have solved <em>Count the Set Bits</em>, you already have a
+  function that answers a harder version of this question. Parity is just
+  that count, looked at one way:</p>
+
+<pre><code>return count_set_bits(value) &amp; 1;</code></pre>
+
+<p>That is a completely acceptable answer. It is also more work than the
+  question needs -- counting every bit to find out only whether the total is
+  odd or even.</p>
+
+<h2>A trick that never counts anything</h2>
+
+<p>XOR two bits together and the result is <code>1</code> exactly when they
+  differ -- which is another way of saying it tracks parity for those two
+  bits on its own. Chain that idea across the whole word: XOR the top half of
+  <code>value</code> into the bottom half, and the bottom 16 bits now carry
+  the same overall parity as the original 32. Halve again, and again -- five
+  halvings take 32 bits down to a single one.</p>
+
+<pre><code>v ^= v &gt;&gt; 16;
+v ^= v &gt;&gt; 8;
+/* ...and so on, down to &gt;&gt; 1 */</code></pre>
+
+<p>The last bit left, <code>v &amp; 1</code>, is the answer.</p>
+
+<h2>Watch out</h2>
+
+<ul>
+  <li>The parameter is <code>unsigned int</code> for the same reason it is in
+    <em>Count the Set Bits</em>: a right shift on an unsigned value always
+    brings in zeros from the top, which is what a fold like this depends on.
+    Keep any working variable you introduce unsigned too.</li>
+  <li>How many times do you need to halve 32 to reach 1? Get the number of
+    fold steps right, or the top bits never make it down to where you are
+    reading the answer from.</li>
+</ul>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li><code>even_parity(0)</code> → <code>0</code> -- zero bits is even.</li>
+  <li><code>even_parity(1)</code> → <code>1</code>.</li>
+  <li><code>even_parity(0xFFFFFFFF)</code> → <code>0</code> -- 32 set bits is
+    even.</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_parity_bit.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — GPIO Set/Clear/Toggle (Read-Modify-Write) · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>GPIO Set/Clear/Toggle (Read-Modify-Write)</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>Three operations on a register, each one a single bitwise expression
+  against <code>reg</code> and <code>mask</code>. Get the right operator for
+  each and there is nothing else to the function — no loop, no state to keep
+  track of beyond what the harness already hands you.</p>
+
+<h2>The three operators</h2>
+
+<table>
+  <tr><th>Operation</th><th>Meaning</th><th>Expression</th></tr>
+  <tr><td><code>GPIO_SET</code></td><td>drive masked pins high</td><td><code>reg | mask</code></td></tr>
+  <tr><td><code>GPIO_CLEAR</code></td><td>drive masked pins low</td><td><code>reg &amp; ???</code></td></tr>
+  <tr><td><code>GPIO_TOGGLE</code></td><td>flip masked pins</td><td><code>reg ^ mask</code></td></tr>
+</table>
+
+<p><code>SET</code> and <code>TOGGLE</code> are filled in above because they
+  are the two people rarely get wrong. <code>CLEAR</code> is left blank on
+  purpose.</p>
+
+<h2>The trap the problem is built around</h2>
+
+<div class="trap">
+<p><code>reg &amp; mask</code> is not "clear the masked pins" — it is closer
+  to the opposite. AND-ing with <code>mask</code> keeps only the bits that are
+  in the mask <em>and</em> already set in <code>reg</code>, and clears
+  everything <strong>outside</strong> the mask, which is exactly backwards
+  from what a GPIO clear operation is supposed to do: leave the untouched pins
+  untouched, and drop only the masked ones.</p>
+<p>What you want is AND with the mask's <strong>complement</strong>:
+  <code>reg &amp; ~mask</code>. <code>~mask</code> is <code>0</code> at every
+  masked bit and <code>1</code> everywhere else, so ANDing it in clears
+  exactly the masked pins and leaves every other bit exactly as it was.</p>
+<p>One of the fixed test cases runs <code>SET</code>, then <code>CLR</code>,
+  then <code>TOG</code> in sequence. Get the <code>CLR</code> step backwards
+  and that test's middle line comes back wrong while the first and last lines
+  might still look fine — a strong signal to go back and look at exactly this.</p>
+</div>
+
+<details>
+<summary>Still stuck? A bigger nudge</summary>
+
+<pre><code>unsigned int gpio_apply(unsigned int reg, enum gpio_op op, unsigned int mask)
+{
+    switch (op) {
+        case GPIO_SET:    return reg | mask;
+        case GPIO_CLEAR:  return reg &amp; ~mask;
+        case GPIO_TOGGLE: return reg ^ mask;
+        default:          return reg;
+    }
+}</code></pre>
+
+</details>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li>Starting from <code>0</code>: <code>SET 0xF</code> → <code>0xF</code>,
+    then <code>CLR 0x5</code> → <code>0xA</code>, not <code>0x5</code>.</li>
+  <li>Toggling the same mask twice in a row always returns to where you
+    started.</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_gpio_ops.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

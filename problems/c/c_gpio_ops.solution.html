@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — GPIO Set/Clear/Toggle (Read-Modify-Write) · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>GPIO Set/Clear/Toggle (Read-Modify-Write)</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>enum gpio_op { GPIO_SET, GPIO_CLEAR, GPIO_TOGGLE };
+
+unsigned int gpio_apply(unsigned int reg, enum gpio_op op, unsigned int mask)
+{
+    switch (op) {
+        case GPIO_SET:
+            return reg | mask;
+        case GPIO_CLEAR:
+            return reg &amp; ~mask;
+        case GPIO_TOGGLE:
+            return reg ^ mask;
+        default:
+            return reg;
+    }
+}</code></pre>
+
+<p>Three operations, three operators, no state of your own to manage — the
+  harness keeps the running register value and feeds it back in as
+  <code>reg</code> on the next call.</p>
+
+<h2>Why each operator is the right one</h2>
+
+<table>
+  <tr><th>Operation</th><th>On a masked bit</th><th>On every other bit</th></tr>
+  <tr><td><code>reg | mask</code></td><td>forced to 1</td><td>unchanged (OR with 0 is a no-op)</td></tr>
+  <tr><td><code>reg &amp; ~mask</code></td><td>forced to 0</td><td>unchanged (AND with 1 is a no-op)</td></tr>
+  <tr><td><code>reg ^ mask</code></td><td>flipped</td><td>unchanged (XOR with 0 is a no-op)</td></tr>
+</table>
+
+<p>All three share the same shape: an operator that is a no-op against
+  <code>0</code>, applied everywhere the mask is <code>0</code>, so "every
+  other bit" is untouched by construction rather than by carefully avoiding
+  it.</p>
+
+<h2>The trap: AND with the mask, not its complement</h2>
+
+<div class="trap">
+<p><code>reg &amp; mask</code> — leaving out the <code>~</code> — looks
+  plausible if you are thinking "AND selects the bits I care about". It does,
+  but that is backwards for a clear operation: it keeps only the pins that are
+  both in the mask <em>and</em> currently high, and drops every pin
+  <strong>outside</strong> the mask down to 0 as a side effect, which is the
+  one thing a clear operation must never do to an unrelated pin.</p>
+<p>The fixed test that catches it runs <code>SET 0xF</code> then
+  <code>CLR 0x5</code> against a register that starts at <code>0</code>.
+  After the <code>SET</code>, <code>reg</code> is <code>0xF</code>
+  (<code>1111</code>). The correct clear, <code>0xF &amp; ~0x5</code>, drops
+  bits 0 and 2 and keeps bits 1 and 3: <code>0xA</code>. The backwards
+  version, <code>0xF &amp; 0x5</code>, keeps only bits 0 and 2:
+  <code>0x5</code> — which also happens to look like a plausible answer on
+  its own, so it is the printed trace as a whole, not any single number, that
+  gives the mistake away.</p>
+</div>
+
+<h2>Walking the trace</h2>
+
+<table class="trace">
+  <tr><th>Step</th><th>Operation</th><th>Register</th></tr>
+  <tr><td>start</td><td>—</td><td>00000000</td></tr>
+  <tr><td>1</td><td>SET 0000000F</td><td>0000000F</td></tr>
+  <tr><td>2</td><td>CLR 00000005</td><td>0000000A</td></tr>
+  <tr><td>3</td><td>TOG 00000003</td><td>00000009</td></tr>
+</table>
+
+<p>Step 3 flips bits 0 and 1 of <code>0xA</code> (<code>1010</code>): bit 0
+  goes <code>0 → 1</code>, bit 1 goes <code>1 → 0</code>, giving
+  <code>1001</code> — <code>0x9</code>.</p>
+
+<h2>Beyond the exercise: why real GPIO ports avoid this pattern</h2>
+
+<p>Every operation here is a <strong>read-modify-write</strong>: the CPU reads
+  the register, computes the new value, and writes it back — three separate
+  steps, not one atomic one. If an interrupt handler touches the same
+  register between the read and the write, its change is silently overwritten
+  when the write finally happens, because neither side knew about the other's
+  in-flight update.</p>
+
+<p>This is exactly the problem many microcontrollers design around. STM32
+  parts, for instance, give a GPIO port a second register, <code>BSRR</code>,
+  that is write-only: writing a 1 to bit <em>n</em> sets pin <em>n</em>,
+  writing a 1 to bit <em>n</em>+16 clears it, and the write itself is the only
+  step — there is no read to race against. The read-modify-write dance in
+  this exercise is the general-purpose fallback for registers that do not
+  offer that shortcut, which is most of them; it is worth recognising when you
+  are looking at one that does.</p>
+
+<h2>Cost</h2>
+
+<p>One operator per call, <strong>O(1)</strong> time and space, regardless of
+  how many operations the trace runs.</p>
+
+<footer>
+  <p><a href="c_gpio_ops.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,63 @@
+{
+  "id": "c_signed_field",
+  "title": "Extract a Signed Sensor Reading",
+  "language": "c",
+  "difficulty": "hard",
+  "topics": [
+    "bitwise",
+    "embedded",
+    "registers",
+    "sign-extension",
+    "twos-complement"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Not every field is a flag or a count. A lot of sensor hardware -- an\naccelerometer axis, a thermocouple reading, a microphone sample -- hands back\na **signed** two's-complement value packed into fewer bits than an `int`,\nsitting inside a register that also carries status flags in the bits around\nit. Reading it out is *Extract a Register Field* plus one more step: deciding\nwhere the field's own sign bit is, and extending it correctly.\n\n## Your function\n\n```\nint extract_signed_field(unsigned int reg, int start, int width);\n```\n\n`start` and `width` mean what they meant in the two register-field problems:\n`start` is `0` to `31`, `width` is `1` to `32`, `start + width <= 32` always.\nExtract the field, then treat it as a `width`-bit two's-complement number and\nreturn its value sign-extended to a full `int`.\n\n`extract_signed_field(0xFFF, 0, 12)` is `-1`: the low 12 bits are all set,\nwhich is `-1` in 12-bit two's complement, whatever is sitting in bits 12-31.\n\n## Watch out\n\n- **The sign bit is bit `width - 1` of the field, not bit 31 of the\n  register.** A register carrying a 12-bit reading typically has other\n  things in bits 12-31 -- status flags, a second channel, padding -- and\n  none of it is meant to affect the sign of this field. Mask the field down\n  to its own `width` bits *before* you test or use its top bit; test on the\n  masked field, never on the raw shifted register.\n- **`width` can be `32`**, same as the other two register problems, and the\n  mask you build from it needs the same special case -- `1u << 32` is\n  undefined behaviour.\n- A portable way to sign-extend without shifting a signed value at all: if\n  the field's top bit is set, subtract `1u << width` from it (computed as\n  `sign_bit << 1`, using the sign bit you already found, so the same `width\n  == 32` care applies there too). Everything stays unsigned until the final\n  cast back to `int`.\n",
+  "starter_code": "int extract_signed_field(unsigned int reg, int start, int width)\n{\n    /* your code here */\n    (void)reg;\n    (void)start;\n    (void)width;\n    return 0;\n}\n",
+  "harness": "#include <stdio.h>\n\n/* Provided by the candidate in solution.c */\nint extract_signed_field(unsigned int reg, int start, int width);\n\nint main(void)\n{\n    unsigned int reg;\n    int start, width;\n    if (scanf(\"%x %d %d\", &reg, &start, &width) != 3) {\n        return 1;\n    }\n    printf(\"%d\\n\", extract_signed_field(reg, start, width));\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random signed fields, some forced negative and some forced positive, with\nunrelated flag bits scattered around the field on purpose.\"\"\"\n\n\ndef generate(rng, count):\n    builders = (_anything, _forced_negative, _forced_positive, _whole_register)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, reg, start, width, description=\"\"):\n    return {\n        \"name\": name,\n        \"stdin\": \"%X %d %d\\n\" % (reg, start, width),\n        \"description\": description,\n    }\n\n\ndef _anything(rng, index):\n    reg = rng.randrange(0, 2 ** 32)\n    start = rng.randrange(24)\n    width = rng.randint(2, 32 - start)\n    return _case(\"a random signed field #%d\" % index, reg, start, width)\n\n\ndef _flagged(rng, start, width, field):\n    field_mask = ((1 << width) - 1) << start\n    flags = rng.randrange(0, 2 ** 32) & ~field_mask\n    return (flags | (field << start)) & 0xFFFFFFFF\n\n\ndef _forced_negative(rng, index):\n    start = rng.randrange(24)\n    width = rng.randint(2, 32 - start)\n    field = rng.randrange(1 << (width - 1), 1 << width)  # field's sign bit set\n    reg = _flagged(rng, start, width, field)\n    return _case(\"a negative reading with flags around it #%d\" % index,\n                 reg, start, width,\n                 \"The field's own top bit is set; that is what makes it \"\n                 \"negative, not anything elsewhere in the register.\")\n\n\ndef _forced_positive(rng, index):\n    start = rng.randrange(24)\n    width = rng.randint(2, 32 - start)\n    field = rng.randrange(0, 1 << (width - 1))  # field's sign bit clear\n    reg = _flagged(rng, start, width, field)\n    return _case(\"a positive reading with flags around it #%d\" % index,\n                 reg, start, width)\n\n\ndef _whole_register(rng, index):\n    reg = rng.randrange(0, 2 ** 32)\n    return _case(\"the whole register, width = 32 #%d\" % index, reg, 0, 32)\n"
+  },
+  "tests": [
+    {
+      "name": "a -1 reading among status flags",
+      "stdin": "FFFD 3 12\n",
+      "expected_stdout": "-1",
+      "description": "Bits 3-14 are all set: -1 in 12-bit two's complement, whatever bits 0-2 and 15 happen to be."
+    },
+    {
+      "name": "a positive reading among status flags",
+      "stdin": "800D 3 12\n",
+      "expected_stdout": "1"
+    },
+    {
+      "name": "the most negative 12-bit reading",
+      "stdin": "C005 3 12\n",
+      "expected_stdout": "-2048"
+    },
+    {
+      "name": "the largest positive 12-bit reading",
+      "stdin": "BFFD 3 12\n",
+      "expected_stdout": "2047"
+    },
+    {
+      "name": "the whole register, width = 32",
+      "stdin": "FFFFFFFF 0 32\n",
+      "expected_stdout": "-1",
+      "description": "Same width == 32 mask case as the other register problems, this time combined with sign extension."
+    },
+    {
+      "name": "a positive field with the register's own top bit set",
+      "stdin": "ABCDEF7F 0 8\n",
+      "expected_stdout": "127",
+      "description": "Bit 31 of the register is 1, but the field is bits 0-7, whose own top bit (bit 7) is 0 -- the field is positive regardless of the rest of the register."
+    },
+    {
+      "name": "a negative field with the register's own top bit clear",
+      "stdin": "23CDEF80 0 8\n",
+      "expected_stdout": "-128",
+      "description": "The mirror image of the case above: bit 31 of the register is 0 this time, but the field is still bits 0-7, whose own top bit (bit 7) is 1 -- the field is negative regardless."
+    }
+  ],
+  "reference_solution_b64": "aW50IGV4dHJhY3Rfc2lnbmVkX2ZpZWxkKHVuc2lnbmVkIGludCByZWcsIGludCBzdGFydCwgaW50IHdpZHRoKQp7CiAgICB1bnNpZ25lZCBpbnQgbWFzayA9ICh3aWR0aCA9PSAzMikgPyAweEZGRkZGRkZGdSA6ICgxdSA8PCB3aWR0aCkgLSAxdTsKICAgIHVuc2lnbmVkIGludCBmaWVsZCA9IChyZWcgPj4gc3RhcnQpICYgbWFzazsKICAgIHVuc2lnbmVkIGludCBzaWduX2JpdCA9IDF1IDw8ICh3aWR0aCAtIDEpOwoKICAgIGlmIChmaWVsZCAmIHNpZ25fYml0KSB7CiAgICAgICAgZmllbGQgLT0gc2lnbl9iaXQgPDwgMTsKICAgIH0KICAgIHJldHVybiAoaW50KWZpZWxkOwp9Cg=="
+}

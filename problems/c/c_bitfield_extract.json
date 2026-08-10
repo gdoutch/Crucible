@@ -1,0 +1,57 @@
+{
+  "id": "c_bitfield_extract",
+  "title": "Extract a Register Field",
+  "language": "c",
+  "difficulty": "easy",
+  "topics": [
+    "bitwise",
+    "embedded",
+    "registers"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Peripheral registers rarely dedicate one bit to one meaning. A UART status\nregister might pack a 3-bit error code into bits 4-6, sitting between a\n\"data ready\" flag below it and three unrelated flags above -- and reading\n\"that field\" means shifting it down to bit 0 and masking off everything that\nbelongs to somebody else.\n\n## Your function\n\n```\nunsigned int extract_field(unsigned int reg, int start, int width);\n```\n\n`start` is the position of the field's least-significant bit, `0` to `31`.\n`width` is how many bits wide the field is, `1` to `32`. The field never runs\npast bit 31 -- `start + width <= 32` is guaranteed by every test.\n\nReturn the field's value **right-justified**: a 1-bit field is `0` or `1`,\nnever `1 << start`.\n\n`extract_field(0xF0, 4, 4)` reads bits 4-7 out of `0xF0` and returns `0xF`.\n\n## Watch out\n\n- **`width` can be `32`.** A field that occupies the whole register is a\n  legitimate case, not one you get to skip. The obvious way to build a mask\n  is `(1u << width) - 1u` -- and `1u << 32` is undefined behaviour, because\n  the shift amount is not allowed to reach the bit-width of the type. It does\n  not clamp or saturate in any way you can rely on: on this machine's\n  compiler it comes back as `1u << 0`, so the mask you get is `0` instead of\n  `0xFFFFFFFF`, and the whole register silently reads back as `0`. Give\n  `width == 32` its own line.\n- `reg >> start` never has this problem: `start` alone never reaches 32,\n  only the mask calculation does.\n",
+  "starter_code": "unsigned int extract_field(unsigned int reg, int start, int width)\n{\n    /* your code here */\n    (void)reg;\n    (void)start;\n    (void)width;\n    return 0;\n}\n",
+  "harness": "#include <stdio.h>\n\n/* Provided by the candidate in solution.c */\nunsigned int extract_field(unsigned int reg, int start, int width);\n\nint main(void)\n{\n    unsigned int reg;\n    int start, width;\n    if (scanf(\"%x %d %d\", &reg, &start, &width) != 3) {\n        return 1;\n    }\n    printf(\"%u\\n\", extract_field(reg, start, width));\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random registers, start positions and field widths.\n\nFour builders in rotation keep the practice varied: a fully random field, a\nfield pinned to the low end, a lone bit anywhere, and the width = 32 case\nthat the mask formula has to special-case.\n\"\"\"\n\n\ndef generate(rng, count):\n    builders = (_anything, _low_field, _single_bit, _whole_register)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, reg, start, width, description=\"\"):\n    return {\n        \"name\": name,\n        \"stdin\": \"%X %d %d\\n\" % (reg, start, width),\n        \"description\": description,\n    }\n\n\ndef _anything(rng, index):\n    reg = rng.randrange(0, 2 ** 32)\n    start = rng.randrange(32)\n    width = rng.randint(1, 32 - start)\n    return _case(\"a random field #%d\" % index, reg, start, width,\n                 \"Bits %d..%d of a random register.\" %\n                 (start, start + width - 1))\n\n\ndef _low_field(rng, index):\n    reg = rng.randrange(0, 2 ** 32)\n    width = rng.randint(1, 16)\n    return _case(\"a field starting at bit 0 #%d\" % index, reg, 0, width,\n                 \"start = 0 -- the shift is a no-op, only the mask matters.\")\n\n\ndef _single_bit(rng, index):\n    reg = rng.randrange(0, 2 ** 32)\n    start = rng.randrange(32)\n    return _case(\"a single bit #%d\" % index, reg, start, 1,\n                 \"width = 1: the smallest possible field.\")\n\n\ndef _whole_register(rng, index):\n    reg = rng.randrange(0, 2 ** 32)\n    return _case(\"the whole register #%d\" % index, reg, 0, 32,\n                 \"width = 32 -- the case the mask formula has to \"\n                 \"special-case.\")\n"
+  },
+  "tests": [
+    {
+      "name": "a field in the middle of the register",
+      "stdin": "F0 4 4\n",
+      "expected_stdout": "15",
+      "description": "Bits 4-7 of 0xF0, shifted down to bit 0."
+    },
+    {
+      "name": "a single bit at the bottom",
+      "stdin": "1 0 1\n",
+      "expected_stdout": "1"
+    },
+    {
+      "name": "the top bit alone, set",
+      "stdin": "80000000 31 1\n",
+      "expected_stdout": "1",
+      "description": "start = 31 is the highest legal start position."
+    },
+    {
+      "name": "the top bit alone, clear",
+      "stdin": "7FFFFFFF 31 1\n",
+      "expected_stdout": "0",
+      "description": "Every bit except bit 31 -- the paired case for the one above."
+    },
+    {
+      "name": "the whole register, width = 32",
+      "stdin": "FFFFFFFF 0 32\n",
+      "expected_stdout": "4294967295",
+      "description": "The case a mask built from (1u << width) - 1u gets wrong without a special case for width == 32."
+    },
+    {
+      "name": "a field with unrelated flags on both sides",
+      "stdin": "D6 2 4\n",
+      "expected_stdout": "5",
+      "description": "0xD6 is 1101 0110; bits 2-5 are 0101."
+    }
+  ],
+  "reference_solution_b64": "dW5zaWduZWQgaW50IGV4dHJhY3RfZmllbGQodW5zaWduZWQgaW50IHJlZywgaW50IHN0YXJ0LCBpbnQgd2lkdGgpCnsKICAgIHVuc2lnbmVkIGludCBtYXNrID0gKHdpZHRoID09IDMyKSA/IDB4RkZGRkZGRkZ1IDogKDF1IDw8IHdpZHRoKSAtIDF1OwoKICAgIHJldHVybiAocmVnID4+IHN0YXJ0KSAmIG1hc2s7Cn0K"
+}

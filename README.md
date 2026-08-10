@@ -378,7 +378,7 @@ the stylesheet does not load the pages are still ordinary readable HTML.
 
 ## What is in the box
 
-27 problems — 23 in C, 4 in Python. Every one of them mixes hand-written edge
+33 problems — 29 in C, 4 in Python. Every one of them mixes hand-written edge
 cases with four randomised ones, and ships a hint and a worked solution.
 
 The C set is deliberately weighted towards the things C makes you think about
@@ -394,6 +394,9 @@ what happens at the boundary, and what the standard actually promises.
 | | C | FizzBuzz | control flow, modulo, output format |
 | | C | Greatest Common Divisor | loops, arithmetic |
 | | C | Count the Set Bits | bitwise, loops |
+| | C | Extract a Register Field | bitwise, embedded, registers |
+| | C | Byte-Swap a Register (Endianness) | bitwise, embedded, endianness |
+| | C | Compute the Parity Bit | bitwise, embedded, error-detection |
 | | Python | Two Sum | dictionaries, arrays |
 | **medium** | C | Binary Search | algorithms, arrays, search |
 | | C | Palindrome Check | strings, two pointers, ctype |
@@ -404,11 +407,14 @@ what happens at the boundary, and what the standard actually promises.
 | | C | Parse an Integer | strings, pointers |
 | | C | Decimal to Roman Numeral String | strings, tables, greedy |
 | | C | Primes up to N | arrays, loops |
+| | C | Write a Register Field (Read-Modify-Write) | bitwise, embedded, registers, read-modify-write |
+| | C | GPIO Set/Clear/Toggle (Read-Modify-Write) | bitwise, embedded, gpio, read-modify-write |
 | | Python | Balanced Brackets | stacks, strings, parsing |
 | | Python | Run-Length Encoding | strings, iteration |
 | **hard** | C | Maximum Subarray Sum | algorithms, dynamic programming, arrays |
 | | C | Reverse a Linked List | pointers, linked lists |
 | | C | Edit Distance | dynamic programming, strings |
+| | C | Extract a Signed Sensor Reading | bitwise, embedded, sign-extension, twos-complement |
 
 A few are worth calling out for what they are really testing:
 
@@ -431,6 +437,44 @@ A few are worth calling out for what they are really testing:
   into an array and written back. It declares `struct node` in both your file
   and the harness — separate translation units, same layout, which is what a
   shared header would have given you.
+
+### Registers, not just algorithms
+
+Six of the C problems are the kind of bit manipulation an electronics or
+embedded engineer runs into on real hardware rather than in a textbook:
+reading one field out of a packed status register, writing one back without
+disturbing its neighbours, driving a GPIO port, sign-extending a sensor
+reading, and swapping byte order at a hardware boundary. Same pipeline, same
+kind of hand-written edge cases — just aimed at registers instead of arrays.
+
+- **Extract a Register Field** and **Write a Register Field** both build a
+  mask from `(1u << width) - 1u`, and both have a fixed test for
+  `width == 32`. That shift is undefined behaviour — the amount reaches the
+  type's own bit width — and on this app's compiler it silently comes back as
+  `1u << 0`, turning "read the whole register" into "read nothing". The fix
+  is one `width == 32` special case, not a cleverer formula.
+- **Write a Register Field** is *Extract*'s mirror image, and a genuine
+  read-modify-write: clear the field's old bits before OR-ing the new ones
+  in, and mask the incoming value before you shift it, or bits that belong to
+  a field you were never asked to touch pick up whatever was left over.
+- **GPIO Set/Clear/Toggle** turns three register operations into three
+  operators — `|`, `& ~`, `^` — and one of the fixed traces is built
+  specifically to catch `reg & mask` written where `reg & ~mask` was meant
+  for a clear. Its worked solution also covers why real GPIO ports (STM32's
+  `BSRR`, for one) give set and clear their own atomic write-only register
+  rather than trusting software to read-modify-write safely around an
+  interrupt.
+- **Extract a Signed Sensor Reading** combines field extraction with
+  sign-extending a two's-complement value that is narrower than an `int`.
+  Two of its fixed tests share the same surrounding status flags and differ
+  only in which bit is the field's *own* sign bit — deliberately not lined up
+  with bit 31 of the register — so that testing the wrong bit fails at least
+  one of them however you get it wrong.
+- **Byte-Swap a Register** and **Compute the Parity Bit** round out the set
+  without a manufactured trap: the first is the everyday fix for hardware
+  that hands you a multi-byte value most-significant-byte-first, the second
+  is the classic XOR-fold, a genuinely different bit trick from *Count the
+  Set Bits*'s Kernighan loop rather than a rerun of it.
 
 ### Beyond writing algorithms
 
@@ -659,7 +703,7 @@ crucible/
     theme.py           palettes and ttk styling
 problems/
   guides.css           shared by every guide page
-  c/                   19 problems, each with .json + .hint.html
+  c/                   25 problems, each with .json + .hint.html
   python/              3 problems,             + .solution.html
   uml/                 2 problems,             + .diagram.html
   safety/              3 problems

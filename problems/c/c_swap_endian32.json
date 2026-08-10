@@ -1,0 +1,53 @@
+{
+  "id": "c_swap_endian32",
+  "title": "Byte-Swap a Register (Endianness)",
+  "language": "c",
+  "difficulty": "easy",
+  "topics": [
+    "bitwise",
+    "embedded",
+    "endianness"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Multi-byte registers do not all agree on which byte comes first. A sensor\nread out over I2C or SPI often hands you its bytes **most-significant\nfirst**, while the CPU you are running on very likely stores a 32-bit value\n**least-significant byte first** in memory. Assemble the bytes the naive way\nand the value is right only by accident; the fix is to reverse the byte\norder explicitly, once, at the boundary.\n\n## Your function\n\n```\nunsigned int swap_endian32(unsigned int value);\n```\n\nReturn `value` with its four bytes in reverse order: byte 0 and byte 3 swap\nplaces, and so do bytes 1 and 2. Bit order *within* each byte does not\nchange -- this moves bytes around, not bits.\n\n`swap_endian32(0x12345678)` is `0x78563412`.\n\n## Watch out\n\n- Do this one byte at a time. Isolate a byte with a mask, shift it to where\n  it belongs, and combine the four results with `|`. Trying to do it as one\n  clever expression tends to produce something that works on the first test\n  case and silently drops bits on the second.\n- The function is its own inverse: swapping an already-swapped value gets\n  you back where you started. That is a good way to check your own work by\n  hand before you run the tests -- `swap_endian32(swap_endian32(x))` should\n  always be `x`.\n- This is exactly what `htonl`/`ntohl` (POSIX) or `_byteswap_ulong` (MSVC) /\n  `__builtin_bswap32` (GCC, Clang) do in one call. Write it by hand here;\n  reach for the intrinsic at work, where the compiler will turn it into a\n  single `bswap` instruction and there is nothing to get wrong.\n",
+  "starter_code": "unsigned int swap_endian32(unsigned int value)\n{\n    /* your code here */\n    return value;\n}\n",
+  "harness": "#include <stdio.h>\n\n/* Provided by the candidate in solution.c */\nunsigned int swap_endian32(unsigned int value);\n\nint main(void)\n{\n    unsigned int value;\n    if (scanf(\"%x\", &value) != 1) {\n        return 1;\n    }\n    printf(\"%08X\\n\", swap_endian32(value));\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random 32-bit values, plus ones built from four visibly distinct bytes so\na byte landing in the wrong place cannot hide behind a repeated value.\"\"\"\n\n\ndef generate(rng, count):\n    builders = (_anything, _distinct_bytes, _one_byte_set)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, value, description=\"\"):\n    return {\"name\": name, \"stdin\": \"%X\\n\" % value, \"description\": description}\n\n\ndef _anything(rng, index):\n    return _case(\"a random value #%d\" % index, rng.randrange(0, 2 ** 32))\n\n\ndef _distinct_bytes(rng, index):\n    b = rng.sample(range(0, 256), 4)\n    value = (b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3]\n    return _case(\"four distinct bytes #%d\" % index, value,\n                 \"Every byte differs from the others, so a byte in the \"\n                 \"wrong place cannot hide behind a repeat.\")\n\n\ndef _one_byte_set(rng, index):\n    byte = rng.randrange(1, 256)\n    position = rng.randrange(4)\n    value = byte << (position * 8)\n    return _case(\"one byte set, the rest zero #%d\" % index, value,\n                 \"Only byte %d is non-zero; it should land at byte %d.\" %\n                 (position, 3 - position))\n"
+  },
+  "tests": [
+    {
+      "name": "a single low byte",
+      "stdin": "1\n",
+      "expected_stdout": "01000000"
+    },
+    {
+      "name": "four distinct bytes",
+      "stdin": "12345678\n",
+      "expected_stdout": "78563412"
+    },
+    {
+      "name": "a well-known test pattern",
+      "stdin": "DEADBEEF\n",
+      "expected_stdout": "EFBEADDE"
+    },
+    {
+      "name": "the lowest byte only",
+      "stdin": "FF\n",
+      "expected_stdout": "FF000000"
+    },
+    {
+      "name": "the highest byte only",
+      "stdin": "FF000000\n",
+      "expected_stdout": "000000FF"
+    },
+    {
+      "name": "a value that swaps to itself",
+      "stdin": "A5A5A5A5\n",
+      "expected_stdout": "A5A5A5A5",
+      "description": "Every byte equals its mirrored partner, so this passes even with the byte pairs swapped backwards -- it will not catch that mistake on its own."
+    }
+  ],
+  "reference_solution_b64": "dW5zaWduZWQgaW50IHN3YXBfZW5kaWFuMzIodW5zaWduZWQgaW50IHZhbHVlKQp7CiAgICByZXR1cm4gKCh2YWx1ZSAmIDB4MDAwMDAwRkZ1KSA8PCAyNCkgfAogICAgICAgICAgICgodmFsdWUgJiAweDAwMDBGRjAwdSkgPDwgOCkgIHwKICAgICAgICAgICAoKHZhbHVlICYgMHgwMEZGMDAwMHUpID4+IDgpICB8CiAgICAgICAgICAgKCh2YWx1ZSAmIDB4RkYwMDAwMDB1KSA+PiAyNCk7Cn0K"
+}

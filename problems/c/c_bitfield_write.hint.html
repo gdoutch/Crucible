@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Write a Register Field (Read-Modify-Write) · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>Write a Register Field (Read-Modify-Write)</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>The reverse of <a href="c_bitfield_extract.hint.html">Extract a Register
+  Field</a>: instead of reading a field out, you are putting one back, without
+  disturbing any bit that is not part of it. That is the read-modify-write
+  pattern, spelled out as three separate steps even though your function only
+  gets to do the "modify" and hand back the result:</p>
+
+<ol>
+  <li><strong>Read</strong> — the caller already did this; <code>reg</code> is
+    what came back.</li>
+  <li><strong>Modify</strong> — clear the field's old bits, then set its new
+    ones.</li>
+  <li><strong>Write</strong> — return the result; the caller stores it back.</li>
+</ol>
+
+<h2>The mask is the same one as before</h2>
+
+<p><code>(width == 32) ? 0xFFFFFFFFu : (1u &lt;&lt; width) - 1u</code> — same
+  formula, same reason, as <em>Extract a Register Field</em>. You will use it
+  twice here: once shifted into position to clear the old field, once plain to
+  trim the incoming value down to size.</p>
+
+<h2>Two traps, not one</h2>
+
+<div class="trap">
+<p><strong>Clear before you set.</strong> <code>reg |= (value &amp; mask) &lt;&lt; start</code>
+  on its own only ever turns bits on — OR can set a 0 to a 1, but it can never
+  turn a 1 back to 0. If the field currently holds all ones and the new value
+  is all zeros, that line changes nothing. You need an AND first, against the
+  <em>complement</em> of the mask in position, to clear the field's old bits
+  before the OR ever runs.</p>
+</div>
+
+<div class="trap">
+<p><strong>Mask <code>value</code>, not just <code>reg</code>.</strong> Nothing
+  stops the caller passing a <code>value</code> that does not fit in
+  <code>width</code> bits. Shift it into place unmasked and its high bits land
+  on top of whatever field happens to sit above this one — a bug that shows
+  up nowhere near the code that caused it, in a completely different field,
+  which is what makes it nasty to track down on real hardware.</p>
+</div>
+
+<details>
+<summary>Still stuck? A bigger nudge</summary>
+
+<p>Three lines, in this order:</p>
+
+<pre><code>unsigned int mask = /* the width == 32 formula */;
+
+reg &amp;= ~(mask &lt;&lt; start);        /* clear the field */
+reg |= (value &amp; mask) &lt;&lt; start; /* mask value, then set it */</code></pre>
+
+<p>The clear line works because <code>mask &lt;&lt; start</code> is ones
+  exactly where the field is and zeros everywhere else; <code>~</code> flips
+  that to zeros over the field and ones everywhere else, so ANDing it in
+  clears only the field and leaves every other bit as it was.</p>
+
+</details>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li><code>set_field(0xF0, 4, 4, 0)</code> → <code>0x00</code>, not
+    <code>0xF0</code>.</li>
+  <li><code>set_field(0x0F, 8, 4, 0xFF)</code> → <code>0xF0F</code>, not
+    <code>0xFF0F</code> — the extra bits in <code>value</code> must not
+    leak upward.</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_bitfield_write.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

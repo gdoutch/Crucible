@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Extract a Signed Sensor Reading · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · hard</p>
+  <h1>Extract a Signed Sensor Reading</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>Start exactly like <a href="c_bitfield_extract.hint.html">Extract a
+  Register Field</a> — shift the field down, mask it to <code>width</code>
+  bits. That gets you an unsigned number in the range
+  <code>0</code> to <code>2^width - 1</code>. The new part is turning that
+  into the signed value it actually represents: if the field's top bit is
+  set, the number it encodes is negative, and you have one more step to get
+  there.</p>
+
+<h2>Two's complement, backed out by hand</h2>
+
+<p>A <code>width</code>-bit two's-complement value in the top half of its
+  range — top bit set — represents <code>field - 2^width</code>. Check it
+  against a small example: 4 bits, field <code>0b1111</code> (15 as a plain
+  unsigned number). <code>15 - 2^4 = 15 - 16 = -1</code>, which is the
+  everyday fact that "all ones" is <code>-1</code> in two's complement, at any
+  width.</p>
+
+<p>So: extract the field as before, then — only if its own top bit is set —
+  subtract <code>2^width</code> from it.</p>
+
+<h2>The trap the problem is built around</h2>
+
+<div class="trap">
+<p><strong>"The field's own top bit"</strong> is bit <code>width - 1</code>
+  of the <em>extracted, masked</em> field — not bit 31 of <code>reg</code>,
+  and not whatever bit happened to catch your eye. A register carrying a
+  12-bit reading has 20 other bits doing something else entirely, and none of
+  them says anything about whether <em>this field</em> is negative.</p>
+<p>Two of the fixed tests are built to expose exactly this: the same status
+  flags surround a positive field in one case and a negative field in the
+  other, with the register's own bit 31 set in one of them and clear in the
+  other — deliberately not lined up with which field is actually negative. If
+  your sign test looks anywhere in the register other than bit
+  <code>width - 1</code> of the masked field, one of those two comes back
+  wrong.</p>
+</div>
+
+<h2>The other trap, carried over</h2>
+
+<p><code>width</code> can still be <code>32</code>, and the mask formula
+  needs the same special case it needed in the other two register problems —
+  <code>1u &lt;&lt; 32</code> is undefined behaviour.</p>
+
+<details>
+<summary>Still stuck? A bigger nudge</summary>
+
+<pre><code>unsigned int mask = /* the width == 32 formula */;
+unsigned int field = (reg &gt;&gt; start) &amp; mask;
+unsigned int sign_bit = 1u &lt;&lt; (width - 1);
+
+if (field &amp; sign_bit) {
+    /* field is in the negative half of its range -- pull it down */
+    field -= /* 2 to the power width, as an unsigned int */;
+}
+return (int)field;</code></pre>
+
+<p>Everything stays <code>unsigned int</code> until the very last line. The
+  cast to <code>int</code> at the end is where the bit pattern turns into the
+  negative number it represents.</p>
+
+</details>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li><code>extract_signed_field(0xFFF, 0, 12)</code> → <code>-1</code>.</li>
+  <li><code>extract_signed_field(0x800, 0, 12)</code> → <code>-2048</code>,
+    the most negative 12-bit value.</li>
+  <li><code>extract_signed_field(0x7FF, 0, 12)</code> → <code>2047</code>,
+    the most positive.</li>
+  <li>A field whose own top bit is 0 is positive, full stop — no matter what
+    bit 31 of the register happens to be.</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_signed_field.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

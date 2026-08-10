@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Compute the Parity Bit · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · easy</p>
+  <h1>Compute the Parity Bit</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The idea</h2>
+
+<p>Fold the word in half against itself with XOR, five times, until one bit is
+  left carrying the parity of all 32:</p>
+
+<pre><code>int even_parity(unsigned int value)
+{
+    unsigned int v = value;
+
+    v ^= v &gt;&gt; 16;
+    v ^= v &gt;&gt; 8;
+    v ^= v &gt;&gt; 4;
+    v ^= v &gt;&gt; 2;
+    v ^= v &gt;&gt; 1;
+    return (int)(v &amp; 1u);
+}</code></pre>
+
+<h2>Why XOR-folding preserves parity</h2>
+
+<p>XOR of two single bits is <code>1</code> exactly when the two bits differ
+  -- which means the XOR of a whole row of bits is <code>1</code> exactly when
+  an odd number of them are <code>1</code>. That is the definition of parity,
+  applied one XOR at a time instead of one bit of counting at a time.</p>
+
+<p><code>v ^= v &gt;&gt; 16</code> lines the top half of the word up against the
+  bottom half and XORs each pair together. Bit 0 of the result is
+  <code>bit0 XOR bit16</code>; bit 1 is <code>bit1 XOR bit17</code>; and so on.
+  The parity of those 16 pairs, each collapsed to one bit, is the same as the
+  parity of the original 32 bits, because XOR is associative and commutative
+  -- it does not matter what order the bits get combined in, only that every
+  bit gets combined exactly once.</p>
+
+<p>Repeating the halving -- 16 bits down to 8, 8 down to 4, 4 down to 2, 2
+  down to 1 -- carries the same invariant down at each step. After the last
+  fold, bit 0 alone holds the XOR of all 32 original bits.</p>
+
+<h2>Walking it through</h2>
+
+<p><code>even_parity(0x7FFFFFFF)</code> -- 31 bits set, bit 31 clear:</p>
+
+<table class="trace">
+  <tr><th>Step</th><th>v</th><th>Bits set</th></tr>
+  <tr><td>start</td><td>0x7FFFFFFF</td><td>31</td></tr>
+  <tr><td>after &gt;&gt; 16</td><td>0x00007FFF (low 15 bits set, folded)</td><td>—</td></tr>
+  <tr><td>... after all five folds</td><td>0x00000001</td><td>parity bit = 1</td></tr>
+</table>
+
+<p>31 is odd, so the answer is <code>1</code> -- and it falls out of five
+  XORs without ever counting anything.</p>
+
+<h2>The more obvious route, and why this one is faster</h2>
+
+<p>The straightforward answer reuses
+  <a href="c_count_set_bits.solution.html">Count the Set Bits</a> directly:</p>
+
+<pre><code>return count_set_bits(value) &amp; 1;</code></pre>
+
+<p>That is completely correct -- parity is nothing more than the population
+  count's lowest bit. It is also doing more work than the question asks for:
+  Kernighan's loop there runs once per set bit, so a value with many bits set
+  costs many iterations to learn a single bit of information. XOR-folding
+  costs exactly five operations regardless of how many bits are set, because
+  it never needs to know the count, only whether it was odd.</p>
+
+<h2>Why <code>unsigned int</code>, and why this fold in particular tolerates
+  it less strictly than it looks</h2>
+
+<div class="note">
+<p><code>value</code> is <code>unsigned int</code> for the same reason it is
+  in <em>Count the Set Bits</em>: a right shift on an unsigned value always
+  brings in zeros from the top. Keeping the working variable
+  <code>unsigned int</code> too is the safe habit to have, and it is the
+  version written above.</p>
+<p>Worth knowing, if you are curious rather than just being careful: this
+  particular fold happens to come out right even with a signed working
+  variable, because the extra <code>1</code> bits an arithmetic right shift
+  copies down from the sign bit always arrive in a range this fold XORs
+  together an even number of times, which cancels them out of the final
+  parity. That is a property of this exact five-step halving pattern, not a
+  general licence to mix signed shifts into bit-manipulation code -- the
+  popcount loop in <em>Count the Set Bits</em> has no such protection, which
+  is why it is built around <code>unsigned int</code> deliberately rather
+  than by luck.</p>
+</div>
+
+<h2>Cost</h2>
+
+<table>
+  <tr><th>Version</th><th>Operations</th></tr>
+  <tr><td>XOR-fold</td><td>fixed at 10 (5 shifts, 5 XORs), any input</td></tr>
+  <tr><td><code>count_set_bits(value) &amp; 1</code></td><td>one iteration per <em>set</em> bit</td></tr>
+</table>
+
+<p>Both are <strong>O(1)</strong> for a fixed-width type. In production,
+  <code>__builtin_parity(value)</code> (GCC, Clang) compiles to a single
+  hardware parity instruction where the target has one -- the right answer at
+  work, and, as with the population count it is built on, not the point of
+  writing it out here.</p>
+
+<footer>
+  <p><a href="c_parity_bit.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

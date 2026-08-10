@@ -22,7 +22,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from crucible import guides, languages, randomise, runner, workspace
+from crucible import guides, languages, profiles, randomise, runner, workspace
 from crucible.languages.c_lang import CLanguage
 from crucible.problem import ProblemError, load_library, load_problem
 
@@ -443,6 +443,191 @@ class TestSeedStorage(unittest.TestCase):
         (Path(self._tmp.name) / "seeds.json").write_text(
             '{"good": 1234, "bad": "banana"}')
         self.assertEqual(workspace.load_seeds(), {"good": 1234})
+
+    def test_a_root_scopes_seeds_away_from_the_default(self):
+        scoped = Path(self._tmp.name) / "someone-else"
+        workspace.save_seeds({"py_two_sum": 1}, root=scoped)
+        workspace.save_seeds({"py_two_sum": 2})  # the unscoped, default location
+        self.assertEqual(workspace.load_seeds(root=scoped), {"py_two_sum": 1})
+        self.assertEqual(workspace.load_seeds(), {"py_two_sum": 2})
+
+    def test_a_root_scopes_drafts_away_from_the_default(self):
+        scoped = Path(self._tmp.name) / "someone-else"
+        workspace.save_draft("py_two_sum", ".py", "# scoped", root=scoped)
+        workspace.save_draft("py_two_sum", ".py", "# default")
+        self.assertEqual(workspace.load_draft("py_two_sum", ".py", root=scoped),
+                         "# scoped")
+        self.assertEqual(workspace.load_draft("py_two_sum", ".py"), "# default")
+
+
+# ---------------------------------------------------------------------------
+# profiles
+# ---------------------------------------------------------------------------
+
+class TestProfiles(unittest.TestCase):
+    """Profiles store nothing but a username -- these lock that contract in,
+    since it is the one thing about this feature that must never regress
+    quietly under a future "just add one more field" change."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self._home = os.environ.get("CRUCIBLE_HOME")
+        os.environ["CRUCIBLE_HOME"] = self._tmp.name
+
+    def tearDown(self):
+        if self._home is None:
+            del os.environ["CRUCIBLE_HOME"]
+        else:
+            os.environ["CRUCIBLE_HOME"] = self._home
+        self._tmp.cleanup()
+
+    def test_the_same_username_returns_the_same_profile(self):
+        first = profiles.open_profile("Alice")
+        second = profiles.open_profile("Alice")
+        self.assertEqual(first.id, second.id)
+
+    def test_usernames_are_matched_case_sensitively(self):
+        lower = profiles.open_profile("alice")
+        upper = profiles.open_profile("Alice")
+        self.assertNotEqual(lower.id, upper.id)
+        self.assertEqual({p.username for p in profiles.list_profiles()},
+                         {"alice", "Alice"})
+
+    def test_slug_collisions_do_not_merge_different_usernames(self):
+        """Two usernames that sanitise to the same directory slug -- this
+        matters doubly on Windows, where directory names are case-insensitive
+        regardless of what the slug itself looks like."""
+        a = profiles.open_profile("Alice!")
+        b = profiles.open_profile("Alice?")
+        self.assertNotEqual(a.id, b.id)
+
+    def test_surrounding_and_repeated_whitespace_is_collapsed(self):
+        a = profiles.open_profile("Alice")
+        b = profiles.open_profile("  Alice  ")
+        self.assertEqual(a.id, b.id)
+
+    def test_blank_username_is_rejected(self):
+        with self.assertRaises(ValueError):
+            profiles.open_profile("   ")
+
+    def test_opening_a_profile_makes_it_current(self):
+        profiles.open_profile("Alice")
+        bob = profiles.open_profile("Bob")
+        self.assertEqual(profiles.current_profile().id, bob.id)
+
+    def test_no_profiles_means_no_current_profile(self):
+        self.assertIsNone(profiles.current_profile())
+
+    def test_deleting_a_profile_removes_it_and_its_directory(self):
+        alice = profiles.open_profile("Alice")
+        profile_path = profiles.profile_dir(alice.id)
+        self.assertTrue(profile_path.is_dir())
+        profiles.delete_profile(alice.id)
+        self.assertNotIn(alice.id, {p.id for p in profiles.list_profiles()})
+        self.assertFalse(profile_path.exists())
+
+    def test_deleting_the_current_profile_clears_current(self):
+        alice = profiles.open_profile("Alice")
+        profiles.delete_profile(alice.id)
+        self.assertIsNone(profiles.current_profile())
+
+    def test_on_disk_record_holds_only_the_documented_fields(self):
+        """No email, no real name, no OS account -- just a username and the
+        bookkeeping needed to find it again."""
+        profiles.open_profile("Alice")
+        stored = json.loads((Path(self._tmp.name) / "profiles.json").read_text())
+        for entry in stored["profiles"]:
+            self.assertLessEqual(
+                set(entry.keys()),
+                {"id", "username", "created", "last_opened", "last_problem"})
+
+    def test_missing_index_file_is_not_an_error(self):
+        self.assertEqual(profiles.list_profiles(), [])
+
+    def test_corrupt_index_file_is_ignored(self):
+        (Path(self._tmp.name) / "profiles.json").write_text("{ not json")
+        self.assertEqual(profiles.list_profiles(), [])
+        # and it is still possible to start fresh afterwards
+        profiles.open_profile("Alice")
+        self.assertEqual(len(profiles.list_profiles()), 1)
+
+    def test_malformed_entries_are_dropped_not_raised(self):
+        (Path(self._tmp.name) / "profiles.json").write_text(json.dumps(
+            {"profiles": [{"id": "a"}, {"username": "b"}, "nope", 7,
+                          {"id": "ok", "username": "Fine"}]}))
+        self.assertEqual([p.username for p in profiles.list_profiles()], ["Fine"])
+
+    def test_current_pointing_at_a_deleted_profile_is_ignored(self):
+        (Path(self._tmp.name) / "profiles.json").write_text(json.dumps(
+            {"current": "ghost", "profiles": [{"id": "a", "username": "A"}]}))
+        self.assertIsNone(profiles.current_profile())
+
+
+class TestProfileProgress(unittest.TestCase):
+    """Whether *this* profile has solved a problem, tracked separately from
+    whether the problem's own reference solution is healthy."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self._home = os.environ.get("CRUCIBLE_HOME")
+        os.environ["CRUCIBLE_HOME"] = self._tmp.name
+        self.alice = profiles.open_profile("Alice")
+
+    def tearDown(self):
+        if self._home is None:
+            del os.environ["CRUCIBLE_HOME"]
+        else:
+            os.environ["CRUCIBLE_HOME"] = self._home
+        self._tmp.cleanup()
+
+    def test_a_passing_attempt_is_recorded_as_solved(self):
+        entry = profiles.record_attempt(self.alice.id, "c_sum_array",
+                                        passed=True, summary="7/7 tests passed")
+        self.assertTrue(entry["solved"])
+        self.assertEqual(entry["attempts"], 1)
+        self.assertTrue(entry["first_solved"])
+
+    def test_a_failing_attempt_is_not_solved(self):
+        entry = profiles.record_attempt(self.alice.id, "c_sum_array",
+                                        passed=False, summary="3/7 tests passed")
+        self.assertFalse(entry["solved"])
+
+    def test_solved_stays_true_after_a_later_failure(self):
+        profiles.record_attempt(self.alice.id, "c_sum_array",
+                                passed=True, summary="7/7 tests passed")
+        entry = profiles.record_attempt(self.alice.id, "c_sum_array",
+                                        passed=False, summary="6/7 tests passed")
+        self.assertTrue(entry["solved"])
+        self.assertEqual(entry["attempts"], 2)
+
+    def test_first_solved_does_not_move_on_a_second_pass(self):
+        first = profiles.record_attempt(self.alice.id, "c_sum_array",
+                                        passed=True, summary="ok")
+        second = profiles.record_attempt(self.alice.id, "c_sum_array",
+                                         passed=True, summary="ok again")
+        self.assertEqual(first["first_solved"], second["first_solved"])
+
+    def test_progress_survives_a_round_trip(self):
+        profiles.record_attempt(self.alice.id, "c_sum_array",
+                                passed=True, summary="7/7 tests passed")
+        reloaded = profiles.load_progress(self.alice.id)
+        self.assertTrue(reloaded["c_sum_array"]["solved"])
+
+    def test_progress_is_isolated_between_profiles(self):
+        bob = profiles.open_profile("Bob")
+        profiles.record_attempt(self.alice.id, "c_sum_array",
+                                passed=True, summary="7/7 tests passed")
+        self.assertEqual(profiles.load_progress(bob.id), {})
+
+    def test_missing_progress_file_is_not_an_error(self):
+        self.assertEqual(profiles.load_progress(self.alice.id), {})
+
+    def test_corrupt_progress_file_is_ignored_and_still_writable(self):
+        (profiles.profile_dir(self.alice.id) / "progress.json").write_text("{ bad")
+        self.assertEqual(profiles.load_progress(self.alice.id), {})
+        entry = profiles.record_attempt(self.alice.id, "c_sum_array",
+                                        passed=True, summary="ok")
+        self.assertTrue(entry["solved"])
 
 
 # ---------------------------------------------------------------------------

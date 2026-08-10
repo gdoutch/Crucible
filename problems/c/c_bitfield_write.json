@@ -1,0 +1,56 @@
+{
+  "id": "c_bitfield_write",
+  "title": "Write a Register Field (Read-Modify-Write)",
+  "language": "c",
+  "difficulty": "medium",
+  "topics": [
+    "bitwise",
+    "embedded",
+    "registers",
+    "read-modify-write"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Reading a field out of a register is half the job. The other half is putting\none back -- changing a mode field, a clock divider, a channel select -- while\nevery bit that is not yours comes out exactly as it went in. That is a\n**read-modify-write**: read the register, change only the field you own, write\nthe whole word back.\n\n## Your function\n\n```\nunsigned int set_field(unsigned int reg, int start, int width, unsigned int value);\n```\n\n`start` and `width` describe the field the same way as in *Extract a Register\nField*: `start` is `0` to `31`, `width` is `1` to `32`, and\n`start + width <= 32` always. `value` is the new field contents.\n\nReturn `reg` with bits `start` .. `start + width - 1` replaced by the low\n`width` bits of `value`, and every other bit unchanged.\n\n`set_field(0x000000F0, 4, 4, 0xA)` is `0x000000A0`: the same register with\nits bits 4-7 now reading `0xA`.\n\n## Watch out\n\n- **Clear the field before you write it.** `reg |= (value & mask) << start`\n  on its own only ever turns bits on. If the field currently holds `1111` and\n  the new value is `0000`, OR-ing changes nothing -- you have to clear the\n  field's old bits first with an AND against the *complement* of the mask,\n  then OR the new ones in.\n- **Mask `value`, not just `reg`.** Nothing stops the caller passing a\n  `value` that does not fit in `width` bits -- an enum with more members than\n  the field was sized for, a stale value from somewhere else. If you shift\n  it into place without masking it down to `width` bits first, the high bits\n  spill over into whichever field happens to sit above this one.\n- `width` can still be `32`, the same as in *Extract a Register Field*, and\n  the mask needs the same special case for it.\n",
+  "starter_code": "unsigned int set_field(unsigned int reg, int start, int width,\n                       unsigned int value)\n{\n    /* your code here */\n    (void)reg;\n    (void)start;\n    (void)width;\n    (void)value;\n    return 0;\n}\n",
+  "harness": "#include <stdio.h>\n\n/* Provided by the candidate in solution.c */\nunsigned int set_field(unsigned int reg, int start, int width,\n                       unsigned int value);\n\nint main(void)\n{\n    unsigned int reg, value;\n    int start, width;\n    if (scanf(\"%x %d %d %x\", &reg, &start, &width, &value) != 4) {\n        return 1;\n    }\n    printf(\"%08X\\n\", set_field(reg, start, width, value));\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random register writes: a field, a width, and a value to install.\n\nValues are sometimes drawn from the full 32-bit range regardless of how wide\nthe field is (`_oversized_value`), so a mask you forgot to apply on `value`\nhas real bits to leak.\n\"\"\"\n\n\ndef generate(rng, count):\n    builders = (_anything, _oversized_value, _clear_to_zero, _whole_register)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, reg, start, width, value, description=\"\"):\n    return {\n        \"name\": name,\n        \"stdin\": \"%X %d %d %X\\n\" % (reg, start, width, value),\n        \"description\": description,\n    }\n\n\ndef _anything(rng, index):\n    reg = rng.randrange(0, 2 ** 32)\n    start = rng.randrange(32)\n    width = rng.randint(1, 32 - start)\n    value = rng.randrange(0, 1 << width)\n    return _case(\"a random write #%d\" % index, reg, start, width, value)\n\n\ndef _oversized_value(rng, index):\n    reg = rng.randrange(0, 2 ** 32)\n    start = rng.randrange(32)\n    width = rng.randint(1, min(8, 32 - start))\n    value = rng.randrange(0, 2 ** 32)\n    return _case(\"a value wider than the field #%d\" % index, reg, start,\n                 width, value,\n                 \"value is not pre-masked to width bits -- your code has to \"\n                 \"do that, not assume it.\")\n\n\ndef _clear_to_zero(rng, index):\n    reg = rng.randrange(0, 2 ** 32)\n    start = rng.randrange(32)\n    width = rng.randint(1, 32 - start)\n    return _case(\"writing zero into a busy field #%d\" % index, reg, start,\n                 width, 0,\n                 \"The new value is 0 -- any of the old field's bits still \"\n                 \"standing means they were never cleared.\")\n\n\ndef _whole_register(rng, index):\n    reg = rng.randrange(0, 2 ** 32)\n    value = rng.randrange(0, 2 ** 32)\n    return _case(\"a whole-register overwrite #%d\" % index, reg, 0, 32, value)\n"
+  },
+  "tests": [
+    {
+      "name": "clearing a field back to zero",
+      "stdin": "F0 4 4 0\n",
+      "expected_stdout": "00000000",
+      "description": "The field was 1111; OR-ing in a new value of 0 does nothing unless the old bits are cleared first."
+    },
+    {
+      "name": "a value wider than the field",
+      "stdin": "F 8 4 FF\n",
+      "expected_stdout": "00000F0F",
+      "description": "value is 0xFF but the field is only 4 bits wide -- only 0xF may land in bits 8-11, and bits 12-15 must stay zero."
+    },
+    {
+      "name": "a 3-bit mode field among other flags",
+      "stdin": "B5 2 3 6\n",
+      "expected_stdout": "000000B9"
+    },
+    {
+      "name": "setting a single bit",
+      "stdin": "0 31 1 1\n",
+      "expected_stdout": "80000000"
+    },
+    {
+      "name": "clearing a single bit leaves its neighbours alone",
+      "stdin": "FFFFFFFF 15 1 0\n",
+      "expected_stdout": "FFFF7FFF"
+    },
+    {
+      "name": "a whole-register overwrite, width = 32",
+      "stdin": "DEADBEEF 0 32 12345678\n",
+      "expected_stdout": "12345678",
+      "description": "Same width == 32 mask case as in Extract a Register Field."
+    }
+  ],
+  "reference_solution_b64": "dW5zaWduZWQgaW50IHNldF9maWVsZCh1bnNpZ25lZCBpbnQgcmVnLCBpbnQgc3RhcnQsIGludCB3aWR0aCwKICAgICAgICAgICAgICAgICAgICAgICB1bnNpZ25lZCBpbnQgdmFsdWUpCnsKICAgIHVuc2lnbmVkIGludCBtYXNrID0gKHdpZHRoID09IDMyKSA/IDB4RkZGRkZGRkZ1IDogKDF1IDw8IHdpZHRoKSAtIDF1OwoKICAgIHJlZyAmPSB+KG1hc2sgPDwgc3RhcnQpOwogICAgcmVnIHw9ICh2YWx1ZSAmIG1hc2spIDw8IHN0YXJ0OwogICAgcmV0dXJuIHJlZzsKfQo="
+}

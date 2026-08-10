@@ -1,0 +1,55 @@
+{
+  "id": "c_gpio_ops",
+  "title": "GPIO Set/Clear/Toggle (Read-Modify-Write)",
+  "language": "c",
+  "difficulty": "medium",
+  "topics": [
+    "bitwise",
+    "embedded",
+    "gpio",
+    "read-modify-write"
+  ],
+  "timeout_seconds": 5,
+  "statement": "A GPIO port on a microcontroller is one register with one bit per pin. Three\noperations cover almost everything you ever do to it, and all three are\nread-modify-write:\n\n- **SET** -- drive some pins high, leave the rest exactly as they are.\n- **CLR** -- drive some pins low, leave the rest exactly as they are.\n- **TOG** -- flip some pins, leave the rest exactly as they are.\n\nEach one is a mask against the current register value; none of them ever\ntouches a pin that is not in the mask.\n\n## Your function\n\n```\nenum gpio_op { GPIO_SET, GPIO_CLEAR, GPIO_TOGGLE };\n\nunsigned int gpio_apply(unsigned int reg, enum gpio_op op, unsigned int mask);\n```\n\nYou are called once per operation with the register's current value, which\noperation to perform, and the mask of pins it applies to. Return the\nregister's new value; the harness keeps it and passes it back in on the next\ncall, then prints it as 8 hex digits.\n\n## Watch out\n\n- **CLR is AND with the *complement* of the mask, not AND with the mask.**\n  `reg & mask` keeps only the masked pins and clears everything else, which\n  is close to the opposite of what \"clear these pins\" means. The operation\n  you want is `reg & ~mask`.\n- A pin outside `mask` must read back completely unchanged by any of the\n  three operations -- not just \"probably still what it was\". Build each one\n  from the register's current value, not from the mask alone.\n\n## Why real hardware avoids this entirely\n\n`reg |= mask` is three steps at the machine level: read the register, OR in\nthe mask, write it back. If an interrupt fires between the read and the\nwrite and it touches the same register, its change is overwritten -- lost,\nwithout either side knowing. This is exactly why many microcontrollers give\nGPIO ports a *second*, write-only register (STM32 calls it `BSRR`) where\nwriting a `1` sets or clears one specific pin **atomically**, in a single bus\nwrite, with no read involved at all. The read-modify-write pattern in this\nexercise is what such registers exist to avoid -- worth knowing, even though\nthe harness here is single-threaded and cannot show you the race.\n",
+  "starter_code": "enum gpio_op { GPIO_SET, GPIO_CLEAR, GPIO_TOGGLE };\n\nunsigned int gpio_apply(unsigned int reg, enum gpio_op op, unsigned int mask)\n{\n    /* your code here */\n    (void)op;\n    (void)mask;\n    return reg;\n}\n",
+  "harness": "#include <stdio.h>\n#include <string.h>\n\n/* Same enum as the candidate's file. */\nenum gpio_op { GPIO_SET, GPIO_CLEAR, GPIO_TOGGLE };\n\n/* Provided by the candidate in solution.c */\nunsigned int gpio_apply(unsigned int reg, enum gpio_op op, unsigned int mask);\n\nint main(void)\n{\n    unsigned int reg;\n    if (scanf(\"%x\", &reg) != 1) {\n        return 1;\n    }\n\n    char opname[8];\n    unsigned int mask;\n    while (scanf(\"%7s %x\", opname, &mask) == 2) {\n        enum gpio_op op;\n\n        if (strcmp(opname, \"SET\") == 0) {\n            op = GPIO_SET;\n        } else if (strcmp(opname, \"CLR\") == 0) {\n            op = GPIO_CLEAR;\n        } else if (strcmp(opname, \"TOG\") == 0) {\n            op = GPIO_TOGGLE;\n        } else {\n            printf(\"UNKNOWN OP %s\\n\", opname);\n            return 1;\n        }\n\n        reg = gpio_apply(reg, op, mask);\n        printf(\"%08X\\n\", reg);\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random SET/CLR/TOG traces against a starting register.\n\nMasks come from a small pool of recognisable bit patterns -- single bits,\nnibbles, whole bytes -- rather than uniform noise, so a generated run reads\nlike a real register trace and a wrong line is easy to spot.\n\"\"\"\n\n_OPS = (\"SET\", \"CLR\", \"TOG\")\n_MASKS = (0x00000001, 0x00000002, 0x0000000F, 0x000000F0, 0x000000FF,\n          0x00001000, 0x80000000, 0xFFFF0000, 0xFFFFFFFF)\n\n\ndef generate(rng, count):\n    return [_case(rng, index + 1) for index in range(count)]\n\n\ndef _case(rng, index):\n    reg = rng.choice((0x00000000, 0xFFFFFFFF, rng.randrange(0, 2 ** 32)))\n    steps = rng.randint(3, 6)\n    lines = [\"%08X\" % reg]\n    for _ in range(steps):\n        lines.append(\"%s %X\" % (rng.choice(_OPS), rng.choice(_MASKS)))\n    return {\n        \"name\": \"a random trace #%d\" % index,\n        \"stdin\": \"\\n\".join(lines) + \"\\n\",\n        \"description\": \"%d operation(s) starting from %08X.\" % (steps, reg),\n    }\n"
+  },
+  "tests": [
+    {
+      "name": "no operations at all",
+      "stdin": "00000000\n",
+      "expected_stdout": "",
+      "description": "Just the starting register and nothing else -- nothing should print."
+    },
+    {
+      "name": "a single SET on a clean register",
+      "stdin": "00000000\nSET 1\n",
+      "expected_stdout": "00000001"
+    },
+    {
+      "name": "toggling the same pin twice returns to the start",
+      "stdin": "00000000\nTOG 10\nTOG 10\n",
+      "expected_stdout": "00000010\n00000000"
+    },
+    {
+      "name": "set, clear, toggle in turn",
+      "stdin": "00000000\nSET F\nCLR 5\nTOG 3\n",
+      "expected_stdout": "0000000F\n0000000A\n00000009",
+      "description": "The CLR step is the one that catches `reg & mask` written where `reg & ~mask` was meant: it would give 00000005 here, not 0000000A."
+    },
+    {
+      "name": "toggle everything high, then reset a nibble",
+      "stdin": "00000000\nSET FF\nTOG FF\nSET F\nCLR FF\n",
+      "expected_stdout": "000000FF\n00000000\n0000000F\n00000000"
+    },
+    {
+      "name": "starting from a busy register",
+      "stdin": "FFFFFFFF\nCLR FFFFFFFF\nSET 80000001\nTOG 80000000\n",
+      "expected_stdout": "00000000\n80000001\n00000001"
+    }
+  ],
+  "reference_solution_b64": "ZW51bSBncGlvX29wIHsgR1BJT19TRVQsIEdQSU9fQ0xFQVIsIEdQSU9fVE9HR0xFIH07Cgp1bnNpZ25lZCBpbnQgZ3Bpb19hcHBseSh1bnNpZ25lZCBpbnQgcmVnLCBlbnVtIGdwaW9fb3Agb3AsIHVuc2lnbmVkIGludCBtYXNrKQp7CiAgICBzd2l0Y2ggKG9wKSB7CiAgICAgICAgY2FzZSBHUElPX1NFVDoKICAgICAgICAgICAgcmV0dXJuIHJlZyB8IG1hc2s7CiAgICAgICAgY2FzZSBHUElPX0NMRUFSOgogICAgICAgICAgICByZXR1cm4gcmVnICYgfm1hc2s7CiAgICAgICAgY2FzZSBHUElPX1RPR0dMRToKICAgICAgICAgICAgcmV0dXJuIHJlZyBeIG1hc2s7CiAgICAgICAgZGVmYXVsdDoKICAgICAgICAgICAgcmV0dXJuIHJlZzsKICAgIH0KfQo="
+}

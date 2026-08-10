@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Byte-Swap a Register (Endianness) · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · easy</p>
+  <h1>Byte-Swap a Register (Endianness)</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>Four bytes, reversed: byte 0 moves to where byte 3 was, byte 3 moves to
+  where byte 0 was, and the same swap happens between bytes 1 and 2. The bits
+  inside each byte do not move relative to each other -- only which byte they
+  belong to changes.</p>
+
+<h2>One byte, one line, four times</h2>
+
+<p>Pick a byte off <code>value</code> with a mask, move it to its new home
+  with a shift, and OR the four results together. For byte 0 (the lowest
+  byte), moving to the top:</p>
+
+<pre><code>(value &amp; 0x000000FFu) &lt;&lt; 24</code></pre>
+
+<p>The other three follow the same shape: mask out one byte, then shift it by
+  the difference between where it is and where it needs to be. Byte 1 moves
+  up 8 places, byte 2 moves down 8 places, byte 3 moves down 24.</p>
+
+<h2>Watch out</h2>
+
+<ul>
+  <li>Get the shift amount for each byte from where it starts and where it
+    ends up, not from a pattern you are guessing at. Byte <em>n</em> (counting
+    from 0 at the bottom) always moves to byte <em>3 - n</em>.</li>
+  <li>Do all four in one pass rather than building it up with several
+    reassignments to the same variable -- it is easy to accidentally read a
+    byte back out of <code>value</code> after an earlier line has already
+    changed it.</li>
+</ul>
+
+<details>
+<summary>Still stuck? A bigger nudge</summary>
+
+<p>All four masks and shifts, side by side:</p>
+
+<table>
+  <tr><th>Byte</th><th>Mask</th><th>Move</th></tr>
+  <tr><td>0 (lowest)</td><td><code>0x000000FF</code></td><td>left 24</td></tr>
+  <tr><td>1</td><td><code>0x0000FF00</code></td><td>left 8</td></tr>
+  <tr><td>2</td><td><code>0x00FF0000</code></td><td>right 8</td></tr>
+  <tr><td>3 (highest)</td><td><code>0xFF000000</code></td><td>right 24</td></tr>
+</table>
+
+<p>OR the four masked-and-shifted values together and that is the whole
+  function.</p>
+
+</details>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li><code>swap_endian32(0x12345678)</code> → <code>0x78563412</code>.</li>
+  <li><code>swap_endian32(0x000000FF)</code> → <code>0xFF000000</code> --
+    the lowest byte lands at the top.</li>
+  <li>Swapping a value twice always returns the original value -- a quick way
+    to sanity-check your own code by hand.</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_swap_endian32.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

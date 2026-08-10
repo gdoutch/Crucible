@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Extract a Register Field · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · easy</p>
+  <h1>Extract a Register Field</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>A slice of bits out of the middle of a 32-bit word, moved down so it reads
+  as an ordinary number starting at bit 0. Two things describe the slice:
+  <code>start</code>, where it begins, and <code>width</code>, how many bits
+  it covers.</p>
+
+<h2>The two operators that do the work</h2>
+
+<ul>
+  <li><code>reg &gt;&gt; start</code> — slides the field down so its lowest
+    bit lands on bit 0. Everything below <code>start</code> falls off the
+    bottom, which is exactly where you want it to go.</li>
+  <li><code>&amp; mask</code> — clears everything above the field, where
+    <code>mask</code> is <code>width</code> ones in a row: <code>0b1</code>
+    for a 1-bit field, <code>0b1111</code> for a 4-bit field, and so on.</li>
+</ul>
+
+<p>The standard way to build that mask is <code>(1u &lt;&lt; width) - 1u</code>
+  — shift a single 1 bit up past the top of the field, then subtract one so
+  every bit below it turns on. Try it on paper for <code>width = 4</code>:
+  <code>1 &lt;&lt; 4</code> is <code>0b10000</code>, minus one is
+  <code>0b01111</code>.</p>
+
+<h2>The trap the problem is built around</h2>
+
+<div class="trap">
+<p>Try that same formula with <code>width = 32</code>. <code>1u &lt;&lt; 32</code>
+  is shifting a 32-bit type by its own bit width, which the C standard flatly
+  does not define. It is not "the biggest value the type can hold" or
+  anything else predictable — on the compiler this app builds with, it comes
+  back as if you had written <code>1u &lt;&lt; 0</code>, because the hardware
+  shift instruction only looks at the bottom few bits of the shift amount.
+  That makes the mask <code>1u - 1u</code>, which is <code>0</code>. Every bit
+  of the register you were trying to read gets masked away, and
+  <code>extract_field(0xFFFFFFFF, 0, 32)</code> comes back <code>0</code>
+  instead of the whole value.</p>
+<p>One of the fixed test cases is exactly this: the whole register, width 32.
+  If every other case passes and that one comes back <code>0</code>, this is
+  why.</p>
+</div>
+
+<details>
+<summary>Still stuck? A bigger nudge</summary>
+
+<p>Give <code>width == 32</code> its own line rather than trying to make one
+  formula cover both cases:</p>
+
+<pre><code>unsigned int mask;
+if (width == 32) {
+    mask = 0xFFFFFFFFu;
+} else {
+    mask = (1u &lt;&lt; width) - 1u;
+}</code></pre>
+
+<p>A conditional expression does the same thing in one line if you would
+  rather:</p>
+
+<pre><code>unsigned int mask = (width == 32) ? 0xFFFFFFFFu : (1u &lt;&lt; width) - 1u;</code></pre>
+
+<p>Either way, once <code>mask</code> is right the rest of the function is
+  one line: shift, then mask.</p>
+
+</details>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li><code>extract_field(0xF0, 4, 4)</code> → <code>0xF</code> — a field in
+    the middle.</li>
+  <li><code>extract_field(0x80000000, 31, 1)</code> → <code>1</code> — the
+    highest legal <code>start</code>.</li>
+  <li><code>extract_field(0xFFFFFFFF, 0, 32)</code> → the whole value, not
+    <code>0</code>.</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_bitfield_extract.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>
