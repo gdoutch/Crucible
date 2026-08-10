@@ -126,6 +126,13 @@ def apply_theme(root, palette: Palette) -> ttk.Style:
     style.configure("Brand.TLabel", background=p.window_bg,
                     foreground=p.accent, font=("", 13, "bold"))
     style.configure("Status.TLabel", background=p.panel_bg, foreground=p.text_muted)
+    # Pane title bars. The chevron and the title are recoloured per widget on
+    # hover, so both start from the muted colour the style sets here.
+    style.configure("PaneTitle.TLabel", background=p.window_bg,
+                    foreground=p.text_muted)
+    style.configure("PaneStrip.TFrame", background=p.panel_bg)
+    style.configure("PaneStripTitle.TLabel", background=p.panel_bg,
+                    foreground=p.text_muted)
     style.configure("Ok.TLabel", background=p.window_bg, foreground=p.ok)
     style.configure("Fail.TLabel", background=p.window_bg, foreground=p.fail)
     style.configure("Warn.TLabel", background=p.window_bg, foreground=p.warn)

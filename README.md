@@ -22,6 +22,7 @@ python -m crucible
 ## Contents
 
 - [Quick start](#quick-start)
+- [Profiles](#profiles)
 - [Installing a C compiler](#installing-a-c-compiler)
 - [How a submission is run](#how-a-submission-is-run)
 - [The reference-solution gate](#the-reference-solution-gate)
@@ -52,31 +53,87 @@ python -m crucible --guides     # which problems lack a hint or solution page
 
 On Windows, **`Crucible.cmd`** opens the GUI on a double-click.
 
-The window is four panes:
+The window is four panes, under one banner that reports on the problem itself:
 
 ```text
-┌───────────┬────────────────────────────────────────────────┐
-│ PROBLEMS  │  THE PROBLEM      statement, examples, hints   │
-│           ├────────────────────────────────────────────────┤
-│  C        │  YOUR SOLUTION    editor, line numbers,        │
-│   easy    │                   syntax highlighting          │
-│   medium  ├────────────────────────────────────────────────┤
-│  Python   │  ✓ suite verified — reference passes 9/9       │
-│           │  ┌──────────────────┬───────────────────────┐  │
-│           │  │ PASS  empty array│ INPUT     0           │  │
-│           │  │ FAIL  last elem  │ EXPECTED  6           │  │
-│           │  │ PASS  not found  │ YOUR OUT  -1          │  │
-│           │  └──────────────────┴───────────────────────┘  │
-└───────────┴────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│ ✓ Test suite verified — the reference passes all 9 cases     │
+├───────────┬──────────────────────────────────────────────────┤
+│ PROBLEMS  │ ▾ THE PROBLEM                                 ⤢  │
+│           │   statement, examples, edge cases                │
+│  Easy     ├──────────────────────────────────────────────────┤
+│  Medium   │ ▾ YOUR SOLUTION                     solution.c ⤢ │
+│   ★ done  │   editor, line numbers, syntax highlighting      │
+│  Hard     ├──────────────────────────────────────────────────┤
+│           │ ▾ RESULTS                                     ⤢  │
+│           │  ┌──────────────────┬────────────────────────┐   │
+│           │  │ PASS  empty array│ INPUT     0            │   │
+│           │  │ FAIL  last elem  │ EXPECTED  6            │   │
+│           │  │ PASS  not found  │ YOUR OUT  -1           │   │
+│           │  └──────────────────┴────────────────────────┘   │
+└───────────┴──────────────────────────────────────────────────┘
 ```
+
+The **Language** picker in the toolbar chooses what the PROBLEMS pane groups
+by: **All** groups by language, same as the language picker itself; picking
+one language regroups the list by difficulty instead, since the picker has
+already answered "which language" and "how hard" is the question left. A
+solved problem — every test passed at least once, by whoever is the current
+profile — carries a small ★ beside it; a ✓ or ✗ instead means the problem's
+*own* reference solution does or does not pass, which is a claim about the
+problem, not about you (see [The reference-solution gate](#the-reference-solution-gate)).
+
+Every pane collapses to its title bar — click the bar, or **Ctrl+1** to
+**Ctrl+4**, and the space goes to its neighbours. **⤢** gives one pane the
+whole window and puts it back again, which is the quick way to read a long
+statement without losing your place. **Ctrl+0** restores the default
+proportions. Pane sizes and the window size are remembered between sessions.
+
+The banner sits above the panes rather than inside one, because what it
+reports — suite verified, data set building, problem disabled — is about the
+problem and not about any one pane. **Build Output** appears as a second tab
+beside the results only once there is a build to talk about, and goes away
+again when you move to another problem.
 
 Keys: **F5** or **Ctrl+Enter** runs the suite. **Ctrl+R** draws a new
 randomised data set. **Ctrl+S** saves a draft. **F1** opens the hint for the
 current problem in your browser and **F2** its diagram, where it has one.
 **Tab** / **Shift+Tab** indent and dedent the selection.
 
-Your work is autosaved per problem to `~/.crucible/drafts/`, so closing the
-window mid-problem loses nothing. *File → Reset to starter code* discards it.
+Your work is autosaved per problem, so closing the window mid-problem loses
+nothing. *File → Reset to starter code* discards it. Where it is saved depends
+on which profile is open -- see below.
+
+## Profiles
+
+Practising is per person, not per machine: **Profile → Switch profile…** lists
+everyone who has used this copy of Crucible and lets you open one, or start a
+new one by typing a username and pressing *Create & open*. The very first run
+asks the same question, since there is nothing yet to resume.
+
+A profile is a username and nothing else — no email, no real name, no link to
+your OS account. It exists to keep drafts, randomised data sets, and which
+problems you have solved separate between people sharing a machine, not to
+identify anyone. Two profiles can even share a username in different case
+(`Alice` and `alice`) — matching is exact, on the theory that a username typed
+at a keyboard is a label, not a verified identity.
+
+Everything is stored under `~/.crucible/`:
+
+```text
+~/.crucible/
+  settings.json          theme, font size, window layout -- shared by everyone
+  profiles.json           every profile's username and which one is current
+  profiles/<id>/
+    drafts/                your in-progress code, one file per problem
+    seeds.json              which randomised data set each problem is on
+    progress.json           which problems you have solved, and when
+```
+
+The status bar shows who is currently practising and how many problems they
+have solved; **Profile → Current: `<name>`** shows the same thing. Deleting a
+profile (from the switcher) removes its drafts, data sets and solved record
+permanently -- there is no undo.
 
 ## Installing a C compiler
 
@@ -222,9 +279,10 @@ one, which is what makes a generated failure reproducible:
 python -m crucible --verify --seed 8317
 ```
 
-Data set numbers are remembered per problem in `~/.crucible/seeds.json`,
-alongside the drafts and for the same reason: a half-written solution and the
-cases it was being written against belong together.
+Data set numbers are remembered per problem in the active profile's
+`seeds.json` (see [Profiles](#profiles)), alongside the drafts and for the
+same reason: a half-written solution and the cases it was being written
+against belong together.
 
 ### Writing a generator
 
@@ -584,7 +642,9 @@ crucible/
   problem.py           schema, loading, validation
   runner.py            build + execute + judge        (no UI)
   randomise.py         generators, and the reference-as-oracle
-  workspace.py         drafts, data set numbers, settings
+  workspace.py         drafts, data set numbers, settings -- profile-scoped
+                       via a `root` argument, see profiles.py
+  profiles.py          usernames, and per-profile solved-problem tracking
   guides.py            finds the hint / solution pages, opens them
   languages/
     __init__.py        registry
@@ -594,6 +654,8 @@ crucible/
   ui/
     app.py             main window
     editor.py          editor widget: gutter, highlighting, indentation
+    panes.py           collapsible panes, and the sizing ttk will not do
+    profile_dialog.py  the profile picker/switcher dialog
     theme.py           palettes and ttk styling
 problems/
   guides.css           shared by every guide page

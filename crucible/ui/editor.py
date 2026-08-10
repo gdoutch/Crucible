@@ -63,7 +63,10 @@ class _ProxiedText(tk.Text):
 
 class _LineNumbers(tk.Canvas):
     def __init__(self, master, text: tk.Text, palette: Palette, font: tkfont.Font):
-        super().__init__(master, width=52, highlightthickness=0,
+        # `height=1` because a Canvas otherwise asks for seven centimetres of
+        # it, and this one is stretched to the Text beside it anyway -- left
+        # alone, that request becomes the smallest the editor's pane can be.
+        super().__init__(master, width=52, height=1, highlightthickness=0,
                          background=palette.gutter_bg, takefocus=0)
         self._text = text
         self._palette = palette
@@ -92,7 +95,10 @@ class _LineNumbers(tk.Canvas):
 class CodeEditor(ttk.Frame):
     """The candidate's editing surface."""
 
-    def __init__(self, master, palette: Palette, font_size: int = 11) -> None:
+    def __init__(self, master, palette: Palette, font_size: int = 11,
+                 height: int = 20) -> None:
+        """`height` is in lines, and is a floor rather than a target -- it
+        becomes the smallest the editor's pane can be dragged to."""
         super().__init__(master)
         self._palette = palette
         self._font = mono_font(font_size)
@@ -103,7 +109,7 @@ class CodeEditor(ttk.Frame):
 
         self.text = _ProxiedText(
             self, wrap="none", undo=True, maxundo=-1, autoseparators=True,
-            font=self._font, background=palette.editor_bg,
+            height=height, font=self._font, background=palette.editor_bg,
             foreground=palette.editor_fg, insertbackground=palette.caret,
             selectbackground=palette.selection, selectforeground=palette.editor_fg,
             relief="flat", padx=8, pady=6, tabs=(self._font.measure(" " * TAB_WIDTH),),

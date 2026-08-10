@@ -2,6 +2,12 @@
 
 Kept outside the project directory so that pulling down a new set of problems
 never clobbers someone's half-finished work.
+
+Drafts and data-set seeds belong to one *profile* -- see `crucible.profiles`,
+which is what supplies the `root` a caller passes in below. Only `settings.json`
+(theme, font size, window layout) has no profile in it: those are preferences
+for the machine, not the person sitting at it, so whoever opens the app next
+finds the window the way it was left rather than the way a stranger left it.
 """
 
 from __future__ import annotations
@@ -16,8 +22,11 @@ APP_DIR_NAME = ".crucible"
 DEFAULT_SETTINGS = {
     "theme": "dark",
     "font_size": 11,
-    "last_problem": "",
     "autosave": True,
+    #: Window size, pane sizes and which panes are collapsed. Opaque here --
+    #: the shape of it belongs to ui/panes.py, and every reader of it treats a
+    #: missing or malformed entry as "lay the window out from scratch".
+    "layout": {},
 }
 
 
@@ -27,8 +36,10 @@ def app_dir() -> Path:
     return root
 
 
-def drafts_dir() -> Path:
-    path = app_dir() / "drafts"
+def drafts_dir(root: Path | None = None) -> Path:
+    """`root` scopes this to one profile -- see `crucible.profiles`. Omitting
+    it is only for callers with no notion of a profile (the test suite)."""
+    path = (root or app_dir()) / "drafts"
     path.mkdir(parents=True, exist_ok=True)
     return path
 
@@ -37,28 +48,29 @@ def _safe_name(problem_id: str) -> str:
     return re.sub(r"[^A-Za-z0-9._-]", "_", problem_id) or "problem"
 
 
-def draft_path(problem_id: str, extension: str) -> Path:
-    return drafts_dir() / f"{_safe_name(problem_id)}{extension}"
+def draft_path(problem_id: str, extension: str, root: Path | None = None) -> Path:
+    return drafts_dir(root) / f"{_safe_name(problem_id)}{extension}"
 
 
-def load_draft(problem_id: str, extension: str) -> str | None:
-    path = draft_path(problem_id, extension)
+def load_draft(problem_id: str, extension: str, root: Path | None = None) -> str | None:
+    path = draft_path(problem_id, extension, root)
     try:
         return path.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError):
         return None
 
 
-def save_draft(problem_id: str, extension: str, source: str) -> None:
+def save_draft(problem_id: str, extension: str, source: str,
+               root: Path | None = None) -> None:
     try:
-        draft_path(problem_id, extension).write_text(source, encoding="utf-8")
+        draft_path(problem_id, extension, root).write_text(source, encoding="utf-8")
     except OSError:
         pass  # a failed autosave must never interrupt the candidate
 
 
-def clear_draft(problem_id: str, extension: str) -> None:
+def clear_draft(problem_id: str, extension: str, root: Path | None = None) -> None:
     try:
-        draft_path(problem_id, extension).unlink()
+        draft_path(problem_id, extension, root).unlink()
     except OSError:
         pass
 
@@ -71,13 +83,21 @@ def clear_draft(problem_id: str, extension: str) -> None:
 # problem tomorrow and finding the numbers changed underneath your notes would
 # be its own small betrayal, so the data set only ever changes when asked for.
 
-def _seeds_path() -> Path:
-    return app_dir() / "seeds.json"
+def _seeds_path(root: Path | None = None) -> Path:
+    # Unlike `drafts_dir`, `root` here is not guaranteed to already exist --
+    # `profiles.profile_dir` happens to create it first, but nothing enforces
+    # that, and a missing directory would otherwise turn `save_seeds` into a
+    # silent no-op (`write_text` raising `FileNotFoundError`, which the OSError
+    # handler below swallows exactly like it swallows a real disk error).
+    base = root or app_dir()
+    base.mkdir(parents=True, exist_ok=True)
+    return base / "seeds.json"
 
 
-def load_seeds() -> dict[str, int]:
+def load_seeds(root: Path | None = None) -> dict[str, int]:
+    """`root` scopes this to one profile -- see `crucible.profiles`."""
     try:
-        stored = json.loads(_seeds_path().read_text(encoding="utf-8"))
+        stored = json.loads(_seeds_path(root).read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return {}
     if not isinstance(stored, dict):
@@ -86,10 +106,10 @@ def load_seeds() -> dict[str, int]:
             if isinstance(v, int) and not isinstance(v, bool)}
 
 
-def save_seeds(seeds: dict[str, int]) -> None:
+def save_seeds(seeds: dict[str, int], root: Path | None = None) -> None:
     try:
-        _seeds_path().write_text(json.dumps(seeds, indent=2, sort_keys=True),
-                                 encoding="utf-8")
+        _seeds_path(root).write_text(json.dumps(seeds, indent=2, sort_keys=True),
+                                     encoding="utf-8")
     except OSError:
         pass  # losing a data set number costs one reshuffle, not any work
 
