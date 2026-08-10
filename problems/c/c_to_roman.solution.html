@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Decimal to Roman Numeral String · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>Decimal to Roman Numeral String</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The idea</h2>
+
+<p>Treat the six subtractive pairs as <strong>values in their own right</strong>
+  rather than as exceptions. Then the numeral system has thirteen building
+  blocks, not seven, and converting a number is a plain greedy walk: take the
+  largest block that fits, append it, subtract, repeat.</p>
+
+<p>Everything awkward about Roman numerals — <code>IV</code> instead of
+  <code>IIII</code>, <code>CM</code> instead of <code>DCCCC</code>, the
+  three-repeat limit — disappears into that one table. There is no fix-up pass
+  because there is nothing left to fix.</p>
+
+<h2>The code</h2>
+
+<pre><code>#include &lt;stddef.h&gt;
+
+/* Every value that can start a numeral, largest first -- the six subtractive
+ * pairs sitting in the order their values demand.
+ */
+static const struct {
+    int value;
+    const char *symbol;
+} ROMAN[] = {
+    { 1000, "M"  }, { 900, "CM" }, { 500, "D" }, { 400, "CD" },
+    {  100, "C"  }, {  90, "XC" }, {  50, "L" }, {  40, "XL" },
+    {   10, "X"  }, {   9, "IX" }, {   5, "V" }, {   4, "IV" },
+    {    1, "I"  },
+};
+
+void to_roman(int value, char *out)
+{
+    size_t count = sizeof ROMAN / sizeof ROMAN[0];
+
+    for (size_t i = 0; i &lt; count; i++) {
+        while (value &gt;= ROMAN[i].value) {
+            for (const char *symbol = ROMAN[i].symbol; *symbol != '\0'; symbol++) {
+                *out++ = *symbol;
+            }
+            value -= ROMAN[i].value;
+        }
+    }
+
+    *out = '\0';
+}</code></pre>
+
+<h2>Why greedy is correct here</h2>
+
+<p>Greedy algorithms are usually where you have to be careful — the greedy
+  choice is often not the optimal one. (Making change with coins of 1, 3 and 4
+  is the standard counter-example: greedy gives 6 = 4 + 1 + 1, three coins,
+  when 3 + 3 is two.)</p>
+
+<p>It works here because the thirteen values are not an arbitrary set. Between
+  each plain symbol and the next one up sits the subtractive pair that covers
+  the gap, and the result is that <strong>at most three of any row can ever be
+  needed</strong>. There is no configuration where declining a large block and
+  taking several smaller ones does better — the block that would let you do
+  that is already in the table.</p>
+
+<p>Which is the same statement as the historical rule "no symbol four times in
+  a row". The rule and the table are two descriptions of one fact, and encoding
+  the table means the rule needs no enforcement.</p>
+
+<div class="trap">
+<p><strong>Descending order is load-bearing.</strong> Put <code>900 CM</code>
+  after <code>500 D</code> and 900 matches the <code>D</code> row first,
+  producing <code>DCCCC</code>. Greedy is only greedy against a list that is
+  actually sorted, and nothing in the code checks that it is — it is a property
+  of how the table was typed.</p>
+</div>
+
+<h2>Walking a case</h2>
+
+<p><code>1994</code>, the <em>a year</em> test:</p>
+
+<table class="trace">
+  <tr><th>Row reached</th><th>Fits?</th><th>Appended</th><th>Value left</th></tr>
+  <tr><td><code>1000 M</code></td><td>yes</td><td><code>M</code></td><td>994</td></tr>
+  <tr><td><code>1000 M</code></td><td>no</td><td>—</td><td>994</td></tr>
+  <tr><td><code>900 CM</code></td><td>yes</td><td><code>CM</code></td><td>94</td></tr>
+  <tr><td><code>500 D</code>, <code>400 CD</code>, <code>100 C</code></td><td>no</td><td>—</td><td>94</td></tr>
+  <tr><td><code>90 XC</code></td><td>yes</td><td><code>XC</code></td><td>4</td></tr>
+  <tr><td><code>50 L</code> … <code>5 V</code></td><td>no</td><td>—</td><td>4</td></tr>
+  <tr><td><code>4 IV</code></td><td>yes</td><td><code>IV</code></td><td>0</td></tr>
+  <tr><td><code>1 I</code></td><td>no</td><td>—</td><td>0</td></tr>
+</table>
+
+<p><code>MCMXCIV</code>. Three of the six subtractive pairs in one number, each
+  produced by an ordinary row of the table.</p>
+
+<p>Note that once the value reaches zero the remaining rows all fail their
+  <code>while</code> immediately, so the loop runs to the end doing nothing.
+  Adding <code>if (value == 0) break;</code> would save a handful of
+  comparisons and is not worth the line.</p>
+
+<h2>The string building</h2>
+
+<h3><code>*out++ = *symbol</code></h3>
+
+<p>Post-increment on the destination: write the byte at <code>out</code>, then
+  advance. <code>out</code> is a parameter — your own copy of the caller's
+  pointer — so moving it is free and invisible to them. There is no separate
+  index and no need to know how much has been written so far.</p>
+
+<p>The inner <code>for</code> walks the symbol to its own terminator, which
+  handles one-character and two-character symbols with the same code. Writing
+  <code>*out++ = ROMAN[i].symbol[0]; if (ROMAN[i].symbol[1]) …</code> also
+  works and puts the length of the symbols into the algorithm, where it does
+  not belong.</p>
+
+<h3>The terminator</h3>
+
+<div class="note">
+<p><code>*out = '\0';</code> — after the loops, once, and <em>not</em>
+  post-incremented. This is the whole reason the function's contract is "a
+  null-terminated string" rather than "some characters".</p>
+</div>
+
+<p>By that point <code>out</code> points at the first unwritten byte, which is
+  exactly where the terminator goes. It is the only write in the function that
+  does not advance the pointer, because nothing follows it.</p>
+
+<p>The harness prefills its buffer with <code>'?'</code> and checks for a
+  <code>'\0'</code> within sixteen bytes, so a missing terminator is reported
+  as <code>UNTERMINATED</code> instead of printing sixty-four question marks
+  and whatever came after. That check lives in the harness for the same reason
+  the safety monitor does in <em>Level Crossing Interlock</em> — the thing
+  being tested does not get to decide whether it passed.</p>
+
+<h3>Why sixteen bytes</h3>
+
+<p>The longest numeral in 1–3999 is <strong>3888 =
+  <code>MMMDCCCLXXXVIII</code></strong>, fifteen characters — and it is the
+  only value in range that long. Fifteen plus a terminator is sixteen, so the
+  buffer is not a round number chosen for comfort; it is the exact bound. The
+  <em>longest numeral in range</em> fixed case is there to sit on it.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(1)</strong>, and worth stating precisely: the table has thirteen
+  rows, the inner loop runs at most three times per row, and each iteration
+  writes at most two characters. So the whole function is bounded by a constant
+  regardless of the input — there is no <em>n</em> here, only a value with a
+  fixed maximum.</p>
+
+<p>The table costs about 200 bytes of read-only data.</p>
+
+<h2>Other shapes of answer</h2>
+
+<div class="note">
+<p><strong>Per-digit lookup.</strong> Four small tables — thousands, hundreds,
+  tens, units — indexed by the decimal digit, then concatenated:
+  <code>HUNDREDS[9]</code> is <code>"CM"</code>. It is arguably clearer, it is
+  a straight O(1) with no loops at all, and it costs four tables of ten strings
+  instead of one of thirteen rows. Equally good; pick whichever you would
+  rather explain.</p>
+</div>
+
+<div class="note">
+<p><strong><code>strcat</code> in the loop.</strong> Works, and re-walks the
+  whole string from the start on every append to find its end. Quadratic in the
+  output length — irrelevant at fifteen characters, and the habit that makes
+  string building slow everywhere else. It also requires <code>out[0]</code> to
+  be a terminator before the first call, which the caller has not promised.</p>
+</div>
+
+<h2>Wrong turns worth recognising</h2>
+
+<div class="trap">
+<p><strong>Emitting the plain symbols and patching afterwards.</strong> The
+  approach the table exists to avoid. It needs six rewrite rules applied in the
+  right order, in place, on a string you are also still appending to.</p>
+</div>
+
+<div class="trap">
+<p><strong><code>MMMIM</code> for 3999.</strong> The intuition that any smaller
+  symbol may precede any larger one. It may not — the six pairs are the entire
+  set of legal subtractions, so 999 is 900 + 90 + 9 (<code>CMXCIX</code>) and
+  never 1000 − 1. A table containing only the six cannot express the mistake,
+  which is the point.</p>
+</div>
+
+<div class="trap">
+<p><strong><code>if</code> instead of <code>while</code> on the inner
+  step.</strong> Passes <code>1</code>, <code>4</code>, <code>1994</code> and
+  every value whose digits are all below 2 or exactly 4/9 — and fails on
+  <code>3</code>, which needs <code>III</code>. The <em>three in a row</em>
+  fixed case exists for it.</p>
+</div>
+
+<div class="trap">
+<p><strong>Losing the start of the buffer.</strong> Advancing <code>out</code>
+  is right; advancing it and then needing the beginning again is not. This
+  function never needs to look back, which is what makes the walking pointer
+  safe. If yours does, that is a sign a fix-up pass has crept in.</p>
+</div>
+
+<footer>
+  <p><a href="c_to_roman.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

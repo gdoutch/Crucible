@@ -320,7 +320,7 @@ the stylesheet does not load the pages are still ordinary readable HTML.
 
 ## What is in the box
 
-26 problems — 22 in C, 4 in Python. Every one of them mixes hand-written edge
+27 problems — 23 in C, 4 in Python. Every one of them mixes hand-written edge
 cases with four randomised ones, and ships a hint and a worked solution.
 
 The C set is deliberately weighted towards the things C makes you think about
@@ -344,6 +344,7 @@ what happens at the boundary, and what the standard actually promises.
 | | C | Merge Two Sorted Arrays | arrays, pointers |
 | | C | Rotate an Array Left | arrays, in-place |
 | | C | Parse an Integer | strings, pointers |
+| | C | Decimal to Roman Numeral String | strings, tables, greedy |
 | | C | Primes up to N | arrays, loops |
 | | Python | Balanced Brackets | stacks, strings, parsing |
 | | Python | Run-Length Encoding | strings, iteration |
@@ -362,6 +363,12 @@ A few are worth calling out for what they are really testing:
 - **Parse an Integer** rejects `"12a"`. Stopping at the first bad character and
   returning what you had is what `atoi` does, and is the habit the problem is
   there to break.
+- **Decimal to Roman Numeral String** is a fix-up pass waiting to be deleted.
+  Treat the six subtractive pairs as values in their own right — thirteen
+  building blocks rather than seven — and a plain greedy walk produces `IV`
+  and `CM` with no special cases left over. Its buffer is 16 bytes because
+  that is the exact bound: 3888 is `MMMDCCCLXXXVIII`, and it is the only
+  value in range fifteen characters long.
 - **Reverse a Linked List** wants the nodes relinked, not the values copied
   into an array and written back. It declares `struct node` in both your file
   and the harness — separate translation units, same layout, which is what a
@@ -590,7 +597,7 @@ crucible/
     theme.py           palettes and ttk styling
 problems/
   guides.css           shared by every guide page
-  c/                   18 problems, each with .json + .hint.html
+  c/                   19 problems, each with .json + .hint.html
   python/              3 problems,             + .solution.html
   uml/                 2 problems,             + .diagram.html
   safety/              3 problems
