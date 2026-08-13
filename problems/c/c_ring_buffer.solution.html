@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Single-Producer/Single-Consumer Ring Buffer · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>Single-Producer/Single-Consumer Ring Buffer</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>int ring_push(int *buf, int capacity, int *head, int *tail, int value)
+{
+    int next = (*head + 1) % capacity;
+    if (next == *tail) {
+        return 0;
+    }
+    buf[*head] = value;
+    *head = next;
+    return 1;
+}
+
+int ring_pop(int *buf, int capacity, int *head, int *tail, int *value_out)
+{
+    if (*tail == *head) {
+        return 0;
+    }
+    *value_out = buf[*tail];
+    *tail = (*tail + 1) % capacity;
+    return 1;
+}</code></pre>
+
+<h2>Why one slot has to stay empty</h2>
+
+<div class="trap">
+<p>With only two indices to work with, the buffer's entire state -- how many
+  items it holds, whether it is full, whether it is empty -- has to be
+  recoverable from <code>head</code> and <code>tail</code> alone. If a full
+  buffer were allowed to reach <code>head == tail</code> (by holding exactly
+  <code>capacity</code> items), that pair of indices would mean two
+  contradictory things at once, and there would be no way to tell which one
+  you were looking at without a third piece of state.</p>
+<p>Reserving one slot sidesteps the contradiction: <code>ring_push</code>
+  computes where <code>head</code> would move to, and if that next position
+  is <code>tail</code>, it refuses the write instead of performing it. The
+  buffer therefore never reaches <code>head == tail</code> by pushing --
+  only by popping everything back out -- so that state can mean empty and
+  only empty. The fixed test that fills a capacity-4 buffer with four pushes
+  is checking precisely this: the fourth push would make
+  <code>head</code> land on <code>tail</code>, so it is rejected, and the
+  buffer tops out at 3 items held, not 4.</p>
+</div>
+
+<h2>Why the checks read the way they do</h2>
+
+<p><code>ring_push</code> checks <em>where it would end up</em>
+  (<code>next == *tail</code>) rather than where it currently is, because the
+  decision is about whether advancing is safe, not about the current state
+  on its own. <code>ring_pop</code>'s check is simpler --
+  <code>*tail == *head</code> directly means there is nothing between them to
+  read -- because popping never needs to look ahead the way pushing does.</p>
+
+<h2>Order of operations: use the index, then move it</h2>
+
+<p>Both functions write or read at the <em>current</em> index before
+  advancing it. <code>buf[*head] = value;</code> happens before
+  <code>*head = next;</code>; <code>*value_out = buf[*tail];</code> happens
+  before <code>*tail</code> moves. Swap the order in either function and the
+  first call touches slot 1 while claiming to have touched slot 0 -- every
+  push and pop after that is one slot further out of step with what the
+  caller thinks happened, in a way that only shows up as wrong values coming
+  back out much later, not as an obvious crash near the actual mistake.</p>
+
+<h2>An alternative worth knowing: a separate count</h2>
+
+<p>The other standard way to resolve the same ambiguity is to keep an
+  explicit <code>count</code> alongside <code>head</code> and
+  <code>tail</code>, checking <code>count == 0</code> for empty and
+  <code>count == capacity</code> for full -- and using every slot,
+  N out of N, rather than reserving one. It costs one extra integer of state
+  that has to be kept exactly in step with every push and pop, in exchange
+  for the full capacity. Both are legitimate; this exercise asks for the
+  reserved-slot version specifically because it needs nothing beyond the two
+  indices the function signature already gives you.</p>
+
+<h2>Cost</h2>
+
+<p>Both operations are <strong>O(1)</strong>, using only the backing array
+  and the two indices -- no allocation, no locking, which is the entire point
+  of this shape of buffer between a producer and a consumer that must not
+  block each other.</p>
+
+<footer>
+  <p><a href="c_ring_buffer.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

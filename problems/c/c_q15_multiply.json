@@ -1,0 +1,60 @@
+{
+  "id": "c_q15_multiply",
+  "title": "Multiply Two Q15 Fixed-Point Numbers",
+  "language": "c",
+  "difficulty": "medium",
+  "topics": [
+    "embedded",
+    "fixed-point",
+    "arithmetic"
+  ],
+  "timeout_seconds": 5,
+  "statement": "No FPU, a certification budget that does not stretch to floating point, or\njust a need for bit-for-bit determinism across compilers -- plenty of\nembedded code represents fractional values as scaled integers instead.\n**Q15** is the common case: a signed 16-bit integer where the value it\nrepresents is `raw / 32768`, so the representable range is a little over\n`-1.0` to a little under `+1.0`.\n\n## Your function\n\n```\nint q15_multiply(int a, int b);\n```\n\n`a` and `b` are Q15 values, passed as `int` but always in range\n`-32768` to `32767`. Return their product, also as a Q15 value:\n\n- Multiply the raw integers, then shift the **32 + 32 = 64-bit** product\n  right by 15 to rescale it back into Q15 (two `/32768` scales multiplied\n  together need dividing by `32768` once to get back to a single `/32768`\n  scale).\n- Round to the nearest representable Q15 value rather than truncating.\n- **Saturate** the result to `-32768`..`32767` if the true product does not\n  fit -- do not let it wrap.\n\n## Watch out\n\n- **`-1.0 * -1.0` does not fit in Q15.** The mathematical answer is `1.0`,\n  and the largest value Q15 can represent is `32767 / 32768`, a little under\n  `1.0`. `q15_multiply(-32768, -32768)` is exactly this case, and it is a\n  fixed test: the rounded result before saturating is `32768`, one past the\n  top of the range, and the correct answer is the clamped `32767`, not a\n  wrapped-around negative number.\n- **Shift after you multiply, not before.** Pre-shifting either input \"to\n  keep the numbers small\" throws away the low bits of precision the final\n  answer needed -- multiply the full-width raw integers first, in a 64-bit\n  type, then shift the product once.\n- Round-to-nearest on a right shift means adding half of what you are about\n  to discard (`1 << 14`, half of `1 << 15`) before shifting. Skipping the\n  rounding term does not usually break a test outright, but it biases every\n  answer low by up to half a unit -- the kind of quiet error a full test\n  suite comparing exact integers will still catch.\n",
+  "starter_code": "int q15_multiply(int a, int b)\n{\n    /* your code here */\n    (void)a;\n    (void)b;\n    return 0;\n}\n",
+  "harness": "#include <stdio.h>\n\n/* Provided by the candidate in solution.c */\nint q15_multiply(int a, int b);\n\nint main(void)\n{\n    int a, b;\n    while (scanf(\"%d %d\", &a, &b) == 2) {\n        printf(\"%d\\n\", q15_multiply(a, b));\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random Q15 pairs, including ones deliberately near the saturating corner\nand ones exercising the rounding term.\"\"\"\n\n\ndef generate(rng, count):\n    builders = (_anything, _near_saturation, _small_values, _one_extreme)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, a, b, description=\"\"):\n    return {\"name\": name, \"stdin\": \"%d %d\\n\" % (a, b),\n            \"description\": description}\n\n\ndef _anything(rng, index):\n    return _case(\"a random pair #%d\" % index,\n                 rng.randint(-32768, 32767), rng.randint(-32768, 32767))\n\n\ndef _near_saturation(rng, index):\n    a = rng.choice((-32768, -32767, 32767))\n    b = rng.choice((-32768, -32767, 32767))\n    return _case(\"near the saturating corner #%d\" % index, a, b,\n                 \"Both operands are close to +/-1.0, where the product can \"\n                 \"overflow Q15's representable range.\")\n\n\ndef _small_values(rng, index):\n    return _case(\"small values, where rounding shows up #%d\" % index,\n                 rng.randint(-10, 10), rng.randint(-10, 10),\n                 \"The exact product is tiny -- whether you rounded or \"\n                 \"truncated changes the answer.\")\n\n\ndef _one_extreme(rng, index):\n    a = rng.choice((-32768, 32767))\n    return _case(\"one operand at an extreme #%d\" % index,\n                 a, rng.randint(-32768, 32767))\n"
+  },
+  "tests": [
+    {
+      "name": "0.5 * 0.5",
+      "stdin": "16384 16384\n",
+      "expected_stdout": "8192"
+    },
+    {
+      "name": "-1.0 * -1.0 saturates",
+      "stdin": "-32768 -32768\n",
+      "expected_stdout": "32767",
+      "description": "The true product is 1.0, which Q15 cannot represent -- the rounded result is 32768, one past the top of the range, and must clamp to 32767."
+    },
+    {
+      "name": "the largest representable value squared does not saturate",
+      "stdin": "32767 32767\n",
+      "expected_stdout": "32766",
+      "description": "Close to the saturating corner, but (32767/32768)^2 is still just under 1.0."
+    },
+    {
+      "name": "multiplying by zero",
+      "stdin": "12345 0\n",
+      "expected_stdout": "0"
+    },
+    {
+      "name": "a negative times a positive",
+      "stdin": "-16384 16384\n",
+      "expected_stdout": "-8192"
+    },
+    {
+      "name": "rounding on a small product",
+      "stdin": "3 5\n",
+      "expected_stdout": "0",
+      "description": "The exact product is 15/32768, which rounds down to 0 -- not up, and not truncated to some other value."
+    },
+    {
+      "name": "minimum times maximum",
+      "stdin": "-32768 32767\n",
+      "expected_stdout": "-32767"
+    }
+  ],
+  "reference_solution_b64": "aW50IHExNV9tdWx0aXBseShpbnQgYSwgaW50IGIpCnsKICAgIGxvbmcgbG9uZyBwcm9kdWN0ID0gKGxvbmcgbG9uZylhICogKGxvbmcgbG9uZyliOwogICAgbG9uZyBsb25nIHJvdW5kZWQgPSAocHJvZHVjdCArICgxTEwgPDwgMTQpKSA+PiAxNTsKCiAgICBpZiAocm91bmRlZCA+IDMyNzY3KSB7CiAgICAgICAgcmV0dXJuIDMyNzY3OwogICAgfQogICAgaWYgKHJvdW5kZWQgPCAtMzI3NjgpIHsKICAgICAgICByZXR1cm4gLTMyNzY4OwogICAgfQogICAgcmV0dXJuIChpbnQpcm91bmRlZDsKfQo="
+}

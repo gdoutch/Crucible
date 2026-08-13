@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Add Hysteresis to a Noisy Threshold (Schmitt Trigger) · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>Add Hysteresis to a Noisy Threshold (Schmitt Trigger)</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>int schmitt_update(int reading, int low, int high, int previous_state)
+{
+    if (!previous_state &amp;&amp; reading &gt;= high) {
+        return 1;
+    }
+    if (previous_state &amp;&amp; reading &lt;= low) {
+        return 0;
+    }
+    return previous_state;
+}</code></pre>
+
+<h2>Why two thresholds beat one</h2>
+
+<div class="trap">
+<p>A single threshold has one failure mode a noisy signal finds immediately:
+  sitting right on top of it. Every bit of noise the sensor adds crosses the
+  line, and every crossing flips the output -- a relay or a downstream state
+  machine sees rapid, meaningless chatter instead of one clean transition.</p>
+<p>Splitting into <code>low</code> and <code>high</code> fixes it by making
+  the two transitions ask different questions. Turning ON requires clearing
+  the <em>higher</em> of the two thresholds; turning OFF requires falling
+  below the <em>lower</em> one. A signal has to move a real distance -- the
+  gap between <code>low</code> and <code>high</code> -- to flip the output
+  either way, and ordinary sensor noise is, by construction of the gap being
+  wider than the noise, not enough to do that. The fixed test that hovers
+  every reading strictly between <code>low</code> and <code>high</code> is
+  checking exactly this: none of those readings clears either threshold, so
+  the state -- whichever it started as -- never moves.</p>
+</div>
+
+<h2>Walking a crossing through</h2>
+
+<p>Thresholds <code>low = 20, high = 80</code>, starting OFF, readings
+  <code>10, 30, 50, 79, 80, 60, 21, 20, 19</code>:</p>
+
+<table class="trace">
+  <tr><th>Reading</th><th>Rule that applies</th><th>State</th></tr>
+  <tr><td>10, 30, 50, 79</td><td>OFF and below high</td><td>0</td></tr>
+  <tr><td>80</td><td>OFF and reading &gt;= high</td><td>1</td></tr>
+  <tr><td>60, 21</td><td>ON and above low</td><td>1</td></tr>
+  <tr><td>20</td><td>ON and reading &lt;= low</td><td>0</td></tr>
+  <tr><td>19</td><td>OFF and below high</td><td>0</td></tr>
+</table>
+
+<p>The reading of exactly <code>80</code> turns the output on -- the
+  threshold is inclusive -- and it then takes a reading down at
+  <code>20</code>, not merely below <code>80</code> again, to turn it back
+  off.</p>
+
+<h2>Hysteresis versus debouncing</h2>
+
+<p>Both techniques exist to stop noise from producing a spurious state
+  change, and it is easy to reach for either one out of habit without asking
+  which kind of noise is actually present:</p>
+
+<ul>
+  <li><strong>Hysteresis</strong> (this exercise) rejects noise in the
+    <em>value</em>. One reading is enough to act on, as long as it clears a
+    wide enough gap from wherever the last transition happened.</li>
+  <li><strong>Debouncing</strong> a mechanical switch rejects noise in
+    <em>time</em>. A single reading is never enough on its own -- several
+    consecutive samples have to agree before the new state is trusted, no
+    matter how far the raw signal moved.</li>
+</ul>
+
+<p>A system with both kinds of noise -- a bouncy switch feeding a value that
+  is also electrically noisy -- can legitimately need both techniques
+  stacked, one after the other.</p>
+
+<h2>Cost</h2>
+
+<p>Two comparisons per call, no memory beyond the one state bit the caller
+  already carries between calls: <strong>O(1)</strong> time and space.</p>
+
+<footer>
+  <p><a href="c_hysteresis.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

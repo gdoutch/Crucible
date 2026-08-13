@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Unpack a CAN Signal (Intel Byte Order) · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · hard</p>
+  <h1>Unpack a CAN Signal (Intel Byte Order)</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>Three steps, each one you already know from earlier problems in this set:</p>
+
+<ol>
+  <li>Turn 8 separate bytes into one 64-bit number.</li>
+  <li>Extract and, if signed, sign-extend a bit field from it — exactly
+    <a href="c_signed_field.hint.html">Extract a Signed Sensor Reading</a>,
+    just 64 bits wide instead of 32.</li>
+  <li>Scale it: <code>raw * scale + offset</code>.</li>
+</ol>
+
+<p>The only genuinely new step is the first one, and it is one line:</p>
+
+<pre><code>unsigned long long raw64 = 0;
+for (int i = 0; i &lt; 8; i++) {
+    raw64 |= (unsigned long long)payload[i] &lt;&lt; (8 * i);
+}</code></pre>
+
+<h2>The trap the problem is built around</h2>
+
+<div class="trap">
+<p><strong>Intel byte order means byte 0 is the least significant byte</strong>,
+  the opposite of how you would read a number written on paper. In the loop
+  above, <code>payload[0]</code> ends up at bits 0-7 — the bottom of the
+  64-bit value — and <code>payload[7]</code> ends up at bits 56-63, the top.
+  Build it the other way around (<code>payload[0]</code> shifted highest) and
+  every multi-byte signal comes out as a completely different number, even
+  though each individual bit was read from the right place in memory.</p>
+<p>A fixed test with two non-zero bytes, <code>0x34</code> then
+  <code>0x12</code>, catches this directly: the correct 16-bit value is
+  <code>0x1234</code> (4660); read the bytes the other way and you get
+  <code>0x3412</code> instead.</p>
+</div>
+
+<h2>The other trap, from further up the chain</h2>
+
+<p><code>raw * scale</code> needs to happen in a wide type for the same
+  reason the mask calculations in the earlier register problems did — a
+  32-bit raw value times even a small scale is already bigger than
+  <code>INT_MAX</code>. The function returns <code>long long</code>
+  precisely so there is somewhere for that product to live; do the
+  multiplication in it, not in <code>int</code>.</p>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li>Bytes <code>34 12</code> at <code>start_bit = 0, length = 16</code>,
+    unsigned: <code>4660</code>, not <code>13330</code>.</li>
+  <li>A field that straddles a byte boundary (<code>start_bit</code> not a
+    multiple of 8) still extracts correctly — the byte-order assembly and
+    the bit-field extraction are two separate, independently correct steps.</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_can_unpack.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

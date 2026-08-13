@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Multiply Two Q15 Fixed-Point Numbers · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>Multiply Two Q15 Fixed-Point Numbers</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>int q15_multiply(int a, int b)
+{
+    long long product = (long long)a * (long long)b;
+    long long rounded = (product + (1LL &lt;&lt; 14)) &gt;&gt; 15;
+
+    if (rounded &gt; 32767) {
+        return 32767;
+    }
+    if (rounded &lt; -32768) {
+        return -32768;
+    }
+    return (int)rounded;
+}</code></pre>
+
+<h2>Why the shift is 15, and why it happens after the multiply</h2>
+
+<p>A Q15 value <code>raw</code> represents <code>raw / 32768</code>, and
+  <code>32768</code> is <code>2^15</code>. Multiplying two Q15 raw integers
+  multiplies the real numbers they represent, but it also multiplies the two
+  <code>2^-15</code> scale factors together into one <code>2^-30</code>
+  scale — the product is "too small" by a factor of <code>2^15</code>
+  relative to a single Q15 value. Shifting right by 15 divides by exactly
+  that factor, landing back on a <code>2^-15</code> scale: an ordinary Q15
+  number again.</p>
+
+<p>This only works if the shift happens on the <strong>full-width
+  product</strong>. Pre-shifting either <code>a</code> or <code>b</code>
+  before multiplying — a tempting way to "keep the numbers small" — throws
+  away the low bits of that operand permanently; the final answer is missing
+  precision no amount of care in the rest of the function can put back.</p>
+
+<h2>Rounding, worked through</h2>
+
+<p><code>3 * 5 = 15</code>, and <code>15</code> as a Q15-scaled product
+  represents <code>15 / 32768</code>, a number small enough that plain
+  truncation rounds it to <code>0</code> either way here — but the
+  <em>mechanism</em> matters for larger products where truncating and
+  rounding disagree. Adding <code>1 &lt;&lt; 14</code> before shifting is
+  adding exactly half of <code>1 &lt;&lt; 15</code>, the amount the shift is
+  about to discard: a value sitting past the halfway point of what gets
+  thrown away pushes the sum over the next shift boundary, rounding up;
+  short of halfway, it does not. This is the standard round-to-nearest
+  trick for a right shift, and it is the difference between a filter whose
+  answers are quietly biased low by up to half a unit and one that is not.</p>
+
+<h2>The saturating corner, worked through</h2>
+
+<div class="trap">
+<p><code>q15_multiply(-32768, -32768)</code>: the true product,
+  <code>-32768 * -32768</code>, is <code>1,073,741,824</code>. Adding the
+  rounding term and shifting right by 15 gives exactly <code>32768</code> —
+  representing <code>1.0</code>, which the mathematics says is correct
+  (<code>-1.0 * -1.0 = 1.0</code>) and Q15 simply cannot hold, because its
+  largest representable value is <code>32767 / 32768</code>, a little under
+  <code>1.0</code>. Returned as a plain 16-bit signed value with no clamp,
+  <code>32768</code> would wrap to <code>-32768</code> — the smallest
+  representable value, exactly backwards from the true answer's sign.
+  Clamping to <code>32767</code> instead is <strong>saturation</strong>: the
+  answer is wrong by the smallest amount Q15 can be wrong by, in the correct
+  direction, rather than wrong by the largest amount possible in the wrong
+  one.</p>
+<p>The neighbouring fixed test, <code>32767 * 32767</code>, is there to show
+  saturation firing only where it needs to: <code>(32767/32768)^2</code> is
+  still just under <code>1.0</code>, so that product rounds to
+  <code>32766</code> and returns unclamped. Saturating logic that fires too
+  eagerly is as wrong as logic that never fires at all.</p>
+</div>
+
+<h2>Cost</h2>
+
+<p>One multiply, one shift, two comparisons: <strong>O(1)</strong> time and
+  space. In production DSP code this is usually a single saturating multiply
+  instruction (many DSP-oriented cores have one built in); the point of
+  writing it out in plain C is seeing exactly what that instruction is doing
+  on your behalf.</p>
+
+<footer>
+  <p><a href="c_q15_multiply.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

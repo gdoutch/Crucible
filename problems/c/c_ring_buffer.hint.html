@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Single-Producer/Single-Consumer Ring Buffer · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>Single-Producer/Single-Consumer Ring Buffer</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>Two indices, <code>head</code> (where the next push writes) and
+  <code>tail</code> (where the next pop reads), both wrapping around a fixed
+  array with <code>%</code>. That part is routine. The actual problem is a
+  question: given only <code>head</code> and <code>tail</code>, how do you
+  tell a full buffer from an empty one, when both can leave
+  <code>head == tail</code>?</p>
+
+<h2>The convention this exercise uses</h2>
+
+<p>Leave one slot permanently unused. A buffer of <code>capacity</code> N
+  holds at most <code>N - 1</code> items. In exchange:</p>
+
+<ul>
+  <li><code>head == tail</code> means <strong>empty</strong>, always.</li>
+  <li><code>(head + 1) % capacity == tail</code> means <strong>full</strong>,
+    always — that is the state one push away from making
+    <code>head</code> collide with <code>tail</code>, so the push that would
+    cause the collision is the one that gets rejected instead.</li>
+</ul>
+
+<p>No separate counter, and no ambiguity, at the cost of one slot of capacity
+  you were never going to get to use anyway.</p>
+
+<h2>The trap the problem is built around</h2>
+
+<div class="trap">
+<p>It is tempting to think a buffer sized for N items should hold N items.
+  With this convention it cannot — the moment it held N, <code>head</code>
+  would equal <code>tail</code> again, indistinguishable from empty. One of
+  the fixed tests pushes into a capacity-4 buffer four times in a row: the
+  first three succeed, and the fourth must report full, not succeed. If your
+  code lets all four through, it has room for N items and no way left to
+  tell full from empty — the two states have become the same
+  <code>head</code>/<code>tail</code> pair.</p>
+</div>
+
+<h2>Watch out, beyond the boundary</h2>
+
+<ul>
+  <li>In <code>ring_push</code>, write to the current <code>*head</code>
+    <em>before</em> advancing it. In <code>ring_pop</code>, read from the
+    current <code>*tail</code> <em>before</em> advancing it. Advance first
+    and the very first push or pop touches the wrong slot.</li>
+  <li><code>capacity</code> is not guaranteed to be a power of two — use
+    <code>%</code>, not a bitmask.</li>
+</ul>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li>A fresh buffer of capacity 3 accepts two pushes and rejects a third.</li>
+  <li>Popping an empty buffer reports empty and does not touch
+    <code>*value_out</code>.</li>
+  <li>Push, pop, push, pop, repeated many times, never runs out of room —
+    the buffer recycles the slot each pop frees.</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_ring_buffer.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

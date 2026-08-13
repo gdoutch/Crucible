@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Linear Interpolation Over a Calibration Table · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>Linear Interpolation Over a Calibration Table</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>int interpolate_table(const int *xs, const int *ys, int n, int x)
+{
+    if (x &lt;= xs[0]) {
+        return ys[0];
+    }
+    if (x &gt;= xs[n - 1]) {
+        return ys[n - 1];
+    }
+
+    int i = 0;
+    while (i + 2 &lt; n &amp;&amp; xs[i + 1] &lt; x) {
+        i++;
+    }
+
+    long long dy = (long long)(ys[i + 1] - ys[i]);
+    long long dx = (long long)(xs[i + 1] - xs[i]);
+    long long num = dy * (long long)(x - xs[i]);
+
+    return ys[i] + (int)(num / dx);
+}</code></pre>
+
+<h2>Finding the interval</h2>
+
+<p>The loop walks forward while the <em>next</em> breakpoint is still below
+  <code>x</code>, stopping as soon as it is not. Because the two clamp checks
+  above already ruled out <code>x</code> being outside the table entirely,
+  the loop is guaranteed to land on an <code>i</code> with
+  <code>xs[i] &lt;= x &lt;= xs[i + 1]</code>. The <code>i + 2 &lt; n</code> guard
+  stops it walking past the last valid pair when <code>x</code> sits in the
+  final interval.</p>
+
+<h2>The overflow, worked through</h2>
+
+<div class="trap">
+<p>Take the fixed test built around it: a table from <code>(0, 0)</code> to
+  <code>(100000, 100000)</code>, queried at <code>x = 50000</code>. The
+  natural formula's middle term is
+  <code>(100000 - 0) * (50000 - 0) = 5,000,000,000</code> — already past
+  <code>INT_MAX</code> (<code>2,147,483,647</code>) <em>before</em> the
+  division that would bring it back down to a sensible size ever runs.
+  Computed in a plain <code>int</code>, that multiplication is signed integer
+  overflow: undefined behaviour, not a wraparound you can rely on for a
+  consistent wrong answer, let alone the right one.</p>
+<p>Casting each operand to <code>long long</code> before multiplying keeps
+  the whole calculation in 64-bit arithmetic, where <code>5,000,000,000</code>
+  is an entirely ordinary number. Dividing it by <code>100000</code> gives
+  <code>50000</code>, which fits back into the <code>int</code> the function
+  returns without difficulty — only the <em>intermediate</em> product was
+  ever the problem.</p>
+</div>
+
+<h2>Why the division truncates</h2>
+
+<p>C's <code>/</code> on two integers truncates toward zero. The fixed test
+  built around this uses a table from <code>(0, 0)</code> to
+  <code>(3, 10)</code>: at <code>x = 1</code>, the formula computes
+  <code>10 * 1 / 3</code>, which is <code>3</code> — not <code>3.33</code>
+  rounded up, down, or to the nearest integer, just C's ordinary truncating
+  division. If a calibration curve wanted rounding it would say so; absent
+  that, truncation is the value the reference solution -- and every test --
+  expects.</p>
+
+<h2>Clamping instead of extrapolating</h2>
+
+<p>Returning <code>ys[0]</code> or <code>ys[n - 1]</code> for anything
+  outside the table's x-range is a deliberate choice, not a shortcut: a
+  calibration table only describes the region it was measured over, and
+  drawing the line on past its ends is a guess a real system should not make
+  silently. Clamping says "I do not know, use the nearest thing I do know"
+  instead.</p>
+
+<h2>Cost</h2>
+
+<p>The interval search is <strong>O(n)</strong> in the number of breakpoints
+  — fine for the small calibration tables this kind of code actually works
+  with. A table large enough for that to matter would use a binary search
+  instead, the same trade <a href="c_binary_search.solution.html">Binary
+  Search</a> makes explicit; nothing here changes the interpolation formula
+  itself, only how fast the right interval is found.</p>
+
+<footer>
+  <p><a href="c_interpolate_table.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

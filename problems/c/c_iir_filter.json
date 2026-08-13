@@ -1,0 +1,40 @@
+{
+  "id": "c_iir_filter",
+  "title": "A Shift-Based Low-Pass Filter (No Floats)",
+  "language": "c",
+  "difficulty": "medium",
+  "topics": [
+    "embedded",
+    "signal-processing",
+    "bitwise",
+    "fixed-point"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Smoothing a noisy sample stream usually means an exponential moving average\n-- `output += alpha * (sample - output)` -- and `alpha` is a fraction, which\nmeans floating point, which is exactly what a lot of embedded code is trying\nto avoid. Replace the fractional multiply with a right shift and the same\nfilter runs in integers: `output += (sample - output) >> shift`. A bigger\n`shift` means a slower, smoother filter; a smaller one tracks the input more\nclosely.\n\n## Your function\n\n```\nint iir_update(int previous_output, int sample, int shift);\n```\n\nThe harness calls you once per sample, feeding each result back in as the\nnext call's `previous_output`. Return the updated output.\n\n## Watch out\n\n- **`sample - previous_output` is signed, and has to stay signed.** The\n  filter has to move the output down just as readily as up, and a right\n  shift only does that correctly on a signed value -- an unsigned shift\n  brings in zero bits from the top instead of copies of the sign bit, and a\n  negative correction turns into a huge positive one. Do not let a working\n  variable drift to `unsigned int` out of habit from the bitfield exercises\n  earlier in this set; this one specifically needs signed arithmetic.\n- **A small, persistent gap can survive forever.** With `shift = 4`, a gap of\n  `5` shifts to `5 >> 4 = 0` -- the correction rounds all the way down to\n  nothing, and the filter sits exactly `5` below a constant target\n  indefinitely rather than slowly closing in on it. That is not a bug in a\n  correct implementation of this formula; it is a real, well-known property\n  of it, and one of the fixed tests is built to show it happening rather\n  than to catch it as wrong.\n",
+  "starter_code": "int iir_update(int previous_output, int sample, int shift)\n{\n    /* your code here */\n    (void)sample;\n    (void)shift;\n    return previous_output;\n}\n",
+  "harness": "#include <stdio.h>\n\n/* Provided by the candidate in solution.c */\nint iir_update(int previous_output, int sample, int shift);\n\nint main(void)\n{\n    int output, shift;\n    if (scanf(\"%d %d\", &output, &shift) != 2) {\n        return 1;\n    }\n\n    int sample;\n    while (scanf(\"%d\", &sample) == 1) {\n        output = iir_update(output, sample, shift);\n        printf(\"%d\\n\", output);\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random starting points, shift factors and sample streams, including a\nconstant stream that exercises the small-persistent-gap behaviour.\"\"\"\n\n\ndef generate(rng, count):\n    builders = (_random_samples, _constant_target, _step_change)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, start, shift, samples, description=\"\"):\n    lines = [\"%d %d\" % (start, shift)]\n    lines.extend(str(s) for s in samples)\n    return {\"name\": name, \"stdin\": \"\\n\".join(lines) + \"\\n\",\n            \"description\": description}\n\n\ndef _random_samples(rng, index):\n    start = rng.randint(-200, 200)\n    shift = rng.randint(1, 4)\n    samples = [rng.randint(-200, 200) for _ in range(6)]\n    return _case(\"random samples #%d\" % index, start, shift, samples)\n\n\ndef _constant_target(rng, index):\n    start = rng.randint(0, 500)\n    shift = rng.randint(2, 5)\n    target = start + rng.randint(-30, 30)\n    return _case(\"a constant target #%d\" % index, start, shift,\n                 [target] * 6,\n                 \"The same sample every call -- watch how quickly (or \"\n                 \"whether) the output actually reaches it.\")\n\n\ndef _step_change(rng, index):\n    start = 0\n    shift = rng.randint(1, 3)\n    samples = [1000] * 5\n    return _case(\"a step input #%d\" % index, start, shift, samples)\n"
+  },
+  "tests": [
+    {
+      "name": "converging on a constant target",
+      "stdin": "100 2\n200\n200\n200\n200\n200\n200\n200\n200\n",
+      "expected_stdout": "125\n143\n157\n167\n175\n181\n185\n188"
+    },
+    {
+      "name": "a small persistent gap that never fully closes",
+      "stdin": "100 4\n105\n105\n105\n105\n105\n",
+      "expected_stdout": "100\n100\n100\n100\n100",
+      "description": "The gap is 5 and the shift is 4: 5 >> 4 is 0, so the correction rounds away to nothing and the filter sits at exactly 100 forever. This is the formula working correctly, not a bug."
+    },
+    {
+      "name": "a negative gap that does converge",
+      "stdin": "100 1\n90\n90\n90\n90\n90\n",
+      "expected_stdout": "95\n92\n91\n90\n90",
+      "description": "Negative gaps close fully -- the asymmetry with the case above is real, not a mistake in the expected output."
+    }
+  ],
+  "reference_solution_b64": "aW50IGlpcl91cGRhdGUoaW50IHByZXZpb3VzX291dHB1dCwgaW50IHNhbXBsZSwgaW50IHNoaWZ0KQp7CiAgICBpbnQgZGVsdGEgPSBzYW1wbGUgLSBwcmV2aW91c19vdXRwdXQ7CgogICAgcmV0dXJuIHByZXZpb3VzX291dHB1dCArIChkZWx0YSA+PiBzaGlmdCk7Cn0K"
+}

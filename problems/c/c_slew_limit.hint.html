@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Slew-Rate Limit a Demand Signal · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · easy</p>
+  <h1>Slew-Rate Limit a Demand Signal</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>How far the output is allowed to move this step, capped at
+  <code>max_step</code>, toward wherever <code>target</code> currently is.
+  If the target is close enough that a full step would overshoot it, land on
+  it exactly instead.</p>
+
+<h2>The shape of it</h2>
+
+<pre><code>int delta = target - previous_output;
+/* clamp delta to [-max_step, max_step] */
+return previous_output + delta;</code></pre>
+
+<h2>Watch out</h2>
+
+<ul>
+  <li><code>max_step</code> is a magnitude, not a one-sided limit. A target
+    below <code>previous_output</code> needs exactly the same clamping as
+    one above it -- clamp <code>delta</code> on <em>both</em> sides, to
+    <code>[-max_step, max_step]</code>, not just capped at
+    <code>+max_step</code> on the assumption the output only ever needs to
+    rise.</li>
+  <li>Once the gap to the target is smaller than <code>max_step</code>, the
+    clamp should not fire at all -- the output reaches the target exactly and
+    then holds there on every following call with the same target, rather
+    than creeping forever or stopping one step short.</li>
+</ul>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li>Starting at <code>0</code> with <code>max_step = 10</code>, a target of
+    <code>100</code> gives <code>10</code>, then <code>20</code>, then
+    <code>30</code>, and so on.</li>
+  <li>From <code>50</code> with <code>max_step = 5</code>, a target of
+    <code>0</code> gives <code>45</code>, then <code>40</code>, moving down
+    just as readily as the example above moves up.</li>
+  <li>A target only 3 away with <code>max_step = 100</code> is reached in one
+    call, and stays there.</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_slew_limit.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Unpack a CAN Signal (Intel Byte Order) · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · hard</p>
+  <h1>Unpack a CAN Signal (Intel Byte Order)</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>long long can_unpack(const unsigned char payload[8], int start_bit, int length,
+                     int is_signed, int scale, int offset)
+{
+    unsigned long long raw64 = 0;
+    for (int i = 0; i &lt; 8; i++) {
+        raw64 |= (unsigned long long)payload[i] &lt;&lt; (8 * i);
+    }
+
+    unsigned long long mask = (1ULL &lt;&lt; length) - 1ULL;
+    unsigned long long field = (raw64 &gt;&gt; start_bit) &amp; mask;
+
+    long long raw;
+    if (is_signed) {
+        unsigned long long sign_bit = 1ULL &lt;&lt; (length - 1);
+        if (field &amp; sign_bit) {
+            field -= (sign_bit &lt;&lt; 1);
+        }
+        raw = (long long)field;
+    } else {
+        raw = (long long)field;
+    }
+
+    return raw * (long long)scale + (long long)offset;
+}</code></pre>
+
+<p>Three stages: assemble the bytes into one 64-bit value, extract and
+  sign-extend a field from it, then apply the engineering-unit conversion.
+  The middle stage is <a href="c_signed_field.solution.html">Extract a Signed
+  Sensor Reading</a> unchanged in every detail except the width.</p>
+
+<h2>Byte order, worked through</h2>
+
+<div class="trap">
+<p><code>raw64 |= (unsigned long long)payload[i] &lt;&lt; (8 * i)</code> places
+  <code>payload[0]</code> at bit position <code>0</code> — the least
+  significant byte of the assembled value — and each following byte 8 bits
+  higher. That is what "Intel byte order" means for a multi-byte CAN signal:
+  the first byte in the payload is the <em>low</em> byte, the same
+  convention x86 uses for an integer in memory.</p>
+<p>Take the fixed test with payload bytes <code>0x34, 0x12</code> and a
+  16-bit unsigned field starting at bit 0. Assembled correctly,
+  <code>raw64</code>'s low 16 bits are <code>0x1234</code> — byte 0
+  (<code>0x34</code>) contributes the low byte, byte 1 (<code>0x12</code>)
+  the high byte, giving <code>4660</code>. Assemble the bytes in the other
+  order — byte 0 shifted to the <em>top</em> — and the same two bytes read
+  back as <code>0x3412</code>, <code>13330</code>: every bit was taken from
+  the right place in the array, and the answer is still wrong, because the
+  array itself was walked in the wrong direction.</p>
+</div>
+
+<h2>Extraction and sign extension, unchanged</h2>
+
+<p>Once <code>raw64</code> exists, everything else is exactly the pattern
+  from the two earlier register problems, just at 64 bits: shift the field
+  down, mask it to <code>length</code> bits, and if the top bit of the
+  <em>field</em> (not of <code>raw64</code>) is set, subtract
+  <code>2^length</code> — computed as <code>sign_bit &lt;&lt; 1</code>, the
+  same trick as before. Nothing about working in 64 bits changes any of that
+  reasoning; the field itself is never wider than 32 bits here, so none of
+  it comes anywhere near needing the <code>width == 32</code> special case
+  the register problems needed for their own masks.</p>
+
+<h2>Scale and offset, and why the return type is <code>long long</code></h2>
+
+<div class="trap">
+<p><code>raw * scale</code> can overflow a 32-bit <code>int</code> on its
+  own, independent of anything to do with bit widths. The fixed test with a
+  full 32-bit raw value (<code>0xFFFFFFFF</code>, which fits comfortably in
+  an <code>unsigned int</code>) and a scale of <code>1000</code> produces
+  <code>4,294,967,295,000</code> — nowhere near representable in 32 bits,
+  comfortably representable in the 64-bit return type the function already
+  has. Casting <code>scale</code> and <code>offset</code> to
+  <code>long long</code> before the arithmetic is what keeps the whole
+  expression in that wider type throughout, rather than computing part of it
+  in <code>int</code> and only widening at the very end, by which point the
+  overflow has already happened.</p>
+</div>
+
+<h2>What this leaves out</h2>
+
+<p>Real DBC files also support **Motorola (big-endian)** byte order, where
+  <code>start_bit</code> is numbered from the most significant bit of the
+  most significant byte and counts in a zig-zag that very few people get
+  right from memory on the first try. This exercise only covers Intel byte
+  order deliberately — it is the more common of the two in practice, and the
+  mechanics above (assemble, extract, sign-extend, scale) are identical
+  either way; only the bit-numbering convention for <code>start_bit</code>
+  changes.</p>
+
+<h2>Cost</h2>
+
+<p>A fixed 8-iteration loop to assemble the bytes, then a handful of bitwise
+  operators: <strong>O(1)</strong> time and space, independent of
+  <code>length</code>.</p>
+
+<footer>
+  <p><a href="c_can_unpack.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

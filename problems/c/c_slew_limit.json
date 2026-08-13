@@ -1,0 +1,39 @@
+{
+  "id": "c_slew_limit",
+  "title": "Slew-Rate Limit a Demand Signal",
+  "language": "c",
+  "difficulty": "easy",
+  "topics": [
+    "embedded",
+    "control",
+    "signal-processing"
+  ],
+  "timeout_seconds": 5,
+  "statement": "A demand signal can change instantly -- a driver stamps on a pedal, an\noperator slams a setpoint from one value to another -- but the thing on the\nother end of it usually cannot, and should not always try to. A **slew-rate\nlimiter** caps how much the output is allowed to move in a single step,\nwhichever direction the target moved.\n\n## Your function\n\n```\nint slew_limit(int previous_output, int target, int max_step);\n```\n\n`max_step` is always non-negative. Move `previous_output` toward `target` by\nas much as needed to reach it, capped at `max_step` in either direction, and\nreturn the result. The harness calls you once per target value, feeding each\nresult back in as the next call's `previous_output`.\n\n`slew_limit(0, 100, 10)` is `10`: the target is 100 away, the cap only allows\n10 of it this step.\n\n## Watch out\n\n- **The cap applies in both directions.** A demand that drops needs exactly\n  the same limiting as one that rises -- clamp the amount you move by to\n  `[-max_step, max_step]`, not just to `max_step` on the assumption the\n  target is always higher than where you are.\n- Once the output is within `max_step` of the target, it should land on the\n  target exactly, not overshoot it and not stop one step short forever.\n",
+  "starter_code": "int slew_limit(int previous_output, int target, int max_step)\n{\n    /* your code here */\n    (void)target;\n    (void)max_step;\n    return previous_output;\n}\n",
+  "harness": "#include <stdio.h>\n\n/* Provided by the candidate in solution.c */\nint slew_limit(int previous_output, int target, int max_step);\n\nint main(void)\n{\n    int output, max_step;\n    if (scanf(\"%d %d\", &output, &max_step) != 2) {\n        return 1;\n    }\n\n    int target;\n    while (scanf(\"%d\", &target) == 1) {\n        output = slew_limit(output, target, max_step);\n        printf(\"%d\\n\", output);\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random starting points, step caps and target sequences, including targets\nthat jump both up and down across the same run.\"\"\"\n\n\ndef generate(rng, count):\n    builders = (_random_targets, _alternating, _tight_cap)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, start, max_step, targets, description=\"\"):\n    lines = [\"%d %d\" % (start, max_step)]\n    lines.extend(str(t) for t in targets)\n    return {\"name\": name, \"stdin\": \"\\n\".join(lines) + \"\\n\",\n            \"description\": description}\n\n\ndef _random_targets(rng, index):\n    start = rng.randint(-100, 100)\n    max_step = rng.randint(1, 20)\n    targets = [rng.randint(-200, 200) for _ in range(6)]\n    return _case(\"random targets #%d\" % index, start, max_step, targets)\n\n\ndef _alternating(rng, index):\n    max_step = rng.randint(5, 15)\n    targets = [200, -200, 200, -200]\n    return _case(\"a target that reverses every step #%d\" % index, 0,\n                 max_step, targets,\n                 \"The demand swings from one extreme to the other -- both \"\n                 \"directions of the cap get exercised.\")\n\n\ndef _tight_cap(rng, index):\n    start = rng.randint(-10, 10)\n    target = start + rng.randint(1, 5)\n    return _case(\"a cap wider than the whole move #%d\" % index, start, 100,\n                 [target] * 3,\n                 \"max_step is larger than the distance to the target -- \"\n                 \"the output should land on it in one step and then hold.\")\n"
+  },
+  "tests": [
+    {
+      "name": "ramping up to a fixed target",
+      "stdin": "0 10\n100\n100\n100\n100\n100\n-50\n",
+      "expected_stdout": "10\n20\n30\n40\n50\n40",
+      "description": "The last target reverses direction -- the output must move down by at most max_step too."
+    },
+    {
+      "name": "ramping down",
+      "stdin": "50 5\n0\n0\n0\n",
+      "expected_stdout": "45\n40\n35"
+    },
+    {
+      "name": "a cap wider than the whole move lands exactly",
+      "stdin": "0 100\n3\n3\n3\n",
+      "expected_stdout": "3\n3\n3",
+      "description": "max_step is larger than the distance to the target -- the output reaches it in one step and then holds, rather than overshooting."
+    }
+  ],
+  "reference_solution_b64": "aW50IHNsZXdfbGltaXQoaW50IHByZXZpb3VzX291dHB1dCwgaW50IHRhcmdldCwgaW50IG1heF9zdGVwKQp7CiAgICBpbnQgZGVsdGEgPSB0YXJnZXQgLSBwcmV2aW91c19vdXRwdXQ7CgogICAgaWYgKGRlbHRhID4gbWF4X3N0ZXApIHsKICAgICAgICBkZWx0YSA9IG1heF9zdGVwOwogICAgfQogICAgaWYgKGRlbHRhIDwgLW1heF9zdGVwKSB7CiAgICAgICAgZGVsdGEgPSAtbWF4X3N0ZXA7CiAgICB9CiAgICByZXR1cm4gcHJldmlvdXNfb3V0cHV0ICsgZGVsdGE7Cn0K"
+}

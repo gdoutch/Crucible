@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Validate a CAN Message's Rolling Counter and Checksum · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · hard</p>
+  <h1>Validate a CAN Message's Rolling Counter and Checksum</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>int can_e2e_check(const unsigned char *data, int length, int counter,
+                  int received_checksum, int last_good_counter)
+{
+    unsigned char check = (unsigned char)counter;
+    for (int i = 0; i &lt; length; i++) {
+        check ^= data[i];
+    }
+    if (check != (unsigned char)received_checksum) {
+        return 0;
+    }
+
+    if (last_good_counter &lt; 0) {
+        return 1;
+    }
+    int expected = (last_good_counter + 1) % 16;
+    return counter == expected;
+}</code></pre>
+
+<h2>Why the counter has to be inside the checksum</h2>
+
+<div class="trap">
+<p>The whole point of end-to-end protection is defending against the bus
+  doing something to the message that the bus itself cannot report --
+  dropping a frame, delivering a stale one a second time, corrupting a bit.
+  A checksum over the payload bytes alone defends against the last of those
+  and nothing else: a frame replayed verbatim, payload and all, produces
+  exactly the checksum the receiver expects, because nothing about the
+  payload changed. It is the <em>counter</em> that is supposed to be
+  different on a genuine new frame and identical on a replay -- so unless the
+  counter is itself part of what the checksum protects, a replay attack (or,
+  far more commonly, a real bus fault that duplicates a frame) sails straight
+  through.</p>
+<p>Starting the running checksum from <code>counter</code> rather than from
+  <code>0</code> is the entire fix: change the counter without recomputing
+  the checksum to match, and the checksum comparison itself now fails, on top
+  of whatever the separate counter-sequence check would also have caught.</p>
+</div>
+
+<h2>Why the function has no state of its own</h2>
+
+<p><code>last_good_counter</code> arrives as a parameter rather than living
+  in a <code>static</code> variable inside the function, and that is
+  deliberate: it keeps <code>can_e2e_check</code> a pure decision, testable
+  frame by frame with no hidden history to set up first, and it puts the
+  question of <em>when</em> to trust a new baseline where it belongs -- with
+  whoever calls it, who alone knows whether this call's answer was actually
+  accepted.</p>
+
+<div class="trap">
+<p>The harness updates its own <code>last_good</code> only when your function
+  returns <code>1</code>:</p>
+<pre><code>int ok = can_e2e_check(data, length, counter, checksum, last_good);
+printf("%s\n", ok ? "OK" : "FAULT");
+if (ok) {
+    last_good = counter;
+}</code></pre>
+<p>The fixed test built around this sends a good frame (counter 0), a second
+  good frame (counter 1), a frame with a deliberately wrong checksum
+  (counter 5), and then a frame with counter 2. That last frame is only valid
+  counted <em>from the frame before the corrupted one</em> -- expected
+  <code>(1 + 1) % 16 = 2</code> -- which is exactly what the sequence
+  produces, because the corrupted frame at counter 5 failed the checksum
+  check and never advanced the baseline past 1. A function that tracked its
+  own notion of "the last counter I saw" instead of trusting the
+  <code>last_good_counter</code> it was handed would have moved its baseline
+  to 5 regardless of the checksum failure, and rejected the genuinely good
+  frame that follows.</p>
+</div>
+
+<h2>The first-frame case, and the rollover</h2>
+
+<p><code>last_good_counter == -1</code> is the harness's way of saying "there
+  is no prior frame to compare against" -- the very first frame in a session
+  is accepted on checksum alone, whatever counter value it happens to start
+  at. From then on, <code>(last_good_counter + 1) % 16</code> handles the
+  rollover from <code>15</code> back to <code>0</code> the same way it
+  handles every other increment; there is no special case needed at the wrap
+  point because modulo arithmetic already produces the right next value
+  there.</p>
+
+<h2>What this leaves out</h2>
+
+<p>Real E2E profiles (AUTOSAR's, for instance) typically use a proper CRC
+  rather than a whole-frame XOR, because XOR cannot detect every kind of
+  corruption -- two flipped bits in the same bit position across two
+  different bytes cancel out. XOR is used here because it is the checksum
+  that best shows the actual lesson -- fold the counter in, and hold the
+  baseline on reject -- without a CRC implementation's detail obscuring it;
+  swapping in a real CRC would change the checksum step and leave the rest
+  of this reasoning, and the two traps it protects against, unchanged.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(length)</strong> for the checksum fold, <strong>O(1)</strong>
+  for the counter check -- one pass over the payload per frame, no state
+  retained by the function itself.</p>
+
+<footer>
+  <p><a href="c_can_e2e_check.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

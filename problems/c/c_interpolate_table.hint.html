@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Linear Interpolation Over a Calibration Table · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>Linear Interpolation Over a Calibration Table</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>A calibration table is a handful of (x, y) points. Given an x that falls
+  between two of them, walk the straight line connecting those two points and
+  read off the y at that x. Given an x outside the table entirely, hold the
+  nearest edge instead of guessing past it.</p>
+
+<h2>The three cases, in order</h2>
+
+<ol>
+  <li><code>x &lt;= xs[0]</code> — clamp to <code>ys[0]</code>.</li>
+  <li><code>x &gt;= xs[n - 1]</code> — clamp to <code>ys[n - 1]</code>.</li>
+  <li>Otherwise, find consecutive breakpoints <code>xs[i]</code> and
+    <code>xs[i + 1]</code> with <code>xs[i] &lt;= x &lt;= xs[i + 1]</code>, and
+    interpolate between them.</li>
+</ol>
+
+<p>The interpolation itself is one line once you have the right interval:</p>
+
+<pre><code>ys[i] + (ys[i+1] - ys[i]) * (x - xs[i]) / (xs[i+1] - xs[i])</code></pre>
+
+<h2>The trap the problem is built around</h2>
+
+<div class="trap">
+<p>Look at the middle of that line: <code>(ys[i+1] - ys[i]) * (x - xs[i])</code>
+  is a multiplication done <em>before</em> the division that would otherwise
+  keep it small. If both differences are a few tens of thousands — entirely
+  realistic for a calibration table spanning a wide sensor range — their
+  product is in the billions, past what a 32-bit <code>int</code> holds. One
+  of the fixed tests is built exactly to this shape: a two-point table
+  running `0` to `100000` on both axes, queried in the middle.</p>
+<p>The fix is not a cleverer formula, just a wider type for the multiply:
+  compute the product in a 64-bit type, then divide, then bring the result
+  back down to <code>int</code> for the return.</p>
+</div>
+
+<h2>Watch out, beyond the overflow</h2>
+
+<ul>
+  <li>The division truncates toward zero, the way C's <code>/</code> always
+    does on integers. Do not try to round it — one of the fixed tests exists
+    specifically to check the answer is the truncated value, not the nearest
+    one.</li>
+  <li>A table can have more than two breakpoints. Scan for the right
+    interval rather than assuming <code>xs[0]</code>/<code>xs[1]</code> is
+    always it.</li>
+</ul>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li>A table mapping <code>0,10,20</code> to <code>0,100,300</code>, queried
+    at <code>15</code>, is <code>200</code> — halfway between
+    <code>100</code> and <code>300</code>.</li>
+  <li>Queried below <code>0</code> or above <code>20</code>, it clamps rather
+    than extrapolating.</li>
+  <li>A table spanning <code>0</code> to <code>100000</code> on both axes,
+    queried in the middle, does not silently come back wrong or negative.</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_interpolate_table.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

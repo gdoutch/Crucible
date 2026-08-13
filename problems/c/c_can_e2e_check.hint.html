@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Validate a CAN Message's Rolling Counter and Checksum · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · hard</p>
+  <h1>Validate a CAN Message's Rolling Counter and Checksum</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>Two independent checks, both of which have to pass for a frame to be
+  accepted:</p>
+
+<ol>
+  <li><strong>Checksum</strong> — recompute it from the frame's own contents
+    and compare to what arrived.</li>
+  <li><strong>Counter</strong> — it must be exactly one more than the last
+    <em>accepted</em> frame's counter, wrapping at 16, unless there has not
+    been an accepted frame yet.</li>
+</ol>
+
+<p>Either check failing rejects the frame. The function itself keeps no
+  memory between calls -- <code>last_good_counter</code> arrives as a
+  parameter, supplied by the harness, and the harness is the one that
+  decides whether to update it, based on what you return.</p>
+
+<h2>The checksum</h2>
+
+<pre><code>unsigned char check = (unsigned char)counter;
+for (int i = 0; i &lt; length; i++) {
+    check ^= data[i];
+}
+/* compare check to received_checksum */</code></pre>
+
+<h2>The trap the problem is built around</h2>
+
+<div class="trap">
+<p><strong>Start the checksum from the counter, not from zero.</strong> A
+  checksum over the payload bytes alone catches corruption in the payload,
+  but it cannot tell two frames apart if their payload happens to be
+  identical and only the counter differs -- exactly the case a stale,
+  replayed frame produces. Folding <code>counter</code> into the checksum
+  means a frame with the right payload and the wrong counter no longer has a
+  valid checksum either, closing that gap.</p>
+</div>
+
+<h2>The other trap: do not let a rejected frame move the baseline</h2>
+
+<p>The harness only advances <code>last_good_counter</code> when your
+  function returns <code>1</code> -- so as long as you always compare
+  against the <code>last_good_counter</code> you were given, rather than
+  keeping any counter of your own, a corrupted or out-of-sequence frame in
+  the middle of a run cannot poison what comes after it. A fixed test sends
+  a good frame, a corrupted one, and then a frame that only makes sense
+  counted from <em>before</em> the corrupted one arrived -- if that last
+  frame is rejected, the baseline was moved somewhere it should not have
+  been.</p>
+
+<h2>Watch out, beyond that</h2>
+
+<ul>
+  <li><code>last_good_counter == -1</code> means no frame has ever been
+    accepted -- the very first frame's counter is not compared to anything,
+    only its checksum has to be right.</li>
+  <li>The counter wraps: <code>15</code> is followed by <code>0</code>, which
+    is <code>(15 + 1) % 16</code>, not a value one past the end of a valid
+    range.</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_can_e2e_check.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

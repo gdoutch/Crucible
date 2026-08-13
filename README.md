@@ -378,7 +378,7 @@ the stylesheet does not load the pages are still ordinary readable HTML.
 
 ## What is in the box
 
-33 problems — 29 in C, 4 in Python. Every one of them mixes hand-written edge
+41 problems — 37 in C, 4 in Python. Every one of them mixes hand-written edge
 cases with four randomised ones, and ships a hint and a worked solution.
 
 The C set is deliberately weighted towards the things C makes you think about
@@ -397,6 +397,7 @@ what happens at the boundary, and what the standard actually promises.
 | | C | Extract a Register Field | bitwise, embedded, registers |
 | | C | Byte-Swap a Register (Endianness) | bitwise, embedded, endianness |
 | | C | Compute the Parity Bit | bitwise, embedded, error-detection |
+| | C | Slew-Rate Limit a Demand Signal | embedded, control, signal-processing |
 | | Python | Two Sum | dictionaries, arrays |
 | **medium** | C | Binary Search | algorithms, arrays, search |
 | | C | Palindrome Check | strings, two pointers, ctype |
@@ -409,12 +410,19 @@ what happens at the boundary, and what the standard actually promises.
 | | C | Primes up to N | arrays, loops |
 | | C | Write a Register Field (Read-Modify-Write) | bitwise, embedded, registers, read-modify-write |
 | | C | GPIO Set/Clear/Toggle (Read-Modify-Write) | bitwise, embedded, gpio, read-modify-write |
+| | C | Linear Interpolation Over a Calibration Table | embedded, calibration, fixed-point, lookup-table |
+| | C | Multiply Two Q15 Fixed-Point Numbers | embedded, fixed-point, arithmetic |
+| | C | Single-Producer/Single-Consumer Ring Buffer | embedded, data-structures, concurrency |
+| | C | Add Hysteresis to a Noisy Threshold (Schmitt Trigger) | embedded, signal-processing, state |
+| | C | A Shift-Based Low-Pass Filter (No Floats) | embedded, signal-processing, bitwise, fixed-point |
 | | Python | Balanced Brackets | stacks, strings, parsing |
 | | Python | Run-Length Encoding | strings, iteration |
 | **hard** | C | Maximum Subarray Sum | algorithms, dynamic programming, arrays |
 | | C | Reverse a Linked List | pointers, linked lists |
 | | C | Edit Distance | dynamic programming, strings |
 | | C | Extract a Signed Sensor Reading | bitwise, embedded, sign-extension, twos-complement |
+| | C | Unpack a CAN Signal (Intel Byte Order) | embedded, can-bus, bitwise, sign-extension |
+| | C | Validate a CAN Message's Rolling Counter and Checksum | embedded, can-bus, functional-safety, state |
 
 A few are worth calling out for what they are really testing:
 
@@ -475,6 +483,64 @@ kind of hand-written edge cases — just aimed at registers instead of arrays.
   that hands you a multi-byte value most-significant-byte-first, the second
   is the classic XOR-fold, a genuinely different bit trick from *Count the
   Set Bits*'s Kernighan loop rather than a rerun of it.
+
+### Calibration, control loops and the bus
+
+Eight more C problems sit one level up from raw registers: the everyday
+building blocks of a calibration-and-controls role rather than a peripheral
+driver — a lookup table, a fixed-point multiply, a lock-free ring buffer, and
+the small stateful filters (hysteresis, slew-rate limiting, a shift-based
+low-pass filter) that turn a noisy signal into one a state machine can act on
+without chattering. Two of them work directly with CAN frames, which is
+where several of these ideas meet at once.
+
+- **Linear Interpolation Over a Calibration Table** is the most
+  role-specific problem in the whole set: read a breakpoint either side of
+  the query, interpolate between them, and clamp rather than extrapolate
+  outside the table. Its fixed test with a table spanning `0` to `100000` on
+  both axes exists because the natural formula multiplies a y-difference by
+  an x-difference *before* dividing — comfortably past `INT_MAX` on a
+  realistic-sized table unless that intermediate product is widened to 64
+  bits first.
+- **Multiply Two Q15 Fixed-Point Numbers** is fixed-point arithmetic without
+  an FPU: multiply the raw integers in a wide type, shift back down by 15,
+  round rather than truncate, and saturate. `q15_multiply(-32768, -32768)` —
+  `-1.0 * -1.0`, mathematically `1.0` — is a fixed test precisely because
+  `1.0` does not fit in Q15's range and the correct answer is the clamped
+  `32767`, not a value that has wrapped around negative.
+- **Single-Producer/Single-Consumer Ring Buffer** asks for the standard
+  reserved-slot convention: a buffer of capacity N holds at most `N - 1`
+  items, which is what lets `head == tail` mean empty and
+  `(head + 1) % capacity == tail` mean full with no separate counter to keep
+  in sync. A fixed test fills a capacity-4 buffer with four pushes and
+  requires the fourth to report full.
+- **Add Hysteresis to a Noisy Threshold** and **A Shift-Based Low-Pass
+  Filter** are two different answers to "the signal is noisy" — one absorbs
+  noise in the *value* with a dead zone between two thresholds, the other
+  smooths noise *over time* with an integer exponential moving average
+  (`output += (sample - output) >> shift`). The filter's worked solution is
+  upfront about a real property of that formula: a small enough persistent
+  gap shifts to zero and the filter gets permanently stuck short of its
+  target, which is the specification working correctly, not a bug to fix.
+- **Slew-Rate Limit a Demand Signal** caps how fast an output can move
+  toward a target in either direction — the fixed test that ramps up and
+  then reverses exists specifically to catch a clamp written for only the
+  rising case.
+- **Unpack a CAN Signal** does DBC-style Intel-byte-order signal extraction:
+  assemble 8 payload bytes into a 64-bit little-endian value, then extract
+  and sign-extend a field from it exactly as in *Extract a Signed Sensor
+  Reading*, before applying a scale and offset. Its fixed tests check the
+  byte order in the direction that is actually easy to get backwards, and
+  its return type is `long long` because `raw * scale` overflows a 32-bit
+  `int` well before the raw value itself does.
+- **Validate a CAN Message's Rolling Counter and Checksum** is end-to-end
+  protection on a safety-relevant signal: a checksum that has to fold in the
+  frame's alive counter (or a stale replay with unchanged payload slips
+  through undetected), and a counter that must advance by exactly one from
+  the last *accepted* frame — never from a frame that failed its own check.
+  A fixed test sends a good frame, a corrupted one, and a frame that is only
+  valid counted from *before* the corrupted one arrived, proving a rejected
+  frame never moves the baseline.
 
 ### Beyond writing algorithms
 
@@ -703,7 +769,7 @@ crucible/
     theme.py           palettes and ttk styling
 problems/
   guides.css           shared by every guide page
-  c/                   25 problems, each with .json + .hint.html
+  c/                   33 problems, each with .json + .hint.html
   python/              3 problems,             + .solution.html
   uml/                 2 problems,             + .diagram.html
   safety/              3 problems

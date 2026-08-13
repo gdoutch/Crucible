@@ -1,0 +1,53 @@
+{
+  "id": "c_interpolate_table",
+  "title": "Linear Interpolation Over a Calibration Table",
+  "language": "c",
+  "difficulty": "medium",
+  "topics": [
+    "embedded",
+    "calibration",
+    "fixed-point",
+    "lookup-table"
+  ],
+  "timeout_seconds": 5,
+  "statement": "A calibration table maps a small number of measured breakpoints to the values\nan engineer actually wants -- throttle position to torque demand, ADC counts\nto temperature, whatever a sensor's raw output needs turning into. Between\nbreakpoints, you interpolate. This is the single most calibration-flavoured\nexercise in this set: it is close to literally what the job is.\n\n## Your function\n\n```\nint interpolate_table(const int *xs, const int *ys, int n, int x);\n```\n\n`xs` holds `n` breakpoints in **strictly increasing** order; `ys` holds the\ncorresponding calibrated value at each one. `n` is at least 2. Return the\nlinearly interpolated value of `y` at `x`:\n\n- If `x` is at or below `xs[0]`, return `ys[0]` -- clamp, do not extrapolate.\n- If `x` is at or above `xs[n - 1]`, return `ys[n - 1]`.\n- Otherwise find the breakpoints either side of `x` and interpolate linearly\n  between them, using ordinary C integer division (which truncates toward\n  zero -- interpolating between `0`/`0` and `3`/`10` at `x = 1` gives `3`,\n  because `10 * 1 / 3` truncates to `3`, not `3.33` rounded any other way).\n\n## Watch out\n\n- **The interpolation itself can overflow a 32-bit `int` long before the\n  final answer does.** The natural formula multiplies a `y`-difference by an\n  `x`-difference before dividing:\n  `ys[i] + (ys[i+1] - ys[i]) * (x - xs[i]) / (xs[i+1] - xs[i])`. A calibration\n  table spanning tens of thousands of counts on each axis makes that\n  intermediate product tens of millions times bigger again -- past\n  `INT_MAX` on realistic-looking tables, not just contrived ones. Widen the\n  multiplication to a 64-bit type before you divide; only the final result\n  needs to fit back in an `int`.\n- The table is not guaranteed to have exactly 2 breakpoints. Find the right\n  interval by scanning, rather than assuming `xs[0]`/`xs[1]` is always the\n  pair you want.\n- `ys` is not guaranteed to be increasing even though `xs` is -- a\n  calibration curve can fall as easily as it rises.\n",
+  "starter_code": "int interpolate_table(const int *xs, const int *ys, int n, int x)\n{\n    /* your code here */\n    (void)xs;\n    (void)ys;\n    (void)n;\n    (void)x;\n    return 0;\n}\n",
+  "harness": "#include <stdio.h>\n#include <stdlib.h>\n\n/* Provided by the candidate in solution.c */\nint interpolate_table(const int *xs, const int *ys, int n, int x);\n\nint main(void)\n{\n    int n;\n    if (scanf(\"%d\", &n) != 1 || n < 2) {\n        return 1;\n    }\n\n    int *xs = malloc((size_t)n * sizeof *xs);\n    int *ys = malloc((size_t)n * sizeof *ys);\n    if (xs == NULL || ys == NULL) {\n        return 1;\n    }\n    for (int i = 0; i < n; i++) {\n        if (scanf(\"%d\", &xs[i]) != 1) {\n            return 1;\n        }\n    }\n    for (int i = 0; i < n; i++) {\n        if (scanf(\"%d\", &ys[i]) != 1) {\n            return 1;\n        }\n    }\n\n    int x;\n    while (scanf(\"%d\", &x) == 1) {\n        printf(\"%d\\n\", interpolate_table(xs, ys, n, x));\n    }\n\n    free(xs);\n    free(ys);\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random calibration tables and query points.\n\nBreakpoints are generated as a sorted set of distinct x values with\nindependent (not necessarily monotonic) y values, then queried at a mix of\nin-range, exactly-on-a-breakpoint and out-of-range points.\n\"\"\"\n\n\ndef generate(rng, count):\n    builders = (_small_table, _wide_table, _falling_table)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _queries(rng, xs):\n    points = list(xs)  # exact breakpoints are always worth querying\n    for _ in range(3):\n        points.append(rng.randint(xs[0] - 20, xs[-1] + 20))\n    return points\n\n\ndef _case(name, xs, ys, points, description=\"\"):\n    lines = [\"%d\" % len(xs)]\n    lines.append(\" \".join(str(v) for v in xs))\n    lines.append(\" \".join(str(v) for v in ys))\n    lines.extend(str(p) for p in points)\n    return {\n        \"name\": name,\n        \"stdin\": \"\\n\".join(lines) + \"\\n\",\n        \"description\": description,\n    }\n\n\ndef _small_table(rng, index):\n    n = rng.randint(2, 4)\n    xs = sorted(rng.sample(range(0, 200), n))\n    ys = [rng.randint(-500, 500) for _ in range(n)]\n    return _case(\"a small table #%d\" % index, xs, ys, _queries(rng, xs))\n\n\ndef _wide_table(rng, index):\n    n = rng.randint(2, 3)\n    xs = sorted(rng.sample(range(0, 200000, 100), n))\n    ys = sorted(rng.sample(range(0, 200000, 100), n))\n    return _case(\"a wide-range table #%d\" % index, xs, ys, _queries(rng, xs),\n                 \"Large breakpoints -- the kind that overflow an \"\n                 \"un-widened intermediate product.\")\n\n\ndef _falling_table(rng, index):\n    n = rng.randint(2, 5)\n    xs = sorted(rng.sample(range(0, 300), n))\n    ys = sorted((rng.randint(-1000, 1000) for _ in range(n)), reverse=True)\n    return _case(\"a falling calibration curve #%d\" % index, xs, ys,\n                 _queries(rng, xs), \"y decreases as x increases.\")\n"
+  },
+  "tests": [
+    {
+      "name": "a basic table with clamping at both ends",
+      "stdin": "3\n0 10 20\n0 100 300\n-5\n0\n5\n10\n15\n20\n25\n",
+      "expected_stdout": "0\n0\n50\n100\n200\n300\n300",
+      "description": "-5 and 25 fall outside the table and clamp to the nearest end; 0, 10 and 20 land exactly on breakpoints."
+    },
+    {
+      "name": "a wide-range table that overflows an un-widened product",
+      "stdin": "2\n0 100000\n0 100000\n50000\n1\n",
+      "expected_stdout": "50000\n1",
+      "description": "(100000 - 0) * (50000 - 0) is 5,000,000,000 -- past INT_MAX if the multiply is done in a 32-bit int before dividing."
+    },
+    {
+      "name": "a falling calibration curve",
+      "stdin": "2\n0 100\n500 -500\n0\n25\n50\n75\n100\n",
+      "expected_stdout": "500\n250\n0\n-250\n-500",
+      "description": "ys decreases as xs increases."
+    },
+    {
+      "name": "truncation, not rounding",
+      "stdin": "2\n0 3\n0 10\n1\n2\n",
+      "expected_stdout": "3\n6",
+      "description": "10 * 1 / 3 truncates to 3, not 3.33 rounded any other way; 10 * 2 / 3 truncates to 6."
+    },
+    {
+      "name": "a table with more than one interval",
+      "stdin": "4\n0 10 20 30\n0 5 -5 20\n3\n15\n25\n29\n30\n0\n",
+      "expected_stdout": "1\n0\n7\n17\n20\n0",
+      "description": "Four breakpoints, three intervals -- the search for the right one has to look past the first pair."
+    }
+  ],
+  "reference_solution_b64": "aW50IGludGVycG9sYXRlX3RhYmxlKGNvbnN0IGludCAqeHMsIGNvbnN0IGludCAqeXMsIGludCBuLCBpbnQgeCkKewogICAgaWYgKHggPD0geHNbMF0pIHsKICAgICAgICByZXR1cm4geXNbMF07CiAgICB9CiAgICBpZiAoeCA+PSB4c1tuIC0gMV0pIHsKICAgICAgICByZXR1cm4geXNbbiAtIDFdOwogICAgfQoKICAgIGludCBpID0gMDsKICAgIHdoaWxlIChpICsgMiA8IG4gJiYgeHNbaSArIDFdIDwgeCkgewogICAgICAgIGkrKzsKICAgIH0KCiAgICBsb25nIGxvbmcgZHkgPSAobG9uZyBsb25nKSh5c1tpICsgMV0gLSB5c1tpXSk7CiAgICBsb25nIGxvbmcgZHggPSAobG9uZyBsb25nKSh4c1tpICsgMV0gLSB4c1tpXSk7CiAgICBsb25nIGxvbmcgbnVtID0gZHkgKiAobG9uZyBsb25nKSh4IC0geHNbaV0pOwoKICAgIHJldHVybiB5c1tpXSArIChpbnQpKG51bSAvIGR4KTsKfQo="
+}

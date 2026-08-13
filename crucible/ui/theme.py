@@ -38,6 +38,11 @@ class Palette:
     syn_number: str
     syn_preproc: str
 
+    #: Background behind a matched bracket pair -- the caret is touching one
+    #: of `(){}[]` and its partner was found. Distinct from `selection` and
+    #: `error_line` so the three never read as the same thing.
+    bracket_match_bg: str
+
     ok: str
     fail: str
     error: str
@@ -66,6 +71,7 @@ DARK = Palette(
     syn_comment="#636b7f",
     syn_number="#ff9e64",
     syn_preproc="#bb9af7",
+    bracket_match_bg="#4a3c1a",
     ok="#5ed4a8",
     fail="#f7768e",
     error="#ffa657",
@@ -94,6 +100,7 @@ LIGHT = Palette(
     syn_comment="#6e7781",
     syn_number="#b35900",
     syn_preproc="#8250df",
+    bracket_match_bg="#fff2b8",
     ok="#116329",
     fail="#cf222e",
     error="#bc4c00",

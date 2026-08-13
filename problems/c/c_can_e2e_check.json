@@ -1,0 +1,51 @@
+{
+  "id": "c_can_e2e_check",
+  "title": "Validate a CAN Message's Rolling Counter and Checksum",
+  "language": "c",
+  "difficulty": "hard",
+  "topics": [
+    "embedded",
+    "can-bus",
+    "functional-safety",
+    "state"
+  ],
+  "timeout_seconds": 5,
+  "statement": "A CAN bus can drop a frame, deliver a stale one twice, or corrupt a bit in\ntransit, and the bus itself will not tell you any of that happened. Safety-\nrelevant signals defend against it end-to-end: every frame carries a rolling\n**alive counter** and a **checksum**, and the receiver's job is to notice\nwhen either one is wrong and hold the last trusted value rather than act on\na frame it cannot vouch for.\n\nThis exercise uses a 4-bit counter (wrapping `0`-`15`) and a whole-frame XOR\nchecksum -- simplified from a real protocol, but the shape of the check is\nthe same one AUTOSAR's E2E profiles use.\n\n## Your function\n\n```\nint can_e2e_check(const unsigned char *data, int length, int counter,\n                  int received_checksum, int last_good_counter);\n```\n\n`last_good_counter` is the counter value from the last frame **this\nfunction accepted** -- or `-1` if there has not been one yet. Return `1` to\naccept the frame, `0` to reject it. To accept:\n\n1. Recompute the checksum: start from `counter`, XOR in every byte of `data`\n   in order, and compare the result to `received_checksum`. A mismatch is an\n   automatic reject.\n2. If `last_good_counter` is `-1`, this is the first frame ever seen and any\n   counter value starts the sequence. Otherwise the counter must equal\n   `(last_good_counter + 1) % 16` -- anything else means a frame was\n   dropped, duplicated, or reordered.\n\nThe harness keeps `last_good_counter` for you between calls, and only\nadvances it when you return `1` -- your function itself holds no state.\n\n## Watch out\n\n- **The counter is part of the checksum.** Two frames with identical\n  payload data but different counters must produce different checksums, so\n  the check has to start from `counter`, not just XOR the payload bytes on\n  their own -- an implementation that forgets the counter still catches\n  payload corruption, but it stops catching a frame replayed with a stale\n  counter and a payload that happens not to have changed.\n- **A rejected frame must not move the baseline.** After a frame fails\n  either check, the next incoming frame is still compared against the last\n  *accepted* counter, not the bad one. One of the fixed tests sends a good\n  frame, a corrupted one, and then a good frame that only makes sense\n  counted from before the corrupted one arrived at all -- if your function\n  is stateful on its own rather than trusting `last_good_counter`, or the\n  harness's bookkeeping is misread, this is where it shows.\n- The counter wraps: `15` is followed by `0`, not by a reject.\n",
+  "starter_code": "int can_e2e_check(const unsigned char *data, int length, int counter,\n                  int received_checksum, int last_good_counter)\n{\n    /* your code here */\n    (void)data;\n    (void)length;\n    (void)counter;\n    (void)received_checksum;\n    (void)last_good_counter;\n    return 0;\n}\n",
+  "harness": "#include <stdio.h>\n\n/* Provided by the candidate in solution.c */\nint can_e2e_check(const unsigned char *data, int length, int counter,\n                  int received_checksum, int last_good_counter);\n\nint main(void)\n{\n    int last_good = -1;\n    int length;\n\n    while (scanf(\"%d\", &length) == 1) {\n        unsigned char data[64];\n        unsigned int byte_value;\n        for (int i = 0; i < length; i++) {\n            if (scanf(\"%x\", &byte_value) != 1) {\n                return 1;\n            }\n            data[i] = (unsigned char)byte_value;\n        }\n\n        int counter, checksum;\n        if (scanf(\"%d %x\", &counter, &checksum) != 2) {\n            return 1;\n        }\n\n        int ok = can_e2e_check(data, length, counter, checksum, last_good);\n        printf(\"%s\\n\", ok ? \"OK\" : \"FAULT\");\n        if (ok) {\n            last_good = counter;\n        }\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random frame sequences, including runs that stay clean and runs with one\ncorrupted frame in the middle that must not disturb the frames after it.\"\"\"\n\n\ndef _checksum(data, counter):\n    check = counter & 0xFF\n    for b in data:\n        check ^= b\n    return check & 0xFF\n\n\ndef generate(rng, count):\n    builders = (_clean_run, _one_bad_frame, _skipped_counter)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _frame_line(data, counter, checksum):\n    return \"%d\\n%s\\n%d %X\" % (\n        len(data), \" \".join(\"%02X\" % b for b in data), counter, checksum)\n\n\ndef _case(name, lines, description=\"\"):\n    return {\"name\": name, \"stdin\": \"\\n\".join(lines) + \"\\n\",\n            \"description\": description}\n\n\ndef _clean_run(rng, index):\n    start = rng.randrange(16)\n    n = rng.randint(3, 6)\n    data = [rng.randrange(256) for _ in range(rng.randint(1, 4))]\n    lines = []\n    for i in range(n):\n        counter = (start + i) % 16\n        lines.append(_frame_line(data, counter, _checksum(data, counter)))\n    return _case(\"a clean run starting at counter %d #%d\" % (start, index),\n                 lines)\n\n\ndef _one_bad_frame(rng, index):\n    data = [rng.randrange(256) for _ in range(rng.randint(1, 4))]\n    lines = [\n        _frame_line(data, 0, _checksum(data, 0)),\n        _frame_line(data, 1, _checksum(data, 1)),\n        # corrupted: checksum does not match counter 2 at all\n        _frame_line(data, 2, _checksum(data, 2) ^ 0xFF),\n        _frame_line(data, 2, _checksum(data, 2)),\n    ]\n    return _case(\"a corrupted frame that must not move the baseline #%d\" %\n                index, lines,\n                \"Frame 3 has a deliberately wrong checksum; frame 4 repeats \"\n                \"counter 2 and must still be accepted, counted from frame \"\n                \"2's counter of 1.\")\n\n\ndef _skipped_counter(rng, index):\n    data = [rng.randrange(256) for _ in range(rng.randint(1, 4))]\n    lines = [\n        _frame_line(data, 0, _checksum(data, 0)),\n        _frame_line(data, 2, _checksum(data, 2)),  # valid checksum, wrong counter\n    ]\n    return _case(\"a valid checksum but a skipped counter #%d\" % index, lines,\n                 \"The checksum is correct for counter 2, but the sequence \"\n                 \"jumped from 0 straight to 2.\")\n"
+  },
+  "tests": [
+    {
+      "name": "a clean run of four frames",
+      "stdin": "2\n10 20\n0 30\n2\n10 20\n1 31\n2\n10 20\n2 32\n2\n10 20\n3 33\n",
+      "expected_stdout": "OK\nOK\nOK\nOK"
+    },
+    {
+      "name": "the counter rolls over from 15 to 0",
+      "stdin": "1\n01\n14 0F\n1\n01\n15 0E\n1\n01\n0 01\n1\n01\n1 00\n",
+      "expected_stdout": "OK\nOK\nOK\nOK"
+    },
+    {
+      "name": "a corrupted frame does not move the baseline",
+      "stdin": "1\n11\n0 11\n1\n11\n1 10\n1\n11\n5 EB\n1\n11\n2 13\n",
+      "expected_stdout": "OK\nOK\nFAULT\nOK",
+      "description": "Frame 3's checksum does not match at all and is rejected. Frame 4 carries counter 2, which is only valid counted from frame 2's counter of 1 -- proving frame 3 never became the new baseline."
+    },
+    {
+      "name": "a valid checksum but a skipped counter",
+      "stdin": "1\n22\n1 23\n1\n22\n3 21\n",
+      "expected_stdout": "OK\nFAULT",
+      "description": "The second frame's checksum is entirely correct for counter 3 -- it fails only because the sequence jumped from 1 to 3."
+    },
+    {
+      "name": "the very first frame accepts any counter",
+      "stdin": "1\n33\n7 34\n",
+      "expected_stdout": "OK",
+      "description": "last_good_counter is -1 -- there is no prior frame to compare against yet."
+    }
+  ],
+  "reference_solution_b64": "aW50IGNhbl9lMmVfY2hlY2soY29uc3QgdW5zaWduZWQgY2hhciAqZGF0YSwgaW50IGxlbmd0aCwgaW50IGNvdW50ZXIsCiAgICAgICAgICAgICAgICAgIGludCByZWNlaXZlZF9jaGVja3N1bSwgaW50IGxhc3RfZ29vZF9jb3VudGVyKQp7CiAgICB1bnNpZ25lZCBjaGFyIGNoZWNrID0gKHVuc2lnbmVkIGNoYXIpY291bnRlcjsKICAgIGZvciAoaW50IGkgPSAwOyBpIDwgbGVuZ3RoOyBpKyspIHsKICAgICAgICBjaGVjayBePSBkYXRhW2ldOwogICAgfQogICAgaWYgKGNoZWNrICE9ICh1bnNpZ25lZCBjaGFyKXJlY2VpdmVkX2NoZWNrc3VtKSB7CiAgICAgICAgcmV0dXJuIDA7CiAgICB9CgogICAgaWYgKGxhc3RfZ29vZF9jb3VudGVyIDwgMCkgewogICAgICAgIHJldHVybiAxOwogICAgfQogICAgaW50IGV4cGVjdGVkID0gKGxhc3RfZ29vZF9jb3VudGVyICsgMSkgJSAxNjsKICAgIHJldHVybiBjb3VudGVyID09IGV4cGVjdGVkOwp9Cg=="
+}

@@ -1,0 +1,33 @@
+{
+  "id": "c_hysteresis",
+  "title": "Add Hysteresis to a Noisy Threshold (Schmitt Trigger)",
+  "language": "c",
+  "difficulty": "medium",
+  "topics": [
+    "embedded",
+    "signal-processing",
+    "state"
+  ],
+  "timeout_seconds": 5,
+  "statement": "A sensor hovering right at a single threshold chatters -- noise alone flips\nthe output on and off many times a second, which is exactly the behaviour a\ndownstream state machine (or a relay, or a driver's ears) cannot cope with.\nThe fix is a **Schmitt trigger**: two thresholds instead of one, with a dead\nzone between them where the output does not change no matter which way the\nreading moves.\n\n## Your function\n\n```\nint schmitt_update(int reading, int low, int high, int previous_state);\n```\n\n`previous_state` is `0` or `1`. `low` is always less than `high`. Return the\nnew state:\n\n- If the state is currently `0` and `reading >= high`, switch to `1`.\n- If the state is currently `1` and `reading <= low`, switch to `0`.\n- Otherwise -- including every reading strictly between `low` and `high` --\n  return `previous_state` unchanged.\n\nThe harness calls you once per reading, feeding each call's result back in as\nthe next call's `previous_state`, and prints the state after every reading.\n\n## Watch out\n\n- **The dead zone is the whole point.** A reading of, say, `50` between\n  `low = 20` and `high = 80` must never change the state, whichever state it\n  currently is. Comparing against a single midpoint threshold instead of the\n  two given ones defeats the exercise entirely -- it will pass a test where\n  the signal moves cleanly in one direction and fail the moment it wanders\n  back and forth inside the dead zone, which is exactly the noisy behaviour\n  hysteresis exists to absorb.\n- This is a different technique from *debouncing a switch*: debouncing waits\n  for several **consecutive** samples to agree before trusting a change;\n  hysteresis never needs more than the current reading, because it is the\n  **value** that has to clear a wider gap, not the **time**. A system can\n  use either, or both, depending on whether its noise is in the signal's\n  amplitude or its timing.\n",
+  "starter_code": "int schmitt_update(int reading, int low, int high, int previous_state)\n{\n    /* your code here */\n    (void)reading;\n    (void)low;\n    (void)high;\n    return previous_state;\n}\n",
+  "harness": "#include <stdio.h>\n\n/* Provided by the candidate in solution.c */\nint schmitt_update(int reading, int low, int high, int previous_state);\n\nint main(void)\n{\n    int state, low, high;\n    if (scanf(\"%d %d %d\", &state, &low, &high) != 3) {\n        return 1;\n    }\n\n    int reading;\n    while (scanf(\"%d\", &reading) == 1) {\n        state = schmitt_update(reading, low, high, state);\n        printf(\"%d\\n\", state);\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random threshold pairs and reading streams, including runs that hover\ninside the dead zone on purpose.\"\"\"\n\n\ndef generate(rng, count):\n    builders = (_random_walk, _dead_zone_hover, _clean_crossings)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, state, low, high, readings, description=\"\"):\n    lines = [\"%d %d %d\" % (state, low, high)]\n    lines.extend(str(r) for r in readings)\n    return {\"name\": name, \"stdin\": \"\\n\".join(lines) + \"\\n\",\n            \"description\": description}\n\n\ndef _random_walk(rng, index):\n    low, high = 20, 80\n    readings = [rng.randint(0, 100) for _ in range(8)]\n    return _case(\"a random signal #%d\" % index, 0, low, high, readings)\n\n\ndef _dead_zone_hover(rng, index):\n    low, high = 20, 80\n    readings = [rng.randint(low + 1, high - 1) for _ in range(6)]\n    return _case(\"hovering entirely inside the dead zone #%d\" % index,\n                 rng.choice((0, 1)), low, high, readings,\n                 \"Every reading is strictly between low and high -- the \"\n                 \"state must never move.\")\n\n\ndef _clean_crossings(rng, index):\n    low, high = 10, 90\n    readings = [5, 95, 5, 95, 5]\n    return _case(\"clean crossings, alternating #%d\" % index, 0, low, high,\n                 readings)\n"
+  },
+  "tests": [
+    {
+      "name": "a signal that crosses cleanly in both directions",
+      "stdin": "0 20 80\n10\n30\n50\n79\n80\n60\n21\n20\n19\n50\n85\n",
+      "expected_stdout": "0\n0\n0\n0\n1\n1\n1\n0\n0\n0\n1"
+    },
+    {
+      "name": "hovering entirely inside the dead zone",
+      "stdin": "1 20 80\n50\n21\n20\n19\n80\n50\n",
+      "expected_stdout": "1\n1\n0\n0\n1\n1",
+      "description": "Every reading before the 80 is inside the dead zone or at its low edge; the state must not move on any reading strictly between low and high."
+    }
+  ],
+  "reference_solution_b64": "aW50IHNjaG1pdHRfdXBkYXRlKGludCByZWFkaW5nLCBpbnQgbG93LCBpbnQgaGlnaCwgaW50IHByZXZpb3VzX3N0YXRlKQp7CiAgICBpZiAoIXByZXZpb3VzX3N0YXRlICYmIHJlYWRpbmcgPj0gaGlnaCkgewogICAgICAgIHJldHVybiAxOwogICAgfQogICAgaWYgKHByZXZpb3VzX3N0YXRlICYmIHJlYWRpbmcgPD0gbG93KSB7CiAgICAgICAgcmV0dXJuIDA7CiAgICB9CiAgICByZXR1cm4gcHJldmlvdXNfc3RhdGU7Cn0K"
+}

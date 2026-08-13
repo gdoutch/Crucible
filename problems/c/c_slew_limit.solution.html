@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Slew-Rate Limit a Demand Signal · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · easy</p>
+  <h1>Slew-Rate Limit a Demand Signal</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>int slew_limit(int previous_output, int target, int max_step)
+{
+    int delta = target - previous_output;
+
+    if (delta &gt; max_step) {
+        delta = max_step;
+    }
+    if (delta &lt; -max_step) {
+        delta = -max_step;
+    }
+    return previous_output + delta;
+}</code></pre>
+
+<h2>Why both clamps are needed</h2>
+
+<div class="trap">
+<p><code>delta</code> can be positive or negative depending on which side of
+  <code>previous_output</code> the target currently sits on -- there is
+  nothing in the function's job that only ever moves the output upward. The
+  fixed test that ramps up toward <code>100</code> and then reverses to
+  <code>-50</code> exists specifically to exercise both clamps in the same
+  run: an implementation with only the first <code>if</code> -- clamping the
+  positive side and leaving negative deltas untouched -- passes every step of
+  the ramp up and then jumps straight to the reversed target in one move,
+  because nothing stopped a large negative <code>delta</code>.</p>
+</div>
+
+<h2>Landing exactly on the target</h2>
+
+<p>Neither clamp fires when <code>delta</code> is already within
+  <code>[-max_step, max_step]</code> -- the two <code>if</code>s are only
+  ever entered when the direct move would exceed the cap. A target 3 away
+  with a cap of 100 leaves <code>delta</code> unchanged at 3, and
+  <code>previous_output + delta</code> lands exactly on the target in one
+  call. Called again with the same target, <code>delta</code> is now 0, both
+  clamps are no-ops, and the output holds -- there is no separate "have I
+  arrived" check anywhere, because the arithmetic already produces the right
+  answer in that case without one.</p>
+
+<h2>Why a real system limits the rate at all</h2>
+
+<p>An instant jump in a demand signal is rarely something the thing
+  receiving it can or should follow instantly -- a valve has physical
+  inertia, a motor has a torque limit, and even where nothing physical is in
+  the way, a step change is often exactly what causes the overshoot and
+  ringing a well-tuned system is trying to avoid in the first place. Capping
+  how fast the demand itself is allowed to move is the simplest available
+  tool for keeping the rest of the control chain inside its comfortable
+  operating range, upstream of anything a controller further down the chain
+  has to compensate for.</p>
+
+<h2>Cost</h2>
+
+<p>Two comparisons and one addition per call, independent of how far the
+  target is: <strong>O(1)</strong> time and space.</p>
+
+<footer>
+  <p><a href="c_slew_limit.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Add Hysteresis to a Noisy Threshold (Schmitt Trigger) · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>Add Hysteresis to a Noisy Threshold (Schmitt Trigger)</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>Two thresholds instead of one, so that turning ON and turning OFF happen
+  at different places. Between them is a dead zone where nothing you do
+  should change the state, no matter which way the reading is drifting.</p>
+
+<h2>Two rules, and an "otherwise"</h2>
+
+<ul>
+  <li>Currently OFF, and the reading reaches <code>high</code> or above:
+    turn ON.</li>
+  <li>Currently ON, and the reading falls to <code>low</code> or below: turn
+    OFF.</li>
+  <li>Anything else: stay exactly where you were.</li>
+</ul>
+
+<p>Notice which threshold each rule checks against: turning ON only ever
+  looks at <code>high</code>; turning OFF only ever looks at
+  <code>low</code>. Neither rule looks at the other's threshold.</p>
+
+<h2>The trap the problem is built around</h2>
+
+<div class="trap">
+<p>A single midpoint threshold (<code>reading &gt;= (low + high) / 2</code>,
+  say) will pass a test where the signal moves cleanly from below
+  <code>low</code> to above <code>high</code> and back -- there is nothing in
+  a clean crossing to tell single-threshold and two-threshold logic apart.
+  It falls over the moment the signal spends several readings wandering
+  <em>inside</em> the dead zone: a fixed test does exactly that, holding
+  every reading strictly between <code>low</code> and <code>high</code>, and
+  checking the state never moves once. A single-threshold implementation
+  will flip state as the noisy readings cross its one line back and forth;
+  the two-threshold version, correctly implemented, does not react to any of
+  them.</p>
+</div>
+
+<h2>Watch out, beyond the dead zone</h2>
+
+<ul>
+  <li>This is not the same technique as switch debouncing. Debouncing waits
+    for several <em>consecutive</em> samples to agree before trusting a
+    change -- it is about noise in <em>time</em>. Hysteresis reacts to a
+    single reading immediately, as long as that reading has cleared a wide
+    enough gap in <em>value</em>. Different noise, different fix.</li>
+</ul>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li>Starting OFF with <code>low = 20, high = 80</code>: readings
+    <code>50, 79</code> keep it OFF; <code>80</code> turns it ON.</li>
+  <li>Once ON, a reading of <code>21</code> keeps it ON; only
+    <code>20</code> or below turns it OFF.</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_hysteresis.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

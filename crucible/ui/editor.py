@@ -16,6 +16,14 @@ from .theme import Palette
 
 TAB_WIDTH = 4
 
+#: The three bracket families every language here uses. C leans hardest on
+#: `{}` -- every function body and block is one -- but `()` and `[]` get the
+#: same treatment for free, and Python's are still worth matching too.
+_OPENERS = "([{"
+_CLOSERS = ")]}"
+_PARTNER = dict(zip(_OPENERS, _CLOSERS))
+_PARTNER.update(zip(_CLOSERS, _OPENERS))
+
 
 def mono_font(size: int = 11) -> tkfont.Font:
     """First monospace family actually installed, rather than a hopeful guess."""
@@ -187,6 +195,12 @@ class CodeEditor(ttk.Frame):
         # Background-only marks sit beneath the colour tags so they never
         # fight over foreground.
         self.text.tag_lower("errorline")
+        # Bracket tags are configured last, which in Tk gives newly created
+        # tags the highest display priority -- so a matched or dangling
+        # bracket still shows on top of an error line underneath it.
+        self.text.tag_configure("bracket_match", background=p.bracket_match_bg)
+        self.text.tag_configure("bracket_error", background=p.fail,
+                                foreground=p.editor_bg)
 
     # -- editing behaviour -------------------------------------------------
 
@@ -315,23 +329,88 @@ class CodeEditor(ttk.Frame):
 
     def _highlight(self) -> None:
         self._highlight_job = None
-        if self._pattern is None:
-            return
-        source = self.text.get("1.0", "end-1c")
-        for tag in ("keyword", "string", "comment", "number", "preproc"):
-            self.text.tag_remove(tag, "1.0", "end")
+        if self._pattern is not None:
+            source = self.text.get("1.0", "end-1c")
+            for tag in ("keyword", "string", "comment", "number", "preproc"):
+                self.text.tag_remove(tag, "1.0", "end")
 
-        for match in self._pattern.finditer(source):
-            kind = match.lastgroup
-            if kind is None:
-                continue
-            if kind == "ident":
-                if match.group() not in self._keywords:
+            for match in self._pattern.finditer(source):
+                kind = match.lastgroup
+                if kind is None:
                     continue
-                kind = "keyword"
-            start = f"1.0+{match.start()}c"
-            end = f"1.0+{match.end()}c"
-            self.text.tag_add(kind, start, end)
+                if kind == "ident":
+                    if match.group() not in self._keywords:
+                        continue
+                    kind = "keyword"
+                start = f"1.0+{match.start()}c"
+                end = f"1.0+{match.end()}c"
+                self.text.tag_add(kind, start, end)
+
+        # Bracket matching reads the string/comment tags just rebuilt above,
+        # so it has to run after them -- otherwise a `(` inside a string
+        # comment gets matched as if it were code.
+        self._match_brackets()
+
+    # -- bracket matching ---------------------------------------------------
+
+    def _is_code(self, index: str) -> bool:
+        """False inside a string or a comment, where a bracket character does
+        not participate in the program's actual nesting."""
+        tags = self.text.tag_names(index)
+        return "string" not in tags and "comment" not in tags
+
+    def _bracket_before_or_after_caret(self) -> str | None:
+        """The index of a bracket character touching the caret, preferring
+        the one just behind it -- so pressing `)` highlights the pair you
+        just closed rather than whatever the caret happens to sit in front
+        of next."""
+        insert = self.text.index("insert")
+        for index in (f"{insert}-1c", insert):
+            char = self.text.get(index)
+            if char in _PARTNER and self._is_code(index):
+                return index
+        return None
+
+    def _find_partner(self, index: str) -> str | None:
+        """Scan for the bracket that closes (or opens) the one at `index`,
+        tracking nesting depth within the same bracket family and skipping
+        anything tagged as a string or a comment. None if the file is
+        unbalanced past this point."""
+        char = self.text.get(index)
+        other = _PARTNER[char]
+        step = "+1c" if char in _OPENERS else "-1c"
+
+        depth = 1
+        cursor = index
+        while True:
+            previous = cursor
+            cursor = self.text.index(f"{cursor}{step}")
+            if cursor == previous:
+                return None  # walked off the start or end of the document
+            if not self._is_code(cursor):
+                continue
+            found = self.text.get(cursor)
+            if found == char:
+                depth += 1
+            elif found == other:
+                depth -= 1
+                if depth == 0:
+                    return cursor
+
+    def _match_brackets(self) -> None:
+        self.text.tag_remove("bracket_match", "1.0", "end")
+        self.text.tag_remove("bracket_error", "1.0", "end")
+
+        index = self._bracket_before_or_after_caret()
+        if index is None:
+            return
+
+        partner = self._find_partner(index)
+        if partner is None:
+            self.text.tag_add("bracket_error", index, f"{index}+1c")
+            return
+        self.text.tag_add("bracket_match", index, f"{index}+1c")
+        self.text.tag_add("bracket_match", partner, f"{partner}+1c")
 
 
 def _build_pattern(line_comment: str) -> re.Pattern[str]:

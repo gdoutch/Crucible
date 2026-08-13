@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — A Shift-Based Low-Pass Filter (No Floats) · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>A Shift-Based Low-Pass Filter (No Floats)</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>int iir_update(int previous_output, int sample, int shift)
+{
+    int delta = sample - previous_output;
+
+    return previous_output + (delta &gt;&gt; shift);
+}</code></pre>
+
+<h2>Why a shift stands in for a fraction</h2>
+
+<p>The ordinary exponential moving average is
+  <code>output += alpha * (sample - output)</code>, where <code>alpha</code>
+  is typically something like <code>0.1</code> -- move a tenth of the way to
+  the new sample every time. A right shift by <code>k</code> divides by
+  <code>2^k</code>, which is exactly a fractional multiply by
+  <code>1 / 2^k</code> -- <code>alpha = 1/16</code> for <code>shift = 4</code>,
+  <code>alpha = 1/4</code> for <code>shift = 2</code>, and so on. It only
+  offers powers of two rather than any fraction you like, and in exchange it
+  costs one integer shift instead of a floating-point multiply -- the trade
+  that makes it worth using at all on hardware without an FPU, or in code
+  where floating-point results have to be bit-for-bit reproducible.</p>
+
+<h2>The signed-shift trap, worked through</h2>
+
+<div class="trap">
+<p><code>delta</code> is negative whenever the sample is below the current
+  output, and the filter needs to move down by roughly the same fraction it
+  would move up -- <code>delta &gt;&gt; shift</code> on a signed
+  <code>int</code> does that correctly, because C's right shift on a signed
+  negative value is (on every mainstream compiler, the same caveat as the
+  shift-based population count in <em>Count the Set Bits</em>) an arithmetic
+  shift: it copies the sign bit down, so a small negative <code>delta</code>
+  shifts to a small negative correction.</p>
+<p>Make <code>delta</code> unsigned instead -- easy to do by accident with
+  earlier bitfield exercises in this set having pushed everything toward
+  <code>unsigned int</code> -- and the same right shift becomes a
+  <em>logical</em> shift: zeros come in from the top instead of copies of the
+  sign bit. A <code>delta</code> of <code>-10</code>, reinterpreted as
+  unsigned, is a number close to <code>2^32</code>; shifted right by even a
+  couple of bits it is still enormous, and adding it to
+  <code>previous_output</code> does not nudge the filter, it destroys it.
+  This is not a subtle few-percent error -- it is wrong by nine or ten orders
+  of magnitude on the very first sample below the previous output, which is
+  exactly what makes it a good thing to catch in review rather than in the
+  field.</p>
+</div>
+
+<h2>The "stuck filter" property</h2>
+
+<p>With <code>shift = 4</code>, any gap smaller than <code>16</code> shifts
+  to <code>0</code>: <code>5 &gt;&gt; 4</code> is <code>0</code>, so a
+  constant sample only <code>5</code> away from the current output produces
+  a correction of exactly nothing, forever. The fixed test built around this
+  is not checking for a bug -- it is checking that your implementation
+  reproduces this exact, well-documented behaviour of the formula as
+  specified, because a candidate implementation that "fixes" it (by rounding
+  the shift, say) would then disagree with the reference on this case and
+  fail the test for a different reason: not matching the specification it
+  was asked to implement.</p>
+
+<p>The asymmetry is real: a <em>negative</em> gap of the same size does not
+  get stuck the same way, because C's arithmetic right shift rounds toward
+  negative infinity rather than toward zero -- <code>-5 &gt;&gt; 4</code> is
+  <code>-1</code>, not <code>0</code>, so a negative gap always closes by at
+  least one unit per call and eventually reaches zero. A filter built this
+  way converges from below reliably and can stall indefinitely from above,
+  within a band of up to <code>2^shift - 1</code> around the target -- worth
+  knowing before choosing this technique for something where sitting
+  permanently a fixed amount short of the target is not acceptable.</p>
+
+<h2>Cost</h2>
+
+<p>One subtraction, one shift, one addition per sample: <strong>O(1)</strong>
+  time and space, and -- unlike a floating-point multiply -- identical bit
+  patterns on every platform that implements arithmetic right shift the
+  standard way.</p>
+
+<footer>
+  <p><a href="c_iir_filter.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

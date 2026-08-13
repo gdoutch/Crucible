@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — A Shift-Based Low-Pass Filter (No Floats) · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>A Shift-Based Low-Pass Filter (No Floats)</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>An exponential moving average, the version that never needs a float. The
+  ordinary formula is <code>output += alpha * (sample - output)</code> with
+  <code>alpha</code> a fraction between 0 and 1. Replace the fractional
+  multiply with a right shift, and <code>alpha</code> becomes "how many bits"
+  instead of a fraction:</p>
+
+<pre><code>output += (sample - output) &gt;&gt; shift;</code></pre>
+
+<p>That line is the whole function.</p>
+
+<h2>The trap the problem is built around</h2>
+
+<div class="trap">
+<p><code>sample - previous_output</code> is a <strong>signed</strong> quantity
+  -- the filter has to correct downward just as often as upward -- and a
+  right shift only sign-extends correctly on a signed type. If a working
+  variable for the difference ends up <code>unsigned int</code> -- an easy
+  slip after a run of earlier exercises in this set that deliberately push
+  everything unsigned -- a negative correction becomes a huge positive
+  number instead, because an unsigned shift brings in zero bits from the top
+  rather than copies of the sign bit. The output does not drift slightly
+  wrong; it jumps to something wildly, obviously wrong on the very first
+  sample below the current output. Keep <code>previous_output</code>,
+  <code>sample</code>, and anything derived from their difference as plain
+  signed <code>int</code>.</p>
+</div>
+
+<h2>Something to notice, not to fix</h2>
+
+<p>One of the fixed tests holds <code>previous_output</code> at
+  <code>100</code>, feeds in a constant sample of <code>105</code> with
+  <code>shift = 4</code>, and the output <em>never moves</em>. That is
+  correct: the gap is <code>5</code>, and <code>5 &gt;&gt; 4</code> is
+  <code>0</code> -- there is no bug to find here, just a real property of
+  this exact filter worth knowing about before you rely on it for something
+  where it matters.</p>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li>Starting at <code>100</code> with <code>shift = 2</code>, a constant
+    sample of <code>200</code> climbs steadily: <code>125, 143, 157, ...</code>
+    -- never reaching <code>200</code> exactly, always closing part of the
+    remaining gap.</li>
+  <li>Starting at <code>100</code> with <code>shift = 1</code>, a constant
+    sample of <code>90</code> reaches <code>90</code> exactly within a few
+    calls and then holds.</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_iir_filter.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

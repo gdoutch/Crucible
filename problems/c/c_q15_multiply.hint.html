@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Multiply Two Q15 Fixed-Point Numbers · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>Multiply Two Q15 Fixed-Point Numbers</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>Each Q15 value is really <code>raw / 32768</code>. Multiplying two of them
+  the ordinary way multiplies both the raw integers <em>and</em> both the
+  <code>/ 32768</code> scales, leaving a result scaled by
+  <code>/ 32768 / 32768</code> — one <code>/ 32768</code> too many. Shifting
+  the product right by 15 removes exactly one of them, back down to a single
+  Q15 scale.</p>
+
+<h2>Three things the result needs</h2>
+
+<ol>
+  <li><strong>A wide multiply.</strong> Two 16-bit-range values multiplied
+    together need up to 32 bits just for the raw product, before the shift
+    even happens. Do the multiplication in a 64-bit type.</li>
+  <li><strong>Rounding, not truncation.</strong> Add half of what the shift
+    is about to discard — <code>1 &lt;&lt; 14</code>, half of
+    <code>1 &lt;&lt; 15</code> — before shifting, so the result rounds to the
+    nearest representable value instead of always rounding down.</li>
+  <li><strong>Saturation.</strong> See below.</li>
+</ol>
+
+<h2>The trap the problem is built around</h2>
+
+<div class="trap">
+<p>Q15's representable range is a little over <code>-1.0</code> to a little
+  under <code>+1.0</code> — the largest positive value,
+  <code>32767 / 32768</code>, never quite reaches <code>1.0</code>. But
+  <code>-1.0 * -1.0 = 1.0</code> exactly, which is <em>not</em> representable.
+  <code>q15_multiply(-32768, -32768)</code> is a fixed test for exactly this:
+  the rounded result before any clamping is <code>32768</code>, one past the
+  top of the 16-bit signed range, and the correct answer is the saturated
+  <code>32767</code> — not a value that has silently wrapped around to
+  something negative.</p>
+</div>
+
+<h2>Watch out, beyond the overflow</h2>
+
+<ul>
+  <li>Do the shift <em>after</em> the multiply, on the full-width product —
+    not on either input beforehand. Shifting an input first to "keep it
+    small" throws away exactly the low-order bits the final rounding needs.</li>
+</ul>
+
+<details>
+<summary>Still stuck? A bigger nudge</summary>
+
+<pre><code>long long product = (long long)a * (long long)b;
+long long rounded = (product + (1LL &lt;&lt; 14)) &gt;&gt; 15;
+
+/* clamp `rounded` to [-32768, 32767] here */</code></pre>
+
+</details>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li><code>q15_multiply(16384, 16384)</code> (0.5 * 0.5) → <code>8192</code>
+    (0.25).</li>
+  <li><code>q15_multiply(-32768, -32768)</code> → <code>32767</code>, the
+    saturated case.</li>
+  <li><code>q15_multiply(32767, 32767)</code> → <code>32766</code>, close to
+    the corner but <em>not</em> saturating -- worth checking your saturation
+    logic does not fire when it should not.</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_q15_multiply.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>
