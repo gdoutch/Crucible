@@ -1,0 +1,61 @@
+{
+  "id": "c_bug_sample_average",
+  "title": "Fix the Sample Averager",
+  "language": "c",
+  "difficulty": "medium",
+  "topics": [
+    "debugging",
+    "code-review",
+    "pointers",
+    "arrays",
+    "embedded",
+    "signal-processing"
+  ],
+  "timeout_seconds": 5,
+  "statement": "This one is already written. It compiles without a murmur, it passes the test\nthe author wrote for it, and it is wrong.\n\n## The bug report\n\n> Averaging filter reports low. Feeding the ADC block eight samples of roughly\n> 3000 counts gives an average of about 1500. Shrinking the block to four\n> samples makes the fault disappear. Worked fine in the previous release, when\n> the sample buffer lived inside the filter module.\n\nThe editor starts with the code as it currently stands. Find the defect, fix\nit, and leave the rest of the function alone.\n\n## Your function\n\n```\nuint16_t average_samples(const uint16_t samples[], size_t count);\n```\n\n`samples` points at `count` readings from a 12-bit ADC, so each one is\nsomewhere in `0 .. 4095`. Return their mean, truncated -- ordinary integer\ndivision, no rounding. `average_samples(x, 0)` is `0`.\n\n## What the tests will tell you\n\n- **four samples, truncated** passes both before and after you fix it. That\n  case is in the suite on purpose: it is the shape of data that let this defect\n  through review in the first place.\n- **eight rising samples** and **sixteen samples across the range** are the\n  ones that fail. Read the number that comes back rather than just noting that\n  it is wrong -- the size of the error names the culprit.\n\n## Watch out\n\n- The fix is one line, and it is not the loop body, the accumulator type or the\n  cast on the way out. Those are all fine.\n- `ARRAY_LEN` is a perfectly good macro. It is used in about a thousand real\n  embedded projects and it does exactly what it says. That does not mean it\n  can answer the question being asked of it here.\n- If your first instinct is that the answer would be obvious with a debugger:\n  print `n` and see. It is a constant, and it is a constant that has nothing to\n  do with this problem's data.\n",
+  "starter_code": "#include <stdint.h>\n#include <stddef.h>\n\n/* Number of elements in an array. */\n#define ARRAY_LEN(array)  (sizeof(array) / sizeof((array)[0]))\n\n/*\n * Average a block of 12-bit ADC samples.\n *\n * Raised by test: with eight samples in the buffer the reported average is\n * far too low. It was correct back when the buffer was a file-scope array\n * in this module and the function took no arguments.\n */\nuint16_t average_samples(const uint16_t samples[], size_t count)\n{\n    uint32_t total = 0;\n    size_t n = ARRAY_LEN(samples);\n    size_t i;\n\n    if (count == 0u) {\n        return 0u;\n    }\n\n    for (i = 0; i < n; i++) {\n        total += samples[i];\n    }\n\n    return (uint16_t)(total / n);\n}\n",
+  "harness": "#include <stdio.h>\n#include <stdint.h>\n#include <stddef.h>\n\n#define MAX_SAMPLES 64\n\n/* Provided by the candidate in solution.c */\nuint16_t average_samples(const uint16_t samples[], size_t count);\n\n/* Deliberately at file scope, so it starts as all zeros. Anything read past\n   the count is therefore a clean zero rather than whatever the stack happened\n   to hold -- a function that reads too far gets a wrong answer you can\n   reproduce instead of one that changes between runs. */\nstatic uint16_t samples[MAX_SAMPLES];\n\nint main(void)\n{\n    unsigned long count = 0;\n    unsigned long i;\n\n    if (scanf(\"%lu\", &count) != 1) {\n        return 1;\n    }\n    if (count > MAX_SAMPLES) {\n        return 1;\n    }\n\n    for (i = 0; i < count; i++) {\n        unsigned int value;\n        if (scanf(\"%u\", &value) != 1) {\n            return 1;\n        }\n        samples[i] = (uint16_t)value;\n    }\n\n    printf(\"%u\\n\", (unsigned int)average_samples(samples, (size_t)count));\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random blocks of 12-bit ADC samples.\n\nBlock *length* is what matters here, so the shapes differ mainly in how many\nsamples they carry: one, a handful, and a long run. A block of exactly four is\nnever generated -- that length is already covered by a fixed case, and it is\nthe one length at which the interesting defect hides.\n\"\"\"\n\nMAX_SAMPLES = 64\nFULL_SCALE = 4095\n\n\ndef generate(rng, count):\n    builders = (_ramp, _noisy, _long_block, _flat)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, samples, description=\"\"):\n    body = \" \".join(str(value) for value in samples)\n    return {\"name\": name,\n            \"stdin\": \"%d\\n%s\\n\" % (len(samples), body),\n            \"description\": description}\n\n\ndef _length(rng, low, high):\n    while True:\n        n = rng.randint(low, high)\n        if n != 4:\n            return n\n\n\ndef _ramp(rng, index):\n    n = _length(rng, 5, 12)\n    step = FULL_SCALE // n\n    start = rng.randrange(0, 200)\n    samples = [min(start + step * i, FULL_SCALE) for i in range(n)]\n    return _case(\"a rising ramp of %d #%d\" % (n, index), samples,\n                 \"Steadily increasing, so an average taken over the wrong \"\n                 \"number of samples lands well below the true one.\")\n\n\ndef _noisy(rng, index):\n    n = _length(rng, 6, 20)\n    centre = rng.randint(500, 3500)\n    samples = [max(0, min(FULL_SCALE, centre + rng.randint(-400, 400)))\n               for _ in range(n)]\n    return _case(\"%d samples around %d #%d\" % (n, centre, index), samples,\n                 \"Realistic sensor noise about a steady level.\")\n\n\ndef _long_block(rng, index):\n    n = _length(rng, 40, MAX_SAMPLES)\n    samples = [rng.randrange(0, FULL_SCALE + 1) for _ in range(n)]\n    return _case(\"a full block of %d #%d\" % (n, index), samples,\n                 \"Long enough that reading a fixed handful of elements is \"\n                 \"obviously not reading the block.\")\n\n\ndef _flat(rng, index):\n    n = _length(rng, 5, 30)\n    value = rng.randrange(0, FULL_SCALE + 1)\n    return _case(\"%d samples all reading %d #%d\" % (n, value, index),\n                 [value] * n,\n                 \"A constant input, which hides any mistake that averages too \"\n                 \"few of the samples: the mean of some of these readings is \"\n                 \"the same as the mean of all of them.\")\n"
+  },
+  "tests": [
+    {
+      "name": "eight rising samples",
+      "stdin": "8\n100 200 300 400 500 600 700 800\n",
+      "expected_stdout": "450",
+      "description": "The case from the bug report. The true mean is 450; the code as it stands reports the mean of a fixed handful taken from the front of the block."
+    },
+    {
+      "name": "three samples",
+      "stdin": "3\n1000 1001 1002\n",
+      "expected_stdout": "1001",
+      "description": "Fewer samples than the broken version tries to read. The elements past the end of the block are zeros in the harness's buffer, which is what drags the answer down."
+    },
+    {
+      "name": "one sample",
+      "stdin": "1\n512\n",
+      "expected_stdout": "512",
+      "description": "A block of one. The mean of a single reading is that reading."
+    },
+    {
+      "name": "no samples",
+      "stdin": "0\n",
+      "expected_stdout": "0",
+      "description": "Nothing to average. Return 0 rather than dividing by zero."
+    },
+    {
+      "name": "four samples, truncated",
+      "stdin": "4\n10 11 11 11\n",
+      "expected_stdout": "10",
+      "description": "43 / 4 is 10.75, and integer division truncates to 10. This case also passes *before* the fix -- four is the one block length at which the defect is invisible, which is how it survived review."
+    },
+    {
+      "name": "sixteen samples across the range",
+      "stdin": "16\n0 273 546 819 1092 1365 1638 1911 2184 2457 2730 3003 3276 3549 3822 4095\n",
+      "expected_stdout": "2047",
+      "description": "A full-scale ramp in sixteen steps. True mean 2047; a version that averages only the first few reports a few hundred."
+    }
+  ],
+  "reference_solution_b64": "I2luY2x1ZGUgPHN0ZGludC5oPgojaW5jbHVkZSA8c3RkZGVmLmg+Cgp1aW50MTZfdCBhdmVyYWdlX3NhbXBsZXMoY29uc3QgdWludDE2X3Qgc2FtcGxlc1tdLCBzaXplX3QgY291bnQpCnsKICAgIHVpbnQzMl90IHRvdGFsID0gMDsKICAgIHNpemVfdCBpOwoKICAgIGlmIChjb3VudCA9PSAwdSkgewogICAgICAgIHJldHVybiAwdTsKICAgIH0KCiAgICBmb3IgKGkgPSAwOyBpIDwgY291bnQ7IGkrKykgewogICAgICAgIHRvdGFsICs9IHNhbXBsZXNbaV07CiAgICB9CgogICAgcmV0dXJuICh1aW50MTZfdCkodG90YWwgLyBjb3VudCk7Cn0K"
+}

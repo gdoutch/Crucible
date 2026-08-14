@@ -378,12 +378,17 @@ the stylesheet does not load the pages are still ordinary readable HTML.
 
 ## What is in the box
 
-41 problems — 37 in C, 4 in Python. Every one of them mixes hand-written edge
+42 problems — 38 in C, 4 in Python. Every one of them mixes hand-written edge
 cases with four randomised ones, and ships a hint and a worked solution.
 
 The C set is deliberately weighted towards the things C makes you think about
 and other languages do not: what the pointer points at, who owns the memory,
 what happens at the boundary, and what the standard actually promises.
+
+Most problems start from an empty function. A few start from a *full* one that
+is already wrong — the editor opens on plausible code carrying one planted
+defect, and the job is to find it rather than to write it. Those are marked
+with the `debugging` topic.
 
 | | Language | Problem | Topics |
 | --- | --- | --- | --- |
@@ -415,6 +420,7 @@ what happens at the boundary, and what the standard actually promises.
 | | C | Single-Producer/Single-Consumer Ring Buffer | embedded, data-structures, concurrency |
 | | C | Add Hysteresis to a Noisy Threshold (Schmitt Trigger) | embedded, signal-processing, state |
 | | C | A Shift-Based Low-Pass Filter (No Floats) | embedded, signal-processing, bitwise, fixed-point |
+| | C | Fix the Sample Averager | debugging, code-review, pointers, arrays |
 | | Python | Balanced Brackets | stacks, strings, parsing |
 | | Python | Run-Length Encoding | strings, iteration |
 | **hard** | C | Maximum Subarray Sum | algorithms, dynamic programming, arrays |
@@ -445,6 +451,13 @@ A few are worth calling out for what they are really testing:
   into an array and written back. It declares `struct node` in both your file
   and the harness — separate translation units, same layout, which is what a
   shared header would have given you.
+- **Fix the Sample Averager** hands you working-looking code and a bug report.
+  The defect is `sizeof` applied to an array *parameter*, which is a pointer,
+  so the element count it computes is a property of the target rather than of
+  the data — four on a PC, two on a 32-bit part. One of the fixed cases passes
+  both before and after the fix, because at that one block length the wrong
+  count and the right count coincide; that case is in the suite to show what a
+  test passing for the wrong reason looks like.
 
 ### Registers, not just algorithms
 

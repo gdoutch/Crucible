@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Fix the Sample Averager · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>Fix the Sample Averager</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>Not to write an averaging filter — you could do that in your sleep, and the
+  one in the editor is nearly right already. You are being asked to find out
+  <em>why</em> a function that looks correct returns an answer that is much too
+  low, and to fix it without rewriting it.</p>
+
+<p>This is the everyday version of the skill: the code compiles, it has a test,
+  the test passes, and the product is wrong.</p>
+
+<h2>Start by measuring the error, not by rereading the code</h2>
+
+<p>Rereading code you have already read tends to produce the same understanding
+  you had the first time. The failing cases hand you actual numbers, so use
+  them:</p>
+
+<table>
+  <tr><th>Samples in</th><th>True mean</th><th>What it reports</th></tr>
+  <tr><td>8, rising 100…800</td><td>450</td><td>250</td></tr>
+  <tr><td>3, all about 1000</td><td>1001</td><td>750</td></tr>
+  <tr><td>1, reading 512</td><td>512</td><td>128</td></tr>
+</table>
+
+<p>Three questions worth putting to that table before you go any further:</p>
+
+<ul>
+  <li>250 is the mean of which samples, exactly? Not a random subset — write
+    out the front of the block and try the obvious groupings.</li>
+  <li>The block of <strong>one</strong> sample is the loud one. 512 becomes
+    128, which is 512 divided by four. Where would a four come from, when the
+    only number in that test case is a one?</li>
+  <li>1001 becoming 750 says the same thing from the other side. What would
+    have to be sitting after the end of a three-sample block for the answer to
+    land there?</li>
+</ul>
+
+<h2>Where to look</h2>
+
+<p>The loop is correct. The accumulator is wide enough. The cast on the way out
+  is fine for 12-bit data. The zero guard is right.</p>
+
+<p>That leaves one line, and it is the line that decides <em>how many</em>
+  samples get averaged. Everything the function does after that point is
+  faithfully carrying out an instruction it was given wrongly.</p>
+
+<div class="trap">
+<p>The suspicious thing about that line is that it never mentions
+  <code>count</code>. The caller went to the trouble of telling this function
+  how many samples there are. Ask yourself what the function is using instead,
+  and whether that thing can possibly know.</p>
+</div>
+
+<h2>The idea you may be missing</h2>
+
+<p>A parameter written with square brackets —</p>
+
+<pre><code>uint16_t average_samples(const uint16_t samples[], size_t count)</code></pre>
+
+<p>— looks like an array, and reads like an array, and is indexed like an
+  array. But C has a rule about what a parameter of array type actually
+  <em>becomes</em>, and it is not the rule most people carry around in their
+  head. Look it up, or work it out from the numbers above; both routes end in
+  the same place.</p>
+
+<p>The clue in the bug report is doing real work, too: <em>"worked fine in the
+  previous release, when the sample buffer lived inside the filter module."</em>
+  The same expression, on the same-looking thing, gave a different answer
+  before the refactor. That is not superstition — it is the rule.</p>
+
+<details>
+<summary>Still stuck? A bigger nudge</summary>
+
+<p>Stop reasoning and print it. Add this as the first statement in the
+  function:</p>
+
+<pre><code>printf("n = %zu, count = %zu\n", n, count);</code></pre>
+
+<p>(You will need <code>#include &lt;stdio.h&gt;</code> at the top, and
+  <code>n</code> has to be computed before you print it. Take the line out
+  again before you submit — the tests compare stdout exactly.)</p>
+
+<p>Run it against several of the failing cases. <code>count</code> changes;
+  <code>n</code> does not. It is the same value every single time, on data of
+  every length, which is only possible if it was never derived from the data at
+  all.</p>
+
+<p>Then print <code>sizeof(samples)</code> on its own and ask what type has
+  that size on your machine.</p>
+
+</details>
+
+<h2>When you think you have it</h2>
+
+<ul>
+  <li>The fix is <strong>one line</strong>. If you are deleting the macro,
+    rewriting the loop or changing the signature, you have gone further than
+    the defect goes.</li>
+  <li>Check <em>four samples, truncated</em> still passes. It passed before
+    your change as well — understanding why is most of the lesson here.</li>
+  <li>Check <em>no samples</em> still returns <code>0</code> and does not
+    divide by zero.</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_bug_sample_average.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Fix the Sample Averager · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>Fix the Sample Averager</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The defect</h2>
+
+<div class="note">
+<p>A function parameter written as an array is not an array. It is a pointer.
+  <code>sizeof</code> applied to it therefore measures a pointer, and the
+  element count it appears to compute is a property of the machine rather than
+  of the data.</p>
+</div>
+
+<p>The line that does the damage:</p>
+
+<pre><code>size_t n = ARRAY_LEN(samples);   /* (sizeof(samples) / sizeof((samples)[0])) */</code></pre>
+
+<p>and the fix, which is the whole fix:</p>
+
+<pre><code>size_t n = count;</code></pre>
+
+<p>Or, more honestly, drop <code>n</code> altogether and use the parameter the
+  caller supplied for exactly this purpose:</p>
+
+<pre><code>uint16_t average_samples(const uint16_t samples[], size_t count)
+{
+    uint32_t total = 0;
+    size_t i;
+
+    if (count == 0u) {
+        return 0u;
+    }
+
+    for (i = 0; i &lt; count; i++) {
+        total += samples[i];
+    }
+
+    return (uint16_t)(total / count);
+}</code></pre>
+
+<h2>Why the parameter is a pointer</h2>
+
+<p>C has a rule for parameters specifically. A parameter declared with an array
+  type is <strong>adjusted</strong>, by the compiler, to a pointer to the
+  element type. These three declarations are not merely similar, they are the
+  same declaration:</p>
+
+<pre><code>uint16_t average_samples(const uint16_t samples[], size_t count)
+uint16_t average_samples(const uint16_t samples[64], size_t count)
+uint16_t average_samples(const uint16_t *samples,   size_t count)</code></pre>
+
+<p>The second one is the cruel one. You may write a size in those brackets, the
+  compiler will accept it, and it will change precisely nothing — not the type,
+  not <code>sizeof</code>, not any bounds check, because there is no bounds
+  check. It is a comment that looks like code.</p>
+
+<p>So inside the function, <code>samples</code> is a pointer, and:</p>
+
+<pre><code>sizeof(samples)      /* the size of a pointer   */
+sizeof(samples[0])   /* the size of a uint16_t: 2 */</code></pre>
+
+<p>The division is arithmetic on two sizes that have nothing to do with each
+  other. It yields a constant, and the constant depends on your target:</p>
+
+<table>
+  <tr><th>Target</th><th>sizeof pointer</th><th>n comes out as</th></tr>
+  <tr><td>x86-64 PC (Windows or Linux)</td><td>8</td><td><strong>4</strong></td></tr>
+  <tr><td>32-bit Cortex-M, AVR32, x86</td><td>4</td><td><strong>2</strong></td></tr>
+  <tr><td>8-bit AVR, MSP430 small model</td><td>2</td><td><strong>1</strong></td></tr>
+</table>
+
+<p>Which is worth sitting with for a moment. This defect averages four samples
+  on the developer's desk and two on the board, and on a small part it averages
+  one sample and calls it a filter. A bug whose behaviour changes between the
+  host build and the target build is one of the more expensive kinds to chase,
+  and this is one line of entirely reasonable-looking code.</p>
+
+<h2>Reading the failures backwards</h2>
+
+<p>Every failing number in the suite is now predictable. The harness's buffer is
+  at file scope, so it starts as all zeros, and anything the function reads past
+  <code>count</code> is a clean <code>0</code> rather than stack litter — which
+  is why these came out the same on every run:</p>
+
+<table class="trace">
+  <tr><th>Case</th><th>What it averaged (n = 4)</th><th>Reported</th><th>True</th></tr>
+  <tr><td>8 rising, 100…800</td><td>100, 200, 300, 400</td><td>1000 / 4 = 250</td><td>450</td></tr>
+  <tr><td>3 samples about 1000</td><td>1000, 1001, 1002, <em>0</em></td><td>3003 / 4 = 750</td><td>1001</td></tr>
+  <tr><td>1 sample of 512</td><td>512, <em>0</em>, <em>0</em>, <em>0</em></td><td>512 / 4 = 128</td><td>512</td></tr>
+  <tr><td>16 across the range</td><td>0, 273, 546, 819</td><td>1638 / 4 = 409</td><td>2047</td></tr>
+</table>
+
+<p>Two of those rows read past the end of the data. The block held three
+  samples and the function read four. Nothing crashed, nothing was reported,
+  and the answer was merely wrong — the ordinary outcome of a small overrun, and
+  the reason small overruns survive so long in the field.</p>
+
+<h2>The two cases that passed</h2>
+
+<div class="trap">
+<p><strong>four samples, truncated.</strong> The buffer length happened to equal
+  the constant the machine produced, so the wrong count and the right count were
+  the same number. The test passed. It would have passed on the day the code was
+  written, on the day it was reviewed, and in every regression run since — and it
+  would have started failing the moment someone cross-compiled it for the
+  target, where the constant is 2.</p>
+</div>
+
+<p>That is why it is in the suite. A test that passes for the wrong reason
+  offers no protection and looks exactly like a test that passes for the right
+  one.</p>
+
+<p><strong>Constant input</strong> hides it too, which the randomised
+  <em>"all reading N"</em> case demonstrates: the mean of some identical
+  readings is the mean of all of them. If the bench test for this filter was
+  "tie the input to a reference voltage and check the reading", it passed.</p>
+
+<p>Watch the randomised noisy case as well. Averaging the first four of twenty
+  noisy samples about a steady level gives an answer a few counts away from the
+  true mean — plausible, in range, and indistinguishable from the filter simply
+  doing less smoothing than you hoped. Wrong answers that look right are the
+  ones that ship.</p>
+
+<h2>Your compiler may or may not have told you</h2>
+
+<p>GCC and Clang have a warning for this exact expression, and it is on by
+  default under <code>-Wall</code>:</p>
+
+<pre><code>warning: division 'sizeof (const uint16_t *) / sizeof (const uint16_t)'
+does not compute the number of array elements [-Wsizeof-pointer-div]</code></pre>
+
+<p>MSVC has no equivalent. Crucible builds C with <code>-Wall -Wextra</code> on
+  GCC-like compilers and <code>/W3</code> on MSVC, so whether this problem
+  handed you the answer in the build pane or told you nothing at all came down
+  to which compiler was on the machine. If you got the warning: that is the
+  lesson, and it is a better one than the puzzle. Read the build output first,
+  every time.</p>
+
+<p>It is also an argument for building the same source with a second compiler
+  in CI even when you only ship one. They do not warn about the same things.</p>
+
+<h2>What else would you flag in this function?</h2>
+
+<p>The defect is fixed, but a review would not stop there.</p>
+
+<ul>
+  <li><strong>The array-shaped parameter.</strong> <code>const uint16_t
+    samples[]</code> promises a size relationship the language does not enforce.
+    Writing <code>const uint16_t *samples</code> is the same code and tells the
+    truth, and several coding standards for safety-related software require the
+    pointer spelling for that reason. Keeping the pointer and the count next to
+    each other in the signature is the real contract.</li>
+
+  <li><strong><code>ARRAY_LEN</code> is not the villain.</strong> The macro is
+    correct and useful — at the point where the array is actually declared. The
+    problem is that it silently accepts a pointer and returns nonsense. A macro
+    that cannot be misused is better: GCC and Clang can be made to reject the
+    pointer case with a <code>__builtin_types_compatible_p</code> guard, and
+    C11's <code>_Static_assert</code> can be pressed into similar service. If
+    your codebase has one <code>ARRAY_LEN</code>, hardening it protects every
+    call site at once.</li>
+
+  <li><strong>No check on <code>samples</code>.</strong> A null pointer with a
+    non-zero count dereferences immediately. Whether that deserves a guard or a
+    documented precondition is a real design decision, but it should be a
+    decision rather than an omission.</li>
+
+  <li><strong>No upper bound on <code>count</code>.</strong> The accumulator is
+    <code>uint32_t</code> and the samples are 12-bit, so it takes about a
+    million samples to overflow. Fine here, and fine only because of facts
+    stated nowhere in the code. One line of comment, or a
+    <code>_Static_assert</code> tying the accumulator width to the maximum block
+    size, turns an accident into an invariant.</li>
+
+  <li><strong>The truncating divide.</strong> Deliberate, and specified — but on
+    a filter it is a downward bias of up to one count on every block, which
+    accumulates if the result feeds anything integrating. Rounding to nearest is
+    <code>(total + count / 2u) / count</code>. Choose on purpose.</li>
+
+  <li><strong>The cast to <code>uint16_t</code>.</strong> Safe, because a mean
+    of 12-bit values is a 12-bit value. Worth a moment's thought all the same:
+    an explicit narrowing cast is the programmer asserting something, and the
+    assertion here rests on the 0…4095 range that the comment mentions and the
+    code does not enforce.</li>
+</ul>
+
+<h2>The general lesson</h2>
+
+<div class="note">
+<p><code>sizeof</code> is answered at compile time, from the <em>type</em> of
+  the expression. It never looks at a value and never follows a pointer. If a
+  length must be known at run time, it has to be carried at run time — which is
+  what the <code>count</code> parameter was already doing.</p>
+</div>
+
+<p>Any time you see <code>sizeof</code> applied to something that arrived
+  through a parameter, be suspicious. It is right when the thing is a real
+  array in the same scope, and it is wrong — quietly, portably, without a
+  crash — the moment that array has been passed to somebody.</p>
+
+<footer>
+  <p><a href="c_bug_sample_average.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set. The
+     interesting repeat of this one is not solving it again — it is grepping
+     your own codebase for <code>sizeof</code> inside a function that takes a
+     pointer.</p>
+</footer>
+
+</main>
+</body>
+</html>
