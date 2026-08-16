@@ -137,3 +137,55 @@ def save_settings(settings: dict) -> None:
         _settings_path().write_text(json.dumps(payload, indent=2), encoding="utf-8")
     except OSError:
         pass
+
+
+# -- MSVC environment cache -------------------------------------------------
+#
+# Locating MSVC means shelling out to vcvars64.bat, which takes ~12 seconds --
+# by a wide margin the slowest thing that happens at startup. The result only
+# changes when Visual Studio does, so it is cached here against a fingerprint
+# of the things it derives from (see `c_lang._msvc_fingerprint`). Checking that
+# fingerprint is a handful of stats, some five orders of magnitude cheaper than
+# recomputing the answer it guards.
+#
+# This is machine state, not user state, so it sits beside settings.json rather
+# than inside a profile. Losing it costs one slow startup and nothing else,
+# which is why every failure path here is a silent fall back to "no cache".
+
+def _msvc_cache_path() -> Path:
+    return app_dir() / "msvc-env.json"
+
+
+def load_msvc_env(fingerprint: list) -> dict | None:
+    """The cached vcvars capture, or None if absent or built for a different
+    Visual Studio than the one on disk now."""
+    try:
+        stored = json.loads(_msvc_cache_path().read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(stored, dict):
+        return None
+    # json round-trips tuples as lists, so compare like for like.
+    if stored.get("fingerprint") != json.loads(json.dumps(fingerprint)):
+        return None
+    captured = stored.get("captured")
+    return captured if isinstance(captured, dict) else None
+
+
+def save_msvc_env(fingerprint: list, captured: dict) -> None:
+    try:
+        _msvc_cache_path().write_text(
+            json.dumps({"fingerprint": fingerprint, "captured": captured},
+                       indent=2),
+            encoding="utf-8")
+    except OSError:
+        pass  # a cache that cannot be written just means a slow next launch
+
+
+def clear_msvc_env() -> None:
+    """Drop the cache. Used as the self-heal when a build fails in a way that
+    suggests the environment it was given no longer describes reality."""
+    try:
+        _msvc_cache_path().unlink()
+    except OSError:
+        pass

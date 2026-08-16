@@ -22,6 +22,7 @@ import subprocess
 import time
 from pathlib import Path
 
+from .. import workspace
 from .base import BuildResult, Language, ToolchainStatus, run_process, _NO_WINDOW
 
 _IS_WINDOWS = platform.system() == "Windows"
@@ -99,12 +100,21 @@ def _probe_version(path: str) -> str:
         return ""
 
 
-def _msvc_environment() -> dict[str, str] | None:
-    """Locate MSVC via vswhere and capture the environment vcvars sets up.
+#: Environment variables worth keeping out of a vcvars dump. PATH is handled
+#: separately -- see `_split_path_prefix`.
+_VCVARS_KEEP = ("INCLUDE", "LIB", "LIBPATH")
 
-    `cl.exe` refuses to work without INCLUDE/LIB/PATH being configured, so we
-    shell out to vcvarsall.bat once and keep the variables it exports.
-    """
+#: Where the Windows SDK headers live. Its subdirectory names are the installed
+#: SDK versions, and the captured environment names one of them, so a new SDK
+#: appearing here is a reason to recapture.
+_SDK_INCLUDE = Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")) \
+    / "Windows Kits" / "10" / "Include"
+
+
+def _vs_install_path() -> Path | None:
+    """Ask vswhere where Visual Studio is. ~0.1s, so never cached: doing it
+    fresh every time is what makes "VS was moved, removed, or a second edition
+    is now the latest" impossible to get wrong."""
     if not _IS_WINDOWS:
         return None
     vswhere = Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")) \
@@ -121,14 +131,76 @@ def _msvc_environment() -> dict[str, str] | None:
         )
     except (OSError, subprocess.SubprocessError):
         return None
-
     install = (proc.stdout or "").strip().splitlines()
     if not install:
         return None  # VS is present but the C++ workload is not installed
-    vcvars = Path(install[0]) / "VC" / "Auxiliary" / "Build" / "vcvars64.bat"
-    if not vcvars.is_file():
-        return None
+    return Path(install[0])
 
+
+def _msvc_fingerprint(install: Path, vcvars: Path) -> list:
+    """A cheap stand-in for "would vcvars still print the same thing?".
+
+    Every element is something the captured environment demonstrably depends
+    on: the capture embeds an MSVC toolset version and a Windows SDK version
+    as literal path components, and is produced by running vcvars64.bat out of
+    a particular installation. Together these cost a few stats, against the
+    ~12 seconds of the answer they stand in for.
+
+    `Microsoft.VCToolsVersion.default.txt` is the useful one: it is how vcvars
+    itself decides which toolset to select, so reading it asks the question
+    almost directly rather than inferring it.
+    """
+    try:
+        toolset = (install / "VC" / "Auxiliary" / "Build" /
+                   "Microsoft.VCToolsVersion.default.txt").read_text(
+                       encoding="utf-8").strip()
+    except OSError:
+        toolset = ""
+    try:
+        stamp = vcvars.stat()
+        vcvars_stamp = [int(stamp.st_mtime), stamp.st_size]
+    except OSError:
+        vcvars_stamp = []
+    try:
+        sdks = sorted(p.name for p in _SDK_INCLUDE.iterdir() if p.is_dir())
+    except OSError:
+        sdks = []
+    return [str(install), toolset, vcvars_stamp, sdks]
+
+
+def _split_path_prefix(captured_path: str) -> list[str]:
+    """Keep only the entries vcvars *added*, dropping the ambient PATH it
+    inherited and echoed back.
+
+    This matters because the capture is reused across sessions and
+    `run_process` merges it as `{**os.environ, **env}` -- so a stored PATH
+    overrides the live one. Keeping the whole thing would pin whatever PATH
+    happened to be set the day it was captured, and quietly hide anything
+    installed afterwards. Only the entries vcvars itself contributes -- about
+    twenty, all under the VS install, the Windows Kits or the .NET framework
+    directory -- are ours to remember; the rest is recomposed from the real
+    environment at use time.
+
+    Anything dropped for being ambient is still reachable, because it is in
+    the live PATH by definition.
+    """
+    ambient = {p.rstrip("\\").lower()
+               for p in os.environ.get("PATH", "").split(os.pathsep) if p}
+    return [p for p in captured_path.split(os.pathsep)
+            if p and p.rstrip("\\").lower() not in ambient]
+
+
+def _compose_msvc_env(captured: dict) -> dict[str, str]:
+    """Turn a stored capture back into a full environment overlay."""
+    prefix = [p for p in captured.get("PATH_PREFIX", []) if p]
+    live = os.environ.get("PATH", "")
+    env = {k: str(captured[k]) for k in _VCVARS_KEEP if k in captured}
+    env["PATH"] = os.pathsep.join(prefix + ([live] if live else []))
+    return env
+
+
+def _capture_vcvars(vcvars: Path) -> dict | None:
+    """Run vcvars64.bat and keep what it exported. The slow path: ~12s."""
     # Must be passed as a raw string, not a list: list2cmdline would escape the
     # quotes around the (space-containing) vcvars path into \" , which cmd does
     # not understand. /u makes `set` emit UTF-16 so non-ASCII paths survive.
@@ -142,12 +214,53 @@ def _msvc_environment() -> dict[str, str] | None:
     if dump.returncode != 0:
         return None
 
-    env: dict[str, str] = {}
+    captured: dict = {}
     for line in dump.stdout.decode("utf-16-le", errors="replace").splitlines():
         key, sep, value = line.partition("=")
-        if sep and key.upper() in {"PATH", "INCLUDE", "LIB", "LIBPATH"}:
-            env[key.upper()] = value
-    return env or None
+        if not sep:
+            continue
+        key = key.upper()
+        if key in _VCVARS_KEEP:
+            captured[key] = value
+        elif key == "PATH":
+            captured["PATH_PREFIX"] = _split_path_prefix(value)
+    return captured or None
+
+
+def _msvc_environment(ignore_cache: bool = False) -> dict[str, str] | None:
+    """Locate MSVC and return the environment `cl.exe` needs to run.
+
+    `cl.exe` refuses to work without INCLUDE/LIB/PATH being configured, and the
+    only supported way to learn those is to run vcvarsall.bat -- which takes
+    around twelve seconds, making it the slowest step in starting the app. The
+    result changes only when Visual Studio does, so it is cached against
+    `_msvc_fingerprint`, which costs a handful of stats to check.
+
+    That leaves the vswhere call above as the whole cost of a warm start:
+    ~0.12s against ~12s cold. Caching that too would save the last of it, but
+    only by giving up the one check that cannot go stale, which is a poor
+    trade for a tenth of a second on a background thread.
+
+    `ignore_cache` forces a recapture, for the self-heal in `build` below.
+    """
+    install = _vs_install_path()
+    if install is None:
+        return None
+    vcvars = install / "VC" / "Auxiliary" / "Build" / "vcvars64.bat"
+    if not vcvars.is_file():
+        return None
+
+    stamp = _msvc_fingerprint(install, vcvars)
+    if not ignore_cache:
+        cached = workspace.load_msvc_env(stamp)
+        if cached is not None:
+            return _compose_msvc_env(cached)
+
+    captured = _capture_vcvars(vcvars)
+    if captured is None:
+        return None
+    workspace.save_msvc_env(stamp, captured)
+    return _compose_msvc_env(captured)
 
 
 class CLanguage(Language):
@@ -253,6 +366,15 @@ class CLanguage(Language):
 
         started = time.perf_counter()
         result = run_process(command, workdir, timeout=60, env=self._env or None)
+        if self._stale_environment(result):
+            # The cached vcvars capture no longer describes this machine, in
+            # some way the fingerprint could not see -- an SDK repaired in
+            # place, say. Throw it away, recapture, and try once more. This is
+            # the backstop that keeps a bad cache costing one slow build rather
+            # than a compile error nobody can explain.
+            self._recapture_environment()
+            result = run_process(command, workdir, timeout=60,
+                                 env=self._env or None)
         elapsed = time.perf_counter() - started
 
         if result.launch_error:
@@ -277,6 +399,38 @@ class CLanguage(Language):
             artifact=exe if ok else None,
             duration=elapsed,
         )
+
+    #: Compiler output that means "the environment is wrong", as distinct from
+    #: "the code is wrong". A missing standard header or a cl.exe that will not
+    #: start is not something a candidate's submission can cause, so it is the
+    #: signal that a cached vcvars capture has gone stale.
+    _STALE_SIGNATURES = (
+        "cannot open include file",
+        "is not recognized as an internal or external command",
+        "the system cannot find the path specified",
+        "cannot open input file",
+        "lnk1104",   # cannot open file -- usually a LIB path that has moved
+        "lnk1181",
+    )
+
+    def _stale_environment(self, result) -> bool:
+        """Does this failure look like a bad environment rather than bad code?"""
+        if self._kind != "msvc" or self._env is None or not self._env:
+            return False
+        if result.exit_code == 0:
+            return False
+        haystack = f"{result.stdout}\n{result.stderr}\n{result.launch_error}".lower()
+        return any(sig in haystack for sig in self._STALE_SIGNATURES)
+
+    def _recapture_environment(self) -> None:
+        """Discard the cached vcvars capture and take a fresh one."""
+        workspace.clear_msvc_env()
+        env = _msvc_environment(ignore_cache=True)
+        if not env:
+            return
+        cl = shutil.which("cl", path=env.get("PATH", ""))
+        if cl:
+            self._compiler, self._env = cl, env
 
     def exec_command(self, workdir: Path, build: BuildResult) -> list[str]:
         target = build.artifact or (workdir / ("prog" + _EXE))
