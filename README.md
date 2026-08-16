@@ -98,7 +98,40 @@ again when you move to another problem.
 Keys: **F5** or **Ctrl+Enter** runs the suite. **Ctrl+R** draws a new
 randomised data set. **Ctrl+S** saves a draft. **F1** opens the hint for the
 current problem in your browser and **F2** its diagram, where it has one.
-**Tab** / **Shift+Tab** indent and dedent the selection.
+
+The editor has the whole-line commands you would expect from a modern
+editor, all of them listed under the **Edit** menu:
+
+| | |
+| --- | --- |
+| **Ctrl+X** / **Ctrl+C** | cut or copy the whole line when nothing is selected |
+| **Ctrl+D** | duplicate the line or selected block |
+| **Ctrl+Shift+K** | delete the line |
+| **Alt+↑** / **Alt+↓** | move the line or block up and down |
+| **Ctrl+/** | comment or uncomment |
+| **Tab** / **Shift+Tab** | indent and dedent |
+| **Ctrl+Backspace** / **Ctrl+Delete** | delete a word |
+| **Ctrl+F** / **Ctrl+H** | find, and find with replace |
+| **F3** / **Shift+F3** | next and previous match |
+
+Each of those is one undo step, however many edits it is made of underneath —
+a *replace all* comes back in a single **Ctrl+Z**.
+
+Brackets and quotes close themselves. Typing `{` gives you `{}` with the
+caret in the middle, and pressing **Enter** there opens the block out:
+
+```c
+void f() {
+    |
+}
+```
+
+Typing the closer steps over the one already there rather than doubling it,
+**Backspace** between an empty pair removes both halves, and typing a bracket
+with text selected wraps the selection instead of replacing it. It stays out
+of the way where pairing would be wrong: no partner is added in front of a
+word, so `(` before `foo` just inserts `(`, and an apostrophe in `don't` stays
+a single character.
 
 Your work is autosaved per problem, so closing the window mid-problem loses
 nothing. *File → Reset to starter code* discards it. Where it is saved depends

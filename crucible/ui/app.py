@@ -195,6 +195,39 @@ class CrucibleApp(tk.Tk):
         file_menu.add_command(label="Quit", command=self._on_close)
         menubar.add_cascade(label="File", menu=file_menu)
 
+        # Editing commands live on the editor widget, not here -- this menu is
+        # how anyone finds out they exist. Each entry drives the same method
+        # the key binding does, so the two cannot drift apart.
+        edit_menu = tk.Menu(menubar, tearoff=0, **opts)
+        edit_menu.add_command(label="Undo\tCtrl+Z",
+                              command=lambda: self.editor.text.event_generate("<<Undo>>"))
+        edit_menu.add_command(label="Redo\tCtrl+Y",
+                              command=lambda: self.editor.text.event_generate("<<Redo>>"))
+        edit_menu.add_separator()
+        edit_menu.add_command(label="Cut line\tCtrl+X",
+                              command=self.editor.cut_line)
+        edit_menu.add_command(label="Duplicate line\tCtrl+D",
+                              command=self.editor.duplicate_lines)
+        edit_menu.add_command(label="Delete line\tCtrl+Shift+K",
+                              command=self.editor.delete_lines)
+        edit_menu.add_command(label="Move line up\tAlt+Up",
+                              command=lambda: self.editor.move_lines(-1))
+        edit_menu.add_command(label="Move line down\tAlt+Down",
+                              command=lambda: self.editor.move_lines(1))
+        edit_menu.add_separator()
+        edit_menu.add_command(label="Comment/uncomment\tCtrl+/",
+                              command=self.editor.toggle_comment)
+        edit_menu.add_separator()
+        edit_menu.add_command(label="Find…\tCtrl+F",
+                              command=lambda: self.editor.open_find(replace=False))
+        edit_menu.add_command(label="Replace…\tCtrl+H",
+                              command=lambda: self.editor.open_find(replace=True))
+        edit_menu.add_command(label="Find next\tF3",
+                              command=lambda: self.editor.step_match(1))
+        edit_menu.add_command(label="Find previous\tShift+F3",
+                              command=lambda: self.editor.step_match(-1))
+        menubar.add_cascade(label="Edit", menu=edit_menu)
+
         run_menu = tk.Menu(menubar, tearoff=0, **opts)
         run_menu.add_command(label="Go -- run all tests\tF5", command=self._on_go)
         run_menu.add_command(label="Stop", command=self._on_stop)
