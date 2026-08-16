@@ -113,6 +113,16 @@ class CrucibleApp(tk.Tk):
         self._verification: dict[str, SubmissionResult | None] = {}
         #: None while a data set is being built; a GeneratedSuite once it is.
         self._generation: dict[str, GeneratedSuite | None] = {}
+        #: Languages whose toolchain detection is in flight on a background
+        #: thread. Detection is slow enough to freeze the window if it is done
+        #: inline -- see `_refresh_toolchain_label`.
+        self._detecting: set[str] = set()
+        #: Languages whose detection raised. Kept so the label settles on
+        #: "detection failed" instead of retrying on every refresh.
+        self._detect_failed: set[str] = set()
+        #: Set by Tools → re-check, so the report is shown once detection has
+        #: actually finished rather than while it is still running.
+        self._pending_toolchain_report = False
 
         self._library = Library()
         self._problem: Problem | None = None
@@ -1001,8 +1011,13 @@ class CrucibleApp(tk.Tk):
             # grow. Better to wait the fraction of a second.
             return
 
-        status = problem.language.toolchain()
-        if not status.available:
+        # Only pre-flight against a status already in hand. If detection is
+        # still running this waits for it on the build thread instead of
+        # freezing the window here -- `build()` reports the same remedy into
+        # the build pane, so a missing compiler is still explained, just
+        # without a dialog in front of it.
+        status = problem.language.detected_toolchain()
+        if status is not None and not status.available:
             self._write_build_output(status.remedy or status.detail, failed=True)
             self._show_build_tab(select=True)
             messagebox.showerror("No compiler available", status.remedy
@@ -1376,6 +1391,8 @@ class CrucibleApp(tk.Tk):
                     self._on_verified(message[1], message[2])
                 elif kind == "generated":
                     self._on_generated(message[1], message[2])
+                elif kind == "toolchain":
+                    self._on_toolchain_detected(message[1], message[2])
         except queue.Empty:
             pass
         self.after(60, self._pump)
@@ -1431,26 +1448,102 @@ class CrucibleApp(tk.Tk):
             tabs=(self.editor._font.measure(" " * 4),))
 
     def _recheck_toolchains(self) -> None:
+        """Tools → re-check. Same slow detection, so same background treatment.
+
+        The report is not shown here: `_on_toolchain_detected` puts it up once
+        the last language has actually finished, rather than describing state
+        that is still being looked up.
+        """
+        self._pending_toolchain_report = True
         for language in languages.all_languages():
-            language.toolchain(refresh=True)
+            self._detect_toolchain_async(language.id, refresh=True)
         self._refresh_toolchain_label()
-        self._verify_all()
-        self._show_toolchains()
 
     def _refresh_toolchain_label(self) -> None:
+        """Show each language's toolchain, detecting anything unknown off-thread.
+
+        This runs as part of loading the library, which happens during
+        startup. Detection can take ten seconds -- locating MSVC shells out to
+        vcvars64.bat -- so asking for it inline here would freeze the window
+        for the whole of it before anything was on screen. Instead the label
+        goes up immediately with "detecting…" against whatever is not known
+        yet, and `_on_toolchain_detected` fills it in when the answer lands.
+        """
         parts, missing = [], False
+        pending: list[str] = []
         for language_id in self._library.languages_present or languages.known_ids():
-            status = languages.get(language_id).toolchain()
+            language = languages.get(language_id)
+            status = language.detected_toolchain()
+            if status is None:
+                if language_id in self._detect_failed:
+                    parts.append(f"{language.display_name}: detection failed")
+                    missing = True
+                    continue
+                pending.append(language_id)
+                parts.append(f"{language.display_name}: detecting…")
+                continue
             parts.append(status.summary)
             missing = missing or not status.available
         self.toolchain_label.configure(
             text="   |   ".join(parts) or "No languages registered",
             foreground=self.palette.warn if missing else self.palette.text_muted)
+        for language_id in pending:
+            self._detect_toolchain_async(language_id)
+
+    def _detect_toolchain_async(self, language_id: str, refresh: bool = False) -> None:
+        """Run one language's detection on a thread, reporting back via `_pump`.
+
+        `Language.toolchain` is itself locked, so a detection the verify worker
+        has already started is waited on rather than duplicated.
+        """
+        if language_id in self._detecting:
+            return
+        self._detecting.add(language_id)
+        self._detect_failed.discard(language_id)
+
+        def worker() -> None:
+            failed = False
+            try:
+                languages.get(language_id).toolchain(refresh=refresh)
+            except Exception:
+                # A plugin's detection is not supposed to raise -- the ones
+                # here catch their own subprocess errors -- but if one does,
+                # its status stays None, and a label that treated that as
+                # "still unknown" would dispatch another thread for it every
+                # time it refreshed. Record the failure so it settles instead.
+                failed = True
+            finally:
+                # Reported even on failure, or the label would sit on
+                # "detecting…" forever with nothing left to clear it.
+                self._events.put(("toolchain", language_id, failed))
+
+        threading.Thread(target=worker, daemon=True,
+                         name=f"crucible-toolchain-{language_id}").start()
+
+    def _on_toolchain_detected(self, language_id: str, failed: bool = False) -> None:
+        self._detecting.discard(language_id)
+        if failed:
+            self._detect_failed.add(language_id)
+        # Everything not yet known is already in flight, so this settles rather
+        # than starting another round.
+        self._refresh_toolchain_label()
+        if self._pending_toolchain_report and not self._detecting:
+            # A re-check that has now finished for every language.
+            self._pending_toolchain_report = False
+            self._verify_all()
+            self._show_toolchains()
 
     def _show_toolchains(self) -> None:
         lines = []
         for language in languages.all_languages():
-            status = language.toolchain()
+            status = language.detected_toolchain()
+            if status is None:
+                # Still being looked up. Saying so beats blocking the window
+                # on it just to fill in one line of a dialog.
+                lines.append(f"{BADGE_BAD} {language.display_name}: "
+                             f"still detecting…")
+                lines.append("")
+                continue
             mark = BADGE_OK if status.available else BADGE_BAD
             lines.append(f"{mark} {language.display_name}: {status.summary}")
             if status.detail:

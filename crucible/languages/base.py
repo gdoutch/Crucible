@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import threading
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -125,6 +126,7 @@ class Language(ABC):
 
     def __init__(self) -> None:
         self._toolchain: ToolchainStatus | None = None
+        self._toolchain_lock = threading.Lock()
 
     # -- toolchain ---------------------------------------------------------
 
@@ -133,9 +135,31 @@ class Language(ABC):
         """Look for the compiler/interpreter. Called rarely; may be slow."""
 
     def toolchain(self, refresh: bool = False) -> ToolchainStatus:
-        """Cached `detect_toolchain`."""
-        if self._toolchain is None or refresh:
-            self._toolchain = self.detect_toolchain()
+        """Cached `detect_toolchain`. **May block for seconds** -- see below.
+
+        Detection is genuinely slow on some setups: locating MSVC means
+        running vswhere and then shelling out to vcvars64.bat to capture the
+        environment it exports, which together take on the order of ten
+        seconds. That is why the result is cached, and why the detection is
+        serialised behind a lock -- the UI thread and the verify worker both
+        want the answer the moment the library loads, and without the lock
+        they would each start their own copy of that work.
+
+        Because of the cost, no caller on a UI thread should use this until
+        `detected_toolchain()` says the answer is already in. Do the first
+        detection on a background thread.
+        """
+        with self._toolchain_lock:
+            if self._toolchain is None or refresh:
+                self._toolchain = self.detect_toolchain()
+            return self._toolchain
+
+    def detected_toolchain(self) -> ToolchainStatus | None:
+        """The cached status, or None if detection has not run yet.
+
+        Never blocks and never starts a detection, so it is the safe thing to
+        ask from a UI thread that cannot afford to wait for one.
+        """
         return self._toolchain
 
     # -- build / run -------------------------------------------------------

@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Classify a Diagnostic Fault Code (MISRA Switch Rules) · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>Classify a Diagnostic Fault Code (MISRA Switch Rules)</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>A lookup from fault code to severity. Not a range check, not a formula —
+  a fixed table with seven documented entries, and one more rule for
+  everything that is not in it.</p>
+
+<table>
+  <tr><th>Code</th><th>Meaning</th><th>Severity</th></tr>
+  <tr><td><code>0</code></td><td>no fault</td><td><code>0</code></td></tr>
+  <tr><td><code>101</code>, <code>102</code>, <code>103</code></td><td>sensor faults</td><td><code>1</code></td></tr>
+  <tr><td><code>201</code>, <code>202</code></td><td>actuator faults</td><td><code>2</code></td></tr>
+  <tr><td><code>301</code></td><td>brake actuator fault</td><td><code>3</code></td></tr>
+  <tr><td>anything else</td><td>undocumented</td><td><code>-1</code></td></tr>
+</table>
+
+<h2>The MISRA shape, without giving away the logic</h2>
+
+<ul>
+  <li>A <code>switch</code> on <code>code</code>, not a chain of
+    <code>if</code>/<code>else</code>. The whole point of this problem is
+    the switch-statement rules below — an equivalent <code>if</code> chain
+    would dodge the exercise, not solve it.</li>
+  <li>Every clause ends in <code>break;</code> — Rule 16.3. Stacking bare
+    case labels with nothing between them
+    (<code>case 101: case 102: case 103:</code>) is fine; a clause that runs
+    code and then falls into the next one is not.</li>
+  <li>A <code>default</code> clause, always — Rule 16.4. It is not there for
+    completeness, it is there because most of <code>int32_t</code> is not a
+    documented code.</li>
+  <li>One <code>return</code>, at the end, not one per case — Rule 15.5.
+    Assign to a result variable inside the <code>switch</code> and return it
+    once, after the <code>switch</code> ends.</li>
+</ul>
+
+<h2>The trap the problem is built around</h2>
+
+<div class="trap">
+<p>The codes look like they cluster by range — <code>101</code>-<code>103</code>
+  are all sensors, <code>201</code>-<code>202</code> are both actuators — and
+  it is tempting to write that as a range check instead of enumerating each
+  code: <code>if (code &gt;= 100 &amp;&amp; code &lt; 200) severity = 1;</code>
+  Fewer lines, looks equivalent.</p>
+<p>It is not. <code>150</code> falls inside <code>100</code>-<code>199</code>
+  but is not one of the three documented sensor codes, and a fixed test
+  queries exactly that gap. The table only documents the codes it documents —
+  enumerate them, do not infer a pattern from how they happen to be spaced.</p>
+</div>
+
+<h2>Watch out, beyond the range-check trap</h2>
+
+<ul>
+  <li>Negative codes are legal input and are always unknown — they should
+    land in <code>default</code> without crashing, not be treated as a
+    special case.</li>
+  <li>A run of queries in one test are independent of each other — nothing
+    about classifying one code should depend on what was classified before
+    it.</li>
+</ul>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li><code>classify_fault(301)</code> is <code>3</code>, the highest
+    documented severity.</li>
+  <li><code>classify_fault(150)</code> is <code>-1</code> — close to real
+    codes is not the same as being one.</li>
+  <li><code>classify_fault(-42)</code> is <code>-1</code>, not a crash.</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_fault_severity.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

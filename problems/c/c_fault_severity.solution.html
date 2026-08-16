@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Classify a Diagnostic Fault Code (MISRA Switch Rules) · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>Classify a Diagnostic Fault Code (MISRA Switch Rules)</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>#include &lt;stdint.h&gt;
+
+int32_t classify_fault(int32_t code)
+{
+    int32_t severity;
+
+    switch (code) {
+        case 0:
+            severity = 0;
+            break;
+        case 101:
+        case 102:
+        case 103:
+            severity = 1;
+            break;
+        case 201:
+        case 202:
+            severity = 2;
+            break;
+        case 301:
+            severity = 3;
+            break;
+        default:
+            severity = -1;
+            break;
+    }
+
+    return severity;
+}</code></pre>
+
+<h2>The table, as a switch</h2>
+
+<table>
+  <tr><th>Code</th><th>Meaning</th><th>Severity</th></tr>
+  <tr><td><code>0</code></td><td>no fault</td><td><code>0</code></td></tr>
+  <tr><td><code>101</code></td><td>coolant temp sensor</td><td><code>1</code></td></tr>
+  <tr><td><code>102</code></td><td>MAF sensor</td><td><code>1</code></td></tr>
+  <tr><td><code>103</code></td><td>O2 sensor</td><td><code>1</code></td></tr>
+  <tr><td><code>201</code></td><td>injector circuit</td><td><code>2</code></td></tr>
+  <tr><td><code>202</code></td><td>fuel pump circuit</td><td><code>2</code></td></tr>
+  <tr><td><code>301</code></td><td>brake actuator fault</td><td><code>3</code></td></tr>
+  <tr><td>anything else</td><td>undocumented</td><td><code>-1</code></td></tr>
+</table>
+
+<p><code>case 101: case 102: case 103:</code> stacks three labels with no
+  statement between them, so all three run the same <code>severity = 1;</code>
+  and share its <code>break</code>. That is the one kind of "fallthrough"
+  Rule 16.3 permits: there is nothing to fall through <em>past</em>, only a
+  shared destination for several distinct values. A clause that runs a
+  statement and then omits its own <code>break</code> — letting execution
+  continue into the next clause's code — is the kind the rule forbids.</p>
+
+<h2>Rule by rule</h2>
+
+<ul>
+  <li><strong>Rule 16.4</strong> (every <code>switch</code> has a
+    <code>default</code>) is what makes <code>-1</code> the answer for
+    everything not in the table, including values nobody thought to write a
+    test for. Without it, a code the switch does not recognise falls through
+    the whole statement having assigned <code>severity</code> nothing, and
+    the final <code>return severity;</code> reads an indeterminate value —
+    not a wrong answer so much as no defined answer at all.</li>
+  <li><strong>Rule 16.3</strong> (every clause ends with an unconditional
+    <code>break</code>) is what stops a typo turning
+    <code>case 201:</code> into a clause that silently also runs
+    <code>case 202:</code>'s code. Every clause above states its own
+    <code>break</code>, even the stacked ones, even <code>default</code>.</li>
+  <li><strong>Rule 15.5</strong> (advisory: a single point of exit) is why
+    the <code>switch</code> assigns to <code>severity</code> instead of
+    returning directly from each clause. One <code>return</code>, after the
+    <code>switch</code>, reading a variable every reachable path has by then
+    written.</li>
+</ul>
+
+<h2>Why a range check is the wrong shape</h2>
+
+<div class="trap">
+<p>The documented codes cluster — three sensor codes in the
+  <code>100</code>s, two actuator codes in the <code>200</code>s — and it is
+  tempting to collapse that into range comparisons:
+  <code>if (code &gt;= 100 &amp;&amp; code &lt; 200) severity = 1;</code> and
+  so on. It reads shorter, and it is wrong: <code>150</code> is inside
+  <code>100</code>-<code>199</code> but was never documented, and the range
+  check would classify it as a warning anyway. One of the fixed tests queries
+  <code>150</code> for exactly this reason.</p>
+<p>A <code>switch</code> on the exact documented values does not have this
+  failure mode, because it cannot silently accept a code nobody enumerated —
+  anything not spelled out as a <code>case</code> falls all the way through
+  to <code>default</code>. The discipline the MISRA rules impose here is not
+  incidental to avoiding the bug, it is what avoids it.</p>
+</div>
+
+<h2>What the fixed tests are checking</h2>
+
+<p>Every documented code returns its documented severity, in table order.
+  <code>150</code> — between the sensor and actuator ranges but undocumented
+  — comes back <code>-1</code>, catching a range-based implementation.
+  <code>-42</code> and <code>302</code> confirm negative codes and codes past
+  the last documented one both land in <code>default</code> without special
+  handling. A run of several codes in one input confirms each query is
+  classified independently of the ones before it.</p>
+
+<footer>
+  <p><a href="c_fault_severity.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

@@ -19,26 +19,58 @@
 
 <h2>The code</h2>
 
-<pre><code>int interpolate_table(const int *xs, const int *ys, int n, int x)
+<pre><code>#include &lt;stdint.h&gt;
+
+int32_t interpolate_table(const int32_t *xs, const int32_t *ys, int32_t n, int32_t x)
 {
+    int32_t result;
+
     if (x &lt;= xs[0]) {
-        return ys[0];
-    }
-    if (x &gt;= xs[n - 1]) {
-        return ys[n - 1];
+        result = ys[0];
+    } else if (x &gt;= xs[n - 1]) {
+        result = ys[n - 1];
+    } else {
+        int32_t i = 0;
+
+        while ((i + 2 &lt; n) &amp;&amp; (xs[i + 1] &lt; x)) {
+            i++;
+        }
+
+        {
+            const int64_t dy = (int64_t)(ys[i + 1] - ys[i]);
+            const int64_t dx = (int64_t)(xs[i + 1] - xs[i]);
+            const int64_t num = dy * (int64_t)(x - xs[i]);
+
+            result = ys[i] + (int32_t)(num / dx);
+        }
     }
 
-    int i = 0;
-    while (i + 2 &lt; n &amp;&amp; xs[i + 1] &lt; x) {
-        i++;
-    }
-
-    long long dy = (long long)(ys[i + 1] - ys[i]);
-    long long dx = (long long)(xs[i + 1] - xs[i]);
-    long long num = dy * (long long)(x - xs[i]);
-
-    return ys[i] + (int)(num / dx);
+    return result;
 }</code></pre>
+
+<h2>Why it is shaped like this, not like the plain-C version</h2>
+
+<p>The interpolation logic underneath is identical to the ordinary version of
+  this problem -- clamp, clamp, scan for the interval, widen, divide. What is
+  different is the shape MISRA C:2012 asks for:</p>
+
+<ul>
+  <li><strong>Directive 4.6</strong> (use the sized types) rules out
+    <code>int</code> and <code>long long</code>. <code>int32_t</code> carries
+    the table's values and index; <code>int64_t</code> is the type the
+    multiply gets widened into. Both need <code>&lt;stdint.h&gt;</code>.</li>
+  <li><strong>Rule 15.5</strong> (a single point of exit) rules out the two
+    early <code>return</code>s the plain version uses for clamping. Here, all
+    three cases assign to <code>result</code> and the function returns it
+    once, at the end. The clamp/clamp/interpolate structure becomes an
+    <code>if</code> / <code>else if</code> / <code>else</code> instead of a
+    guard clause followed by the main body.</li>
+  <li><strong>Rule 10.x</strong> (no implicit essential-type conversions)
+    means every crossing between <code>int32_t</code> and <code>int64_t</code>
+    -- widening into <code>dy</code>/<code>dx</code>/<code>num</code>, then
+    narrowing the quotient back down for <code>result</code> -- carries an
+    explicit cast rather than relying on the compiler to insert one.</li>
+</ul>
 
 <h2>Finding the interval</h2>
 
@@ -48,7 +80,10 @@
   the loop is guaranteed to land on an <code>i</code> with
   <code>xs[i] &lt;= x &lt;= xs[i + 1]</code>. The <code>i + 2 &lt; n</code> guard
   stops it walking past the last valid pair when <code>x</code> sits in the
-  final interval.</p>
+  final interval. It lives inside the <code>else</code> branch rather than
+  before the clamp checks, because Rule 15.5's single-exit shape means the
+  clamp cases and the interpolation case are now mutually exclusive branches
+  of one <code>if</code> chain rather than a sequence of guard clauses.</p>
 
 <h2>The overflow, worked through</h2>
 
@@ -57,17 +92,19 @@
   <code>(100000, 100000)</code>, queried at <code>x = 50000</code>. The
   natural formula's middle term is
   <code>(100000 - 0) * (50000 - 0) = 5,000,000,000</code> — already past
-  <code>INT_MAX</code> (<code>2,147,483,647</code>) <em>before</em> the
+  <code>INT32_MAX</code> (<code>2,147,483,647</code>) <em>before</em> the
   division that would bring it back down to a sensible size ever runs.
-  Computed in a plain <code>int</code>, that multiplication is signed integer
-  overflow: undefined behaviour, not a wraparound you can rely on for a
-  consistent wrong answer, let alone the right one.</p>
-<p>Casting each operand to <code>long long</code> before multiplying keeps
+  Computed in a plain <code>int32_t</code>, that multiplication is signed
+  integer overflow: undefined behaviour, not a wraparound you can rely on for
+  a consistent wrong answer, let alone the right one.</p>
+<p>Casting each operand to <code>int64_t</code> before multiplying keeps
   the whole calculation in 64-bit arithmetic, where <code>5,000,000,000</code>
   is an entirely ordinary number. Dividing it by <code>100000</code> gives
-  <code>50000</code>, which fits back into the <code>int</code> the function
-  returns without difficulty — only the <em>intermediate</em> product was
-  ever the problem.</p>
+  <code>50000</code>, which fits back into the <code>int32_t</code> the
+  function returns without difficulty — only the <em>intermediate</em>
+  product was ever the problem, and Rule 10.x is exactly the rule that
+  forces the cast to be explicit rather than implicit at every one of these
+  crossings.</p>
 </div>
 
 <h2>Why the division truncates</h2>

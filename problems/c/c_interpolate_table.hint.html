@@ -24,6 +24,26 @@
   read off the y at that x. Given an x outside the table entirely, hold the
   nearest edge instead of guessing past it.</p>
 
+<p>The function signature uses <code>int32_t</code> instead of <code>int</code>
+  because this version is written to <strong>MISRA C:2012</strong>. Nothing
+  runs a static analyser over what you submit here, but the shape of the code
+  is still part of the exercise -- see below.</p>
+
+<h2>The MISRA shape, without giving away the logic</h2>
+
+<ul>
+  <li><code>#include &lt;stdint.h&gt;</code> and use <code>int32_t</code> /
+    <code>int64_t</code> throughout -- not <code>int</code> or
+    <code>long long</code> anywhere, including the widened intermediate
+    below (Directive 4.6).</li>
+  <li>One <code>return</code>, at the end of the function, not three early
+    ones (Rule 15.5). That means restructuring the three-way clamp/clamp/
+    interpolate logic into a single flow that assigns to a result and falls
+    through to one final <code>return</code>.</li>
+  <li>Every place a value moves between <code>int32_t</code> and
+    <code>int64_t</code> needs an explicit cast, not an implicit one.</li>
+</ul>
+
 <h2>The three cases, in order</h2>
 
 <ol>
@@ -45,12 +65,13 @@
   is a multiplication done <em>before</em> the division that would otherwise
   keep it small. If both differences are a few tens of thousands — entirely
   realistic for a calibration table spanning a wide sensor range — their
-  product is in the billions, past what a 32-bit <code>int</code> holds. One
-  of the fixed tests is built exactly to this shape: a two-point table
+  product is in the billions, past what a 32-bit <code>int32_t</code> holds.
+  One of the fixed tests is built exactly to this shape: a two-point table
   running `0` to `100000` on both axes, queried in the middle.</p>
 <p>The fix is not a cleverer formula, just a wider type for the multiply:
-  compute the product in a 64-bit type, then divide, then bring the result
-  back down to <code>int</code> for the return.</p>
+  compute the product in <code>int64_t</code>, then divide, then bring the
+  result back down to <code>int32_t</code> for the return -- with an explicit
+  cast at each crossing, per Rule 10.x.</p>
 </div>
 
 <h2>Watch out, beyond the overflow</h2>

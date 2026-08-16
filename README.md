@@ -378,7 +378,7 @@ the stylesheet does not load the pages are still ordinary readable HTML.
 
 ## What is in the box
 
-42 problems — 38 in C, 4 in Python. Every one of them mixes hand-written edge
+45 problems — 41 in C, 4 in Python. Every one of them mixes hand-written edge
 cases with four randomised ones, and ships a hint and a worked solution.
 
 The C set is deliberately weighted towards the things C makes you think about
@@ -403,6 +403,7 @@ with the `debugging` topic.
 | | C | Byte-Swap a Register (Endianness) | bitwise, embedded, endianness |
 | | C | Compute the Parity Bit | bitwise, embedded, error-detection |
 | | C | Slew-Rate Limit a Demand Signal | embedded, control, signal-processing |
+| | C | Check Whether a Sensor Reading Is In Range (MISRA Essential Types) | embedded, calibration, essential-types, misra |
 | | Python | Two Sum | dictionaries, arrays |
 | **medium** | C | Binary Search | algorithms, arrays, search |
 | | C | Palindrome Check | strings, two pointers, ctype |
@@ -415,11 +416,13 @@ with the `debugging` topic.
 | | C | Primes up to N | arrays, loops |
 | | C | Write a Register Field (Read-Modify-Write) | bitwise, embedded, registers, read-modify-write |
 | | C | GPIO Set/Clear/Toggle (Read-Modify-Write) | bitwise, embedded, gpio, read-modify-write |
-| | C | Linear Interpolation Over a Calibration Table | embedded, calibration, fixed-point, lookup-table |
+| | C | Linear Interpolation Over a Calibration Table | embedded, calibration, fixed-point, lookup-table, misra |
 | | C | Multiply Two Q15 Fixed-Point Numbers | embedded, fixed-point, arithmetic |
 | | C | Single-Producer/Single-Consumer Ring Buffer | embedded, data-structures, concurrency |
 | | C | Add Hysteresis to a Noisy Threshold (Schmitt Trigger) | embedded, signal-processing, state |
 | | C | A Shift-Based Low-Pass Filter (No Floats) | embedded, signal-processing, bitwise, fixed-point |
+| | C | Classify a Diagnostic Fault Code (MISRA Switch Rules) | embedded, diagnostics, state, misra |
+| | C | Elapsed Ticks Since a Free-Running Counter (MISRA Unsigned Arithmetic) | embedded, timers, unsigned-arithmetic, misra |
 | | C | Fix the Sample Averager | debugging, code-review, pointers, arrays |
 | | Python | Balanced Brackets | stacks, strings, parsing |
 | | Python | Run-Length Encoding | strings, iteration |
@@ -512,9 +515,10 @@ where several of these ideas meet at once.
   the query, interpolate between them, and clamp rather than extrapolate
   outside the table. Its fixed test with a table spanning `0` to `100000` on
   both axes exists because the natural formula multiplies a y-difference by
-  an x-difference *before* dividing — comfortably past `INT_MAX` on a
+  an x-difference *before* dividing — comfortably past `INT32_MAX` on a
   realistic-sized table unless that intermediate product is widened to 64
-  bits first.
+  bits first. It is also one of four problems written to **MISRA C:2012**
+  — see below.
 - **Multiply Two Q15 Fixed-Point Numbers** is fixed-point arithmetic without
   an FPU: multiply the raw integers in a wide type, shift back down by 15,
   round rather than truncate, and saturate. `q15_multiply(-32768, -32768)` —
@@ -554,6 +558,42 @@ where several of these ideas meet at once.
   A fixed test sends a good frame, a corrupted one, and a frame that is only
   valid counted from *before* the corrupted one arrived, proving a rejected
   frame never moves the baseline.
+
+### Written to MISRA C:2012
+
+Four C problems are written to **MISRA C:2012**, the coding standard most
+safety-critical C shops build against — not just correct, but shaped the way
+a reviewer at an automotive or aerospace shop would expect. Nothing in
+Crucible runs a static analyser over a submission; the tests only check
+behaviour. What "written to MISRA" buys instead is that each reference
+solution, and the problem's own function signature, follow a specific rule
+or two closely enough that the statement can name them and mean it. Each one
+leans on a different corner of the standard, deliberately:
+
+- **Linear Interpolation Over a Calibration Table** — Directive 4.6 (sized
+  `<stdint.h>` types throughout, never `int` or `long long`), Rule 15.5 (a
+  single point of exit, so the natural three-early-return shape becomes one
+  `if` / `else if` / `else` assigning to a result variable), and an explicit
+  cast at every place a value crosses between `int32_t` and `int64_t`.
+- **Classify a Diagnostic Fault Code** — Rule 16.4 (every `switch` needs a
+  `default` clause) and Rule 16.3 (every clause ends with an unconditional
+  `break`, no accidental fallthrough), combined with the same single-exit
+  shape: skip the `default` and the value a single-exit `return` reads back
+  is never written in the first place.
+- **Check Whether a Sensor Reading Is In Range** — the essential type model,
+  demonstrated on a genuine C footgun rather than a hypothetical one:
+  `low <= value <= high` compiles, reads naturally, and is wrong, because
+  relational operators are left-associative and the *result* of the first
+  comparison is what gets compared against `high`. MISRA's essential types
+  rule this shape out at the type level — a Boolean result is not a valid
+  operand of another relational operator — which is exactly the mismatch
+  that produces the bug.
+- **Elapsed Ticks Since a Free-Running Counter** — Directive 4.6 again, but
+  for a reason beyond precision: `uint32_t`'s defined-overflow subtraction is
+  what makes `now - start` the entire correct answer for a wrapping tick
+  counter, wrap or no wrap, in one line with no branch. Casting to a signed
+  type to "check the sign" reintroduces the undefined-overflow bug the
+  unsigned type exists to avoid.
 
 ### Beyond writing algorithms
 

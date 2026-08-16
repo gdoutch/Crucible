@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Check Whether a Sensor Reading Is In Range (MISRA Essential Types) · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · easy</p>
+  <h1>Check Whether a Sensor Reading Is In Range (MISRA Essential Types)</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p><code>true</code> if <code>value</code> is between <code>low</code> and
+  <code>high</code>, inclusive of both ends; <code>false</code> otherwise.
+  That is the entire specification — the interesting part of this problem is
+  not the logic, it is the shape the logic is written in.</p>
+
+<h2>Do not write it the way it reads in English</h2>
+
+<p>"Is <code>value</code> between <code>low</code> and <code>high</code>"
+  reads like a single comparison, and C lets you <em>write</em> it as one:</p>
+
+<pre><code>return low &lt;= value &lt;= high;</code></pre>
+
+<p>This compiles. It also does not check what it looks like it checks — work
+  out what <code>&lt;=</code> being left-associative actually does to this
+  expression before you decide whether to use it.</p>
+
+<h2>The MISRA angle</h2>
+
+<ul>
+  <li>The result type is <code>bool</code>, from <code>&lt;stdbool.h&gt;</code>
+    — not an <code>int</code> returning <code>0</code> or <code>1</code>.</li>
+  <li>Two comparisons, joined with <code>&amp;&amp;</code>, not one chained
+    comparison. MISRA's essential type model is part of <em>why</em> the
+    chained form is off the table, not just a style preference layered on
+    top.</li>
+</ul>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li><code>in_range(5, 10, 20)</code> is <code>false</code> — try it against
+    your chained-comparison instinct and see whether it agrees.</li>
+  <li><code>in_range(10, 10, 20)</code> and <code>in_range(20, 10, 20)</code>
+    are both <code>true</code> — both ends are inside the range.</li>
+  <li><code>low == high</code> is a legal range with exactly one value in
+    it, not an error case.</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_range_check.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

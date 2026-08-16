@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Elapsed Ticks Since a Free-Running Counter (MISRA Unsigned Arithmetic) · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>Elapsed Ticks Since a Free-Running Counter (MISRA Unsigned Arithmetic)</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>Two readings of a free-running counter that wraps back to <code>0</code>
+  after <code>UINT32_MAX</code> instead of stopping. Return how many ticks
+  passed between them — whether or not the counter wrapped in between.</p>
+
+<p>The true elapsed time is guaranteed to be less than one full lap of the
+  counter, so there is always a single unambiguous answer, wrap or no wrap.</p>
+
+<h2>Resist the urge to branch</h2>
+
+<p>The obvious-looking defensive version checks which reading is numerically
+  bigger and does something different depending on the answer. Before you
+  write that: what does plain subtraction on <code>uint32_t</code> actually
+  do in C when the left side is smaller than the right side? It is not the
+  same answer signed subtraction would give you.</p>
+
+<h2>The MISRA angle</h2>
+
+<p>Directive 4.6 says use the sized types from <code>&lt;stdint.h&gt;</code>.
+  Here that is not just about precision — the type you pick changes what the
+  subtraction below it <em>means</em>, and one of the two obvious choices is
+  well-defined while the other is not.</p>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li><code>ticks_elapsed(5000, 1000)</code> is <code>4000</code> — the
+    ordinary case, no wrap involved.</li>
+  <li><code>ticks_elapsed(99, 100)</code> — <code>now</code> is numerically
+    <em>less</em> than <code>start</code>. The answer is not a small number
+    and it is not negative.</li>
+  <li>If your implementation has an <code>if</code> in it, ask what it is
+    doing that the type is not already doing for you.</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_ticks_elapsed.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Elapsed Ticks Since a Free-Running Counter (MISRA Unsigned Arithmetic) · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>Elapsed Ticks Since a Free-Running Counter (MISRA Unsigned Arithmetic)</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>#include &lt;stdint.h&gt;
+
+uint32_t ticks_elapsed(uint32_t now, uint32_t start)
+{
+    return now - start;
+}</code></pre>
+
+<p>One line, no branch. It is not a simplification of some longer correct
+  answer — it <em>is</em> the correct answer, for a reason specific to how C
+  defines unsigned subtraction.</p>
+
+<h2>Why the subtraction is already correct when it wraps</h2>
+
+<p>C defines unsigned arithmetic to wrap modulo <code>2**32</code> for a
+  32-bit type, and that wraparound is well-defined behaviour, not undefined
+  behaviour the way signed overflow is. <code>now - start</code>, computed in
+  <code>uint32_t</code>, is really <code>(now - start) mod 2**32</code>.</p>
+
+<p>Because the hardware counter itself increments and wraps the same way —
+  mod <code>2**32</code> — that one expression recovers the true forward
+  distance from <code>start</code> to <code>now</code> regardless of whether
+  <code>now</code> is numerically bigger or smaller than <code>start</code>.
+  Take <code>start = 4294967290</code> (five ticks from the top),
+  <code>now = 10</code>: the counter climbed 5 ticks to
+  <code>UINT32_MAX</code>, wrapped to <code>0</code>, then climbed 10 more.
+  <code>now - start</code> in <code>uint32_t</code> is
+  <code>10 - 4294967290 + 4294967296 = 16</code> — exactly <code>5 + 1 + 10</code>,
+  without a single <code>if</code> anywhere in the calculation.</p>
+
+<h2>Why the defensive-looking version is worse, not safer</h2>
+
+<div class="trap">
+<p>It is tempting to spell the wraparound case out by hand:</p>
+<pre><code>if (now &gt;= start) {
+    result = now - start;
+} else {
+    result = (UINT32_MAX - start) + now + 1;
+}</code></pre>
+<p>This is not more defensive than the one-liner — it is a manual
+  reimplementation of exactly what unsigned subtraction already does,
+  written in a form that is one off-by-one away from wrong. (Is it
+  <code>+ now</code> or <code>+ now + 1</code>? The counter is zero-based, so
+  getting this wrong by one tick is easy and the test suite is built to
+  notice.) Every fixed test that crosses the wrap boundary is there to catch
+  that fencepost, not to reward writing a branch at all.</p>
+</div>
+
+<div class="trap">
+<p>It is also tempting to cast to a signed type to "check the sign" of the
+  difference: <code>(int32_t)now - (int32_t)start</code>. This reintroduces
+  the exact failure mode <code>uint32_t</code> was chosen to avoid. The true
+  difference can itself exceed <code>INT32_MAX</code> — the "one tick short
+  of a full lap" test is precisely this case, where the correct elapsed count
+  is <code>4294967295</code>, nowhere near representable as a signed 32-bit
+  value — and signed overflow on top of that is undefined behaviour, not a
+  negative number with a meaning you can rely on.</p>
+</div>
+
+<h2>Why this is a MISRA problem, not just a bit-twiddling one</h2>
+
+<p>Directive 4.6 -- use the sized types from <code>&lt;stdint.h&gt;</code> --
+  usually reads as a precision-and-portability rule: know exactly how wide
+  your integer is. Here it is also a correctness rule. <code>uint32_t</code>
+  is not an arbitrary label for "an integer that holds tick counts" — it is
+  the type whose specific, defined-overflow arithmetic is what makes
+  <code>now - start</code> the right answer without a special case. Reach for
+  a signed type, or hand-roll the wraparound logic instead of trusting the
+  type, and the correctness this idiom relies on is exactly what gets thrown
+  away.</p>
+
+<h2>What the fixed tests are checking</h2>
+
+<p>An ordinary interval with no wrap, and <code>now == start</code> giving
+  zero, establish the baseline. A counter that wraps once between the two
+  readings, worked through above, checks the general case. One tick short of
+  a full lap returns <code>UINT32_MAX</code> itself — the largest value the
+  function can produce, and the case a signed cast would corrupt. Reading
+  <code>UINT32_MAX</code> as <code>start</code> and <code>0</code> as
+  <code>now</code> checks the wrap boundary exactly, where a hand-rolled
+  branch's fencepost error would show up first.</p>
+
+<footer>
+  <p><a href="c_ticks_elapsed.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

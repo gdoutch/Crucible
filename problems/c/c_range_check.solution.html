@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Check Whether a Sensor Reading Is In Range (MISRA Essential Types) · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · easy</p>
+  <h1>Check Whether a Sensor Reading Is In Range (MISRA Essential Types)</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>#include &lt;stdbool.h&gt;
+#include &lt;stdint.h&gt;
+
+bool in_range(int32_t value, int32_t low, int32_t high)
+{
+    return (value &gt;= low) &amp;&amp; (value &lt;= high);
+}</code></pre>
+
+<p>That is the whole function. The interesting part of this problem is not
+  the logic — two comparisons and an <code>&amp;&amp;</code> is about as
+  simple as C gets — it is ruling out the one-line version that looks even
+  simpler and is wrong.</p>
+
+<h2>The bug hiding in the readable version</h2>
+
+<div class="trap">
+<p>"Is <code>value</code> between <code>low</code> and <code>high</code>"
+  reads naturally as one chained comparison:</p>
+<pre><code>return low &lt;= value &lt;= high;</code></pre>
+<p>C's relational operators are left-associative, so this parses as
+  <code>(low &lt;= value) &lt;= high</code>: the <em>result</em> of the first
+  comparison — <code>0</code> or <code>1</code> — is what gets compared
+  against <code>high</code>, not <code>value</code>.</p>
+<p>Trace it through <code>low = 10</code>, <code>value = 5</code>,
+  <code>high = 20</code>: <code>10 &lt;= 5</code> is <code>0</code>, and
+  <code>0 &lt;= 20</code> is <code>1</code> — <code>true</code>. The function
+  reports a reading of <code>5</code> as inside <code>[10, 20]</code>, and it
+  does this for essentially any positive <code>high</code>, regardless of
+  what <code>value</code> actually is: as long as <code>high &gt;= 1</code>,
+  the second comparison is <code>0 &lt;= high</code> or <code>1 &lt;= high</code>,
+  both of which are <code>true</code>. The chained form is not subtly wrong
+  at the edges — it is <em>always</em> <code>true</code> for any range with a
+  positive upper bound, which is most of them.</p>
+</div>
+
+<h2>Why MISRA rules this shape out at the type level</h2>
+
+<p><code>low &lt;= value</code> has essential type Boolean: its only possible
+  values are <code>0</code> and <code>1</code>, standing for false and true,
+  not for a quantity. <code>high</code> has essential type signed. MISRA's
+  essential type model treats those as different categories that a relational
+  operator is not allowed to mix — a conforming static analyser flags
+  <code>(low &lt;= value) &lt;= high</code> before the program ever runs,
+  because the left operand of that second <code>&lt;=</code> is not a signed
+  value being compared to another signed value, it is a Boolean being
+  compared to one. The rule is not enforcing a style preference here; it is
+  refusing to compile the exact shape that produces this bug.</p>
+
+<p>Writing the two comparisons out in full and joining them with
+  <code>&amp;&amp;</code> sidesteps this because <code>&amp;&amp;</code>
+  expects two Boolean operands and that is exactly what
+  <code>(value &gt;= low)</code> and <code>(value &lt;= high)</code> are —
+  no essential-type mismatch, and no way for the expression to mean anything
+  other than "both of these are true."</p>
+
+<h2><code>bool</code>, not <code>int</code></h2>
+
+<p>The return type is <code>bool</code> from <code>&lt;stdbool.h&gt;</code>
+  rather than an <code>int</code> that happens to hold <code>0</code> or
+  <code>1</code>. It costs nothing extra here — the expression is already
+  Boolean — but it means the function's signature states what its result
+  means instead of leaving a reader to infer "oh, this int is really a
+  flag" from the name.</p>
+
+<h2>What the fixed tests are checking</h2>
+
+<p>Two tests are built directly around the chained-comparison trap: a value
+  below the range and a value above it, both of which the broken formula
+  reports as <code>true</code>. The rest cover the ordinary edges — both
+  bounds inclusive, a single-point range where <code>low == high</code>, and
+  negative bounds behaving the same way positive ones do.</p>
+
+<footer>
+  <p><a href="c_range_check.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

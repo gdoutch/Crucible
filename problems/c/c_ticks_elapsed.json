@@ -1,0 +1,51 @@
+{
+  "id": "c_ticks_elapsed",
+  "title": "Elapsed Ticks Since a Free-Running Counter (MISRA Unsigned Arithmetic)",
+  "language": "c",
+  "difficulty": "medium",
+  "topics": [
+    "embedded",
+    "timers",
+    "unsigned-arithmetic",
+    "misra"
+  ],
+  "timeout_seconds": 5,
+  "statement": "A free-running hardware tick counter -- a timer peripheral counting\nmilliseconds, say -- increments once per tick for as long as the board is\npowered, and wraps back to `0` the instant it would overflow past\n`UINT32_MAX`, rather than stopping. Working out how much time has passed\nbetween two readings of that counter means handling the wrap correctly, not\njust subtracting.\n\nThis one is written to **MISRA C:2012**, like *Linear Interpolation Over a Calibration Table*. The point of the\nexercise is the *type*, not a longer algorithm.\n\n## Your function\n\n```\nuint32_t ticks_elapsed(uint32_t now, uint32_t start);\n```\n\nBoth `now` and `start` are readings of the same free-running counter. The\ntrue elapsed time between them is guaranteed to be less than\n`UINT32_MAX + 1` ticks -- true of any interval you would ever measure\nagainst a 32-bit millisecond counter, which only wraps once every 49-odd\ndays. Return how many ticks elapsed between `start` and `now`, whether or\nnot the counter wrapped around in between.\n\n## Why the whole answer is one line\n\n`return now - start;` is not a shortcut -- it is the complete, correct\nanswer. Unsigned subtraction in C wraps modulo `2**32`, and that wraparound\nis **well-defined behaviour**, not undefined behaviour the way signed\noverflow is. Because the counter itself wraps the same way, `now - start`\ncomputed modulo `2**32` recovers the true forward distance travelled\nregardless of whether `now` is numerically less than `start`. This is\nexactly the case Directive 4.6 exists for: `uint32_t` is not an arbitrary\nchoice of type here, it is the type whose defined-overflow arithmetic makes\nthe one-line answer correct in the first place.\n\n## Watch out\n\n- **Do not \"fix\" `now < start` with a branch.** Code like\n  `if (now >= start) { result = now - start; } else { result = (UINT32_MAX - start) + now + 1; }`\n  looks defensive but is just a hand-rolled, fencepost-prone reimplementation\n  of what unsigned subtraction already does for free. Every fixed test that\n  crosses the wrap boundary exists to catch that off-by-one.\n- **Do not cast either operand to a signed type to \"check the sign\" of the\n  difference.** `(int32_t)now - (int32_t)start` reintroduces the exact\n  failure mode `uint32_t` was chosen to avoid: the true difference can\n  itself exceed `INT32_MAX`, and signed overflow on top of that is\n  undefined behaviour, not a negative number you can rely on.\n",
+  "starter_code": "#include <stdint.h>\n\nuint32_t ticks_elapsed(uint32_t now, uint32_t start)\n{\n    /* your code here */\n    (void)now;\n    (void)start;\n    return 0;\n}\n",
+  "harness": "#include <inttypes.h>\n#include <stdint.h>\n#include <stdio.h>\n\n/* Provided by the candidate in solution.c */\nuint32_t ticks_elapsed(uint32_t now, uint32_t start);\n\nint main(void)\n{\n    uint32_t now, start;\n    while (scanf(\"%\" SCNu32 \" %\" SCNu32, &now, &start) == 2) {\n        printf(\"%\" PRIu32 \"\\n\", ticks_elapsed(now, start));\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random (now, start) pairs on a wrapping 32-bit counter, weighted towards\ncases that force the counter to have wrapped between the two readings.\"\"\"\n\nUINT32_MAX = 0xFFFFFFFF\n\n\ndef generate(rng, count):\n    builders = (_no_wrap, _wrapped, _near_boundary, _anything)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, now, start, description=\"\"):\n    return {\n        \"name\": name,\n        \"stdin\": \"%d %d\\n\" % (now, start),\n        \"description\": description,\n    }\n\n\ndef _no_wrap(rng, index):\n    start = rng.randint(0, UINT32_MAX - 100000)\n    elapsed = rng.randint(0, 100000)\n    return _case(\"no wraparound in this interval #%d\" % index,\n                 start + elapsed, start)\n\n\ndef _wrapped(rng, index):\n    start = rng.randint(UINT32_MAX - 100000, UINT32_MAX)\n    elapsed = rng.randint(1, 100000)\n    now = (start + elapsed) % (UINT32_MAX + 1)\n    return _case(\"the counter wraps once inside this interval #%d\" % index,\n                 now, start,\n                 \"start is close to the top of the range and now has \"\n                 \"already wrapped past 0.\")\n\n\ndef _near_boundary(rng, index):\n    start = rng.randint(0, UINT32_MAX)\n    now = (start - 1) % (UINT32_MAX + 1)\n    return _case(\"one tick short of a full lap #%d\" % index, now, start,\n                 \"The true elapsed count is UINT32_MAX -- the largest \"\n                 \"value the function can return.\")\n\n\ndef _anything(rng, index):\n    return _case(\"two unrelated readings #%d\" % index,\n                 rng.randint(0, UINT32_MAX), rng.randint(0, UINT32_MAX))\n"
+  },
+  "tests": [
+    {
+      "name": "the ordinary case, no wraparound",
+      "stdin": "5000 1000\n",
+      "expected_stdout": "4000"
+    },
+    {
+      "name": "now equals start: zero ticks elapsed",
+      "stdin": "42 42\n",
+      "expected_stdout": "0"
+    },
+    {
+      "name": "the counter wrapped once between start and now",
+      "stdin": "10 4294967290\n",
+      "expected_stdout": "16",
+      "description": "start is 5 ticks from UINT32_MAX; the counter wraps to 0 and now is 10 ticks past that -- 5 + 1 + 10 = 16."
+    },
+    {
+      "name": "one tick short of a full lap",
+      "stdin": "99 100\n",
+      "expected_stdout": "4294967295",
+      "description": "now is numerically one less than start -- the true elapsed count is the largest value the function can return, not a small negative-looking mistake."
+    },
+    {
+      "name": "exactly at the wrap boundary",
+      "stdin": "0 4294967295\n",
+      "expected_stdout": "1",
+      "description": "start is UINT32_MAX itself; one more tick wraps the counter to 0."
+    }
+  ],
+  "reference_solution_b64": "I2luY2x1ZGUgPHN0ZGludC5oPgoKdWludDMyX3QgdGlja3NfZWxhcHNlZCh1aW50MzJfdCBub3csIHVpbnQzMl90IHN0YXJ0KQp7CiAgICByZXR1cm4gbm93IC0gc3RhcnQ7Cn0K"
+}

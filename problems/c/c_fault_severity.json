@@ -1,0 +1,50 @@
+{
+  "id": "c_fault_severity",
+  "title": "Classify a Diagnostic Fault Code (MISRA Switch Rules)",
+  "language": "c",
+  "difficulty": "medium",
+  "topics": [
+    "embedded",
+    "diagnostics",
+    "state",
+    "misra"
+  ],
+  "timeout_seconds": 5,
+  "statement": "A fault code coming off a bus, a diagnostic connector or an internal fault\ntable only means something once it is mapped to a severity: something a\nwarning lamp, a logger or a shutdown sequence can act on without knowing\nwhat any individual code stands for.\n\nThis one is written to **MISRA C:2012**, the same way the Linear\nInterpolation Over a Calibration Table problem is. Nothing here runs a\nstatic analyser over your submission -- the tests only check behaviour --\nbut the reference solution follows the switch-statement rules below, and\nmatching them is the point of the exercise.\n\n## Your function\n\n```\nint32_t classify_fault(int32_t code);\n```\n\nCodes are documented one at a time, not as ranges:\n\n- `0` -- no fault -- severity `0`\n- `101`, `102`, `103` -- sensor faults (coolant temp, MAF, O2) -- severity `1`\n- `201`, `202` -- actuator faults (injector circuit, fuel pump circuit) -- severity `2`\n- `301` -- brake actuator fault -- severity `3`\n\nReturn the documented severity for a code in that list. For any code that is\n**not** on it -- including negative codes and codes that merely look close\nto a real one -- return `-1`.\n\n## The MISRA rules this problem is built around\n\n- **Rule 16.4 -- every `switch` shall have a `default` clause.** The list\n  above is not exhaustive over all of `int32_t`; almost every value passed\n  in is not a documented code. `default` is where those land, and it is not\n  optional.\n- **Rule 16.3 -- every `switch` clause ends with an unconditional `break`.**\n  No clause falls through into the next by accident. Stacking bare case\n  labels with nothing between them (`case 101: case 102: case 103:`) is not\n  a violation of this rule -- there is no statement to fall through past --\n  but a clause that runs code and then omits its `break` is.\n- **Rule 15.5 (advisory) -- a function should have a single point of exit.**\n  Assign to a result variable inside the `switch` and return it once, after\n  the `switch` ends, rather than returning directly from inside each case.\n\n## Watch out\n\n- **This is not a range check, and implementing it as one is the trap.** It\n  is tempting to write `if (code >= 100 && code < 200) severity = 1;` instead\n  of enumerating `101`, `102` and `103` -- fewer lines, looks equivalent. It\n  is not: `150` is inside that range and is not a documented code. A fixed\n  test queries exactly this gap. Enumerate the documented codes; do not infer\n  a pattern from their spacing.\n- **A `switch` without a `default`, combined with a single point of exit,\n  is worse than either mistake alone.** If no case matches and there is no\n  `default`, the result variable that the final `return` reads is never\n  written -- the function returns an indeterminate value instead of failing\n  in an obvious way. Rule 16.4's mandatory `default` is what closes that gap.\n",
+  "starter_code": "#include <stdint.h>\n\nint32_t classify_fault(int32_t code)\n{\n    /* your code here */\n    (void)code;\n    return 0;\n}\n",
+  "harness": "#include <inttypes.h>\n#include <stdint.h>\n#include <stdio.h>\n\n/* Provided by the candidate in solution.c */\nint32_t classify_fault(int32_t code);\n\nint main(void)\n{\n    int32_t code;\n    while (scanf(\"%\" SCNd32, &code) == 1) {\n        printf(\"%\" PRId32 \"\\n\", classify_fault(code));\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random diagnostic codes: some drawn from the documented table, some\ndeliberately not, so that \"which codes are real\" cannot be guessed from\nthe generator alone.\"\"\"\n\nDOCUMENTED = (0, 101, 102, 103, 201, 202, 301)\n\n\ndef generate(rng, count):\n    builders = (_documented, _undocumented, _near_a_real_code, _extreme)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, codes, description=\"\"):\n    lines = [str(c) for c in codes]\n    return {\n        \"name\": name,\n        \"stdin\": \"\\n\".join(lines) + \"\\n\",\n        \"description\": description,\n    }\n\n\ndef _documented(rng, index):\n    codes = [rng.choice(DOCUMENTED) for _ in range(5)]\n    return _case(\"a run of documented codes #%d\" % index, codes)\n\n\ndef _undocumented(rng, index):\n    codes = []\n    while len(codes) < 5:\n        c = rng.randint(-500, 999)\n        if c not in DOCUMENTED:\n            codes.append(c)\n    return _case(\"a run of codes not in the table #%d\" % index, codes,\n                 \"None of these are documented -- every one should come \"\n                 \"back -1.\")\n\n\ndef _near_a_real_code(rng, index):\n    base = rng.choice(DOCUMENTED)\n    candidates = [base + o for o in (-3, -2, -1, 1, 2, 3)\n                  if (base + o) not in DOCUMENTED]\n    codes = [base] + rng.sample(candidates, min(3, len(candidates)))\n    return _case(\"codes clustered around a real one #%d\" % index, codes,\n                 \"Only the exact documented code should classify -- its \"\n                 \"neighbours are unknown.\")\n\n\ndef _extreme(rng, index):\n    codes = [rng.choice((-2147483648, 2147483647, 0, 301))]\n    codes.extend(rng.randint(-1000, 1000) for _ in range(3))\n    return _case(\"extreme int32 values mixed in #%d\" % index, codes)\n"
+  },
+  "tests": [
+    {
+      "name": "every documented code returns its documented severity",
+      "stdin": "0\n101\n102\n103\n201\n202\n301\n",
+      "expected_stdout": "0\n1\n1\n1\n2\n2\n3",
+      "description": "One query per row of the table, in table order."
+    },
+    {
+      "name": "a code between two real ones is unknown, not a nearby severity",
+      "stdin": "150\n",
+      "expected_stdout": "-1",
+      "description": "150 sits between the 101-103 sensor codes and the 201-202 actuator codes but is not itself documented -- a range-based implementation would wrongly accept it."
+    },
+    {
+      "name": "a negative code does not crash and is treated as unknown",
+      "stdin": "-42\n",
+      "expected_stdout": "-1"
+    },
+    {
+      "name": "a code just past the last documented one is still unknown",
+      "stdin": "302\n",
+      "expected_stdout": "-1"
+    },
+    {
+      "name": "repeated queries in one run are classified independently",
+      "stdin": "301\n0\n999\n101\n",
+      "expected_stdout": "3\n0\n-1\n1"
+    }
+  ],
+  "reference_solution_b64": "I2luY2x1ZGUgPHN0ZGludC5oPgoKaW50MzJfdCBjbGFzc2lmeV9mYXVsdChpbnQzMl90IGNvZGUpCnsKICAgIGludDMyX3Qgc2V2ZXJpdHk7CgogICAgc3dpdGNoIChjb2RlKSB7CiAgICAgICAgY2FzZSAwOgogICAgICAgICAgICBzZXZlcml0eSA9IDA7CiAgICAgICAgICAgIGJyZWFrOwogICAgICAgIGNhc2UgMTAxOgogICAgICAgIGNhc2UgMTAyOgogICAgICAgIGNhc2UgMTAzOgogICAgICAgICAgICBzZXZlcml0eSA9IDE7CiAgICAgICAgICAgIGJyZWFrOwogICAgICAgIGNhc2UgMjAxOgogICAgICAgIGNhc2UgMjAyOgogICAgICAgICAgICBzZXZlcml0eSA9IDI7CiAgICAgICAgICAgIGJyZWFrOwogICAgICAgIGNhc2UgMzAxOgogICAgICAgICAgICBzZXZlcml0eSA9IDM7CiAgICAgICAgICAgIGJyZWFrOwogICAgICAgIGRlZmF1bHQ6CiAgICAgICAgICAgIHNldmVyaXR5ID0gLTE7CiAgICAgICAgICAgIGJyZWFrOwogICAgfQoKICAgIHJldHVybiBzZXZlcml0eTsKfQo="
+}

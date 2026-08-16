@@ -1,0 +1,50 @@
+{
+  "id": "c_range_check",
+  "title": "Check Whether a Sensor Reading Is In Range (MISRA Essential Types)",
+  "language": "c",
+  "difficulty": "easy",
+  "topics": [
+    "embedded",
+    "calibration",
+    "essential-types",
+    "misra"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Sensor readings only mean something inside a known range: outside it, the\nvalue is noise, a fault, or a sensor that has not warmed up yet. This\nfunction is the gate that decides which side of that line a reading falls\non.\n\nThis one is written to **MISRA C:2012**, like *Linear Interpolation Over a Calibration Table*. Nothing here runs a\nstatic analyser over your submission -- the tests only check behaviour --\nbut the reference solution follows the rules below, and matching them is\nthe point of the exercise.\n\n## Your function\n\n```\nbool in_range(int32_t value, int32_t low, int32_t high);\n```\n\n`low <= high` is guaranteed by every test. Return `true` if `value` is\ninside `[low, high]` **inclusive of both ends**, `false` otherwise.\n\n## The MISRA angle: essential types catch a real C bug\n\nIt is legal, ordinary-looking C to write the whole check as one chained\ncomparison:\n\n```\nreturn low <= value <= high;\n```\n\nThis does not do what it looks like. Relational operators are\nleft-associative, so it parses as `(low <= value) <= high` -- the *result*\nof the first comparison (`0` or `1`) is what actually gets compared to\n`high`, not `value`. Concretely, with `low = 10`, `value = 5`,\n`high = 20`: `10 <= 5` is `0`, and `0 <= 20` is `1` -- the function returns\n`true` for a reading nowhere near the range, and it does this for\nessentially any positive `high`, regardless of `value`.\n\nMISRA's essential type model is exactly what rules this shape out: the\nresult of `low <= value` is essentially Boolean, and an essentially Boolean\nvalue is not a valid operand of another relational operator against an\nessentially signed one. A conforming static analyser rejects\n`low <= value <= high` at the type level, before anyone has to notice the\nlogic is wrong at runtime. Writing the two comparisons out in full and\njoining them with `&&` is not just clearer -- it is the only shape the\nessential type model allows.\n\n## Watch out\n\n- **A fixed test is built around exactly the broken shape above.** A value\n  below the range and a value above it are both queried; a chained\n  comparison gets both wrong, in the same direction, for the same reason.\n- Both ends of the range are inclusive: a `value` equal to `low` or `high`\n  is in range, not out of it.\n- `low == high` is a legal, single-point range -- test it as one rather than\n  assuming a range always has room in it.\n",
+  "starter_code": "#include <stdbool.h>\n#include <stdint.h>\n\nbool in_range(int32_t value, int32_t low, int32_t high)\n{\n    /* your code here */\n    (void)value;\n    (void)low;\n    (void)high;\n    return false;\n}\n",
+  "harness": "#include <inttypes.h>\n#include <stdbool.h>\n#include <stdint.h>\n#include <stdio.h>\n\n/* Provided by the candidate in solution.c */\nbool in_range(int32_t value, int32_t low, int32_t high);\n\nint main(void)\n{\n    int32_t value, low, high;\n    while (scanf(\"%\" SCNd32 \" %\" SCNd32 \" %\" SCNd32, &value, &low, &high) == 3) {\n        printf(\"%s\\n\", in_range(value, low, high) ? \"true\" : \"false\");\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random ranges and query values, weighted towards the shape a chained\nlow <= value <= high comparison gets wrong: values just past one edge.\"\"\"\n\n\ndef generate(rng, count):\n    builders = (_inside, _just_outside, _wide_range, _single_point)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, rows, description=\"\"):\n    lines = [\"%d %d %d\" % row for row in rows]\n    return {\n        \"name\": name,\n        \"stdin\": \"\\n\".join(lines) + \"\\n\",\n        \"description\": description,\n    }\n\n\ndef _bounds(rng):\n    a = rng.randint(-100000, 100000)\n    b = rng.randint(-100000, 100000)\n    return (a, b) if a <= b else (b, a)\n\n\ndef _inside(rng, index):\n    rows = []\n    for _ in range(4):\n        low, high = _bounds(rng)\n        value = rng.randint(low, high)\n        rows.append((value, low, high))\n    return _case(\"values chosen inside their range #%d\" % index, rows)\n\n\ndef _just_outside(rng, index):\n    rows = []\n    for _ in range(4):\n        low, high = _bounds(rng)\n        if rng.random() < 0.5:\n            value = low - rng.randint(1, 5)\n        else:\n            value = high + rng.randint(1, 5)\n        rows.append((value, low, high))\n    return _case(\"values just past one edge of the range #%d\" % index, rows,\n                 \"Exactly the shape a chained low <= value <= high gets \"\n                 \"wrong.\")\n\n\ndef _wide_range(rng, index):\n    rows = []\n    for _ in range(3):\n        low = rng.randint(-2000000000, 0)\n        high = rng.randint(0, 2000000000)\n        value = rng.randint(-2000000000, 2000000000)\n        rows.append((value, low, high))\n    return _case(\"a wide range spanning most of int32 #%d\" % index, rows)\n\n\ndef _single_point(rng, index):\n    rows = []\n    for _ in range(3):\n        point = rng.randint(-1000, 1000)\n        value = point + rng.choice((-1, 0, 1))\n        rows.append((value, point, point))\n    return _case(\"a single-point range, low == high #%d\" % index, rows)\n"
+  },
+  "tests": [
+    {
+      "name": "the trap: a value below range a chained comparison would accept",
+      "stdin": "5 10 20\n",
+      "expected_stdout": "false",
+      "description": "low <= value <= high parses as (10 <= 5) <= 20, which is 0 <= 20 -- true. 5 is not in [10, 20]."
+    },
+    {
+      "name": "the same trap on the other side of the range",
+      "stdin": "25 10 20\n",
+      "expected_stdout": "false",
+      "description": "(10 <= 25) <= 20 is 1 <= 20 -- also wrongly true under the chained form. 25 is not in [10, 20] either."
+    },
+    {
+      "name": "both ends of the range are inclusive",
+      "stdin": "10 10 20\n20 10 20\n",
+      "expected_stdout": "true\ntrue"
+    },
+    {
+      "name": "a single-point range",
+      "stdin": "7 7 7\n6 7 7\n8 7 7\n",
+      "expected_stdout": "true\nfalse\nfalse"
+    },
+    {
+      "name": "negative bounds work the same way as positive ones",
+      "stdin": "-15 -20 -10\n-25 -20 -10\n-5 -20 -10\n",
+      "expected_stdout": "true\nfalse\nfalse"
+    }
+  ],
+  "reference_solution_b64": "I2luY2x1ZGUgPHN0ZGJvb2wuaD4KI2luY2x1ZGUgPHN0ZGludC5oPgoKYm9vbCBpbl9yYW5nZShpbnQzMl90IHZhbHVlLCBpbnQzMl90IGxvdywgaW50MzJfdCBoaWdoKQp7CiAgICByZXR1cm4gKHZhbHVlID49IGxvdykgJiYgKHZhbHVlIDw9IGhpZ2gpOwp9Cg=="
+}
