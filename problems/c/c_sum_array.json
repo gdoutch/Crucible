@@ -10,7 +10,7 @@
   ],
   "timeout_seconds": 5,
   "statement": "Write a function that adds up every element of an array of integers.\n\n## Your function\n\n```\nint sum_array(const int *values, int count);\n```\n\nReturn the sum of the first `count` elements of `values`.\n\n## Watch out\n\n- When `count` is `0` the array is empty and `values` may be `NULL`.\n  Your function must return `0` without reading through the pointer.\n- The test harness reads the array for you and calls your function.\n  You only write `sum_array` -- do not write `main`.\n",
-  "starter_code": "/* Return the sum of the first `count` elements of `values`.\n *\n * `values` may be NULL when `count` is 0.\n */\nint sum_array(const int *values, int count)\n{\n    /* your code here */\n    return 0;\n}\n",
+  "starter_code": "/**\n * @brief Sum the elements of an array.\n *\n * @param values Array to sum; may be NULL when count is 0.\n * @param count  Number of elements in values.\n * @return Sum of the first count elements of values.\n */\nint sum_array(const int *values, int count)\n{\n    /* your code here */\n    return 0;\n}\n",
   "harness": "#include <stdio.h>\n#include <stdlib.h>\n\n/* Provided by the candidate in solution.c */\nint sum_array(const int *values, int count);\n\nstatic int read_int_array(int **out, int *count_out)\n{\n    int count;\n    if (scanf(\"%d\", &count) != 1 || count < 0) {\n        return 0;\n    }\n    int *values = NULL;\n    if (count > 0) {\n        values = malloc((size_t)count * sizeof *values);\n        if (values == NULL) {\n            return 0;\n        }\n        for (int i = 0; i < count; i++) {\n            if (scanf(\"%d\", &values[i]) != 1) {\n                free(values);\n                return 0;\n            }\n        }\n    }\n    *out = values;\n    *count_out = count;\n    return 1;\n}\n\nint main(void)\n{\n    int *values = NULL;\n    int count = 0;\n    if (!read_int_array(&values, &count)) {\n        return 1;\n    }\n    printf(\"%d\\n\", sum_array(values, count));\n    free(values);\n    return 0;\n}\n",
   "generator": {
     "count": 4,
@@ -35,5 +35,5 @@
       "description": "A zero result must not be confused with an empty array."
     }
   ],
-  "reference_solution_b64": "aW50IHN1bV9hcnJheShjb25zdCBpbnQgKnZhbHVlcywgaW50IGNvdW50KQp7CiAgICBpbnQgdG90YWwgPSAwOwogICAgZm9yIChpbnQgaSA9IDA7IGkgPCBjb3VudDsgaSsrKSB7CiAgICAgICAgdG90YWwgKz0gdmFsdWVzW2ldOwogICAgfQogICAgcmV0dXJuIHRvdGFsOwp9Cg=="
+  "reference_solution_b64": "LyoqIFN1bSB0aGUgZWxlbWVudHMgb2YgYW4gYXJyYXkuICovCmludCBzdW1fYXJyYXkoY29uc3QgaW50ICp2YWx1ZXMsIGludCBjb3VudCkKewogICAgaW50IHRvdGFsID0gMDsKICAgIGZvciAoaW50IGkgPSAwOyBpIDwgY291bnQ7IGkrKykgewogICAgICAgIHRvdGFsICs9IHZhbHVlc1tpXTsKICAgIH0KICAgIHJldHVybiB0b3RhbDsKfQo="
 }

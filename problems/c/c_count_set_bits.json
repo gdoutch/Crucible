@@ -9,7 +9,7 @@
   ],
   "timeout_seconds": 5,
   "statement": "Count how many bits are set to 1 in a 32-bit unsigned value.\n\n## Your function\n\n```\nint count_set_bits(unsigned int value);\n```\n\n`count_set_bits(0)` is `0`; `count_set_bits(255)` is `8`.\n\n## Watch out\n\n- The argument is `unsigned` on purpose. Right-shifting a *signed* negative\n  value is implementation defined, and a loop written around `int` can spin\n  forever on a value with the top bit set.\n- `value & 1u` tests the lowest bit; `value >>= 1` moves the next one down.\n  Stop when the value reaches zero rather than always going round 32 times --\n  though 32 times is correct too.\n- `value &= value - 1` clears the lowest set bit, which turns the loop into\n  one iteration per bit that is actually set.\n",
-  "starter_code": "int count_set_bits(unsigned int value)\n{\n    /* your code here */\n    return 0;\n}\n",
+  "starter_code": "/**\n * @brief Count how many bits are set to 1.\n *\n * @param value Value to inspect.\n * @return Number of set bits, 0-32.\n */\nint count_set_bits(unsigned int value)\n{\n    /* your code here */\n    return 0;\n}\n",
   "harness": "#include <stdio.h>\n\n/* Provided by the candidate in solution.c */\nint count_set_bits(unsigned int value);\n\nint main(void)\n{\n    unsigned int value;\n    if (scanf(\"%u\", &value) != 1) {\n        return 1;\n    }\n    printf(\"%d\\n\", count_set_bits(value));\n    return 0;\n}\n",
   "generator": {
     "count": 4,
@@ -39,5 +39,5 @@
       "description": "Bit 31 and nothing else -- the value that makes a signed right shift misbehave."
     }
   ],
-  "reference_solution_b64": "aW50IGNvdW50X3NldF9iaXRzKHVuc2lnbmVkIGludCB2YWx1ZSkKewogICAgaW50IGNvdW50ID0gMDsKCiAgICB3aGlsZSAodmFsdWUgIT0gMCkgewogICAgICAgIHZhbHVlICY9IHZhbHVlIC0gMXU7CiAgICAgICAgY291bnQrKzsKICAgIH0KCiAgICByZXR1cm4gY291bnQ7Cn0K"
+  "reference_solution_b64": "LyoqIENvdW50IGhvdyBtYW55IGJpdHMgYXJlIHNldCB0byAxLiAqLwppbnQgY291bnRfc2V0X2JpdHModW5zaWduZWQgaW50IHZhbHVlKQp7CiAgICBpbnQgY291bnQgPSAwOwoKICAgIHdoaWxlICh2YWx1ZSAhPSAwKSB7CiAgICAgICAgdmFsdWUgJj0gdmFsdWUgLSAxdTsKICAgICAgICBjb3VudCsrOwogICAgfQoKICAgIHJldHVybiBjb3VudDsKfQo="
 }

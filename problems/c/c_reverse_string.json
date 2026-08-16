@@ -10,7 +10,7 @@
   ],
   "timeout_seconds": 5,
   "statement": "Reverse a C string **in place** -- modify the caller's buffer rather\nthan allocating a new one.\n\n## Your function\n\n```\nvoid reverse_string(char *s);\n```\n\nAfter it returns, `s` holds the same characters in the opposite order\nand is still terminated by `'\\0'`.\n\n## Watch out\n\n- The empty string is valid input. So is a single character.\n- Do not move the terminator. `strlen` still has to work afterwards.\n- Swapping from both ends towards the middle needs only one pass and\n  no extra memory.\n",
-  "starter_code": "#include <string.h>\n\n/* Reverse the string `s` in place. */\nvoid reverse_string(char *s)\n{\n    /* your code here */\n}\n",
+  "starter_code": "#include <string.h>\n\n/**\n * @brief Reverse a null-terminated string in place.\n *\n * @param s String to reverse; modified in place.\n */\nvoid reverse_string(char *s)\n{\n    /* your code here */\n}\n",
   "harness": "#include <stdio.h>\n#include <string.h>\n\n/* Provided by the candidate in solution.c */\nvoid reverse_string(char *s);\n\nstatic void read_line(char *buffer, size_t size)\n{\n    if (fgets(buffer, (int)size, stdin) == NULL) {\n        buffer[0] = '\\0';\n        return;\n    }\n    buffer[strcspn(buffer, \"\\r\\n\")] = '\\0';\n}\n\nint main(void)\n{\n    char buffer[1024];\n    read_line(buffer, sizeof buffer);\n    reverse_string(buffer);\n    printf(\"%s\\n\", buffer);\n    return 0;\n}\n",
   "generator": {
     "count": 4,
@@ -29,5 +29,5 @@
       "expected_stdout": "x"
     }
   ],
-  "reference_solution_b64": "I2luY2x1ZGUgPHN0cmluZy5oPgoKdm9pZCByZXZlcnNlX3N0cmluZyhjaGFyICpzKQp7CiAgICBzaXplX3QgbGVuZ3RoID0gc3RybGVuKHMpOwogICAgaWYgKGxlbmd0aCA8IDIpIHsKICAgICAgICByZXR1cm47CiAgICB9CiAgICBmb3IgKHNpemVfdCBpID0gMCwgaiA9IGxlbmd0aCAtIDE7IGkgPCBqOyBpKyssIGotLSkgewogICAgICAgIGNoYXIgc3dhcCA9IHNbaV07CiAgICAgICAgc1tpXSA9IHNbal07CiAgICAgICAgc1tqXSA9IHN3YXA7CiAgICB9Cn0K"
+  "reference_solution_b64": "I2luY2x1ZGUgPHN0cmluZy5oPgoKLyoqIFJldmVyc2UgYSBudWxsLXRlcm1pbmF0ZWQgc3RyaW5nIGluIHBsYWNlLiAqLwp2b2lkIHJldmVyc2Vfc3RyaW5nKGNoYXIgKnMpCnsKICAgIHNpemVfdCBsZW5ndGggPSBzdHJsZW4ocyk7CiAgICBpZiAobGVuZ3RoIDwgMikgewogICAgICAgIHJldHVybjsKICAgIH0KICAgIGZvciAoc2l6ZV90IGkgPSAwLCBqID0gbGVuZ3RoIC0gMTsgaSA8IGo7IGkrKywgai0tKSB7CiAgICAgICAgY2hhciBzd2FwID0gc1tpXTsKICAgICAgICBzW2ldID0gc1tqXTsKICAgICAgICBzW2pdID0gc3dhcDsKICAgIH0KfQo="
 }

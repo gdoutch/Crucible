@@ -9,7 +9,7 @@
   ],
   "timeout_seconds": 5,
   "statement": "Count the words in a line of text.\n\n## Your function\n\n```\nint count_words(const char *s);\n```\n\nA word is any run of characters that are not spaces or tabs. Punctuation is\npart of whatever word it is attached to.\n\n## Watch out\n\n- Several spaces in a row separate *one* pair of words, not several.\n- Leading and trailing spaces do not start a word.\n- The empty string, and a string of nothing but spaces, both have no words.\n- This is the classic one-variable state machine: remember whether you are\n  currently inside a word, and count each time you step into one.\n",
-  "starter_code": "int count_words(const char *s)\n{\n    /* your code here */\n    return 0;\n}\n",
+  "starter_code": "/**\n * @brief Count the words in a line of text, where a word is any run of\n *        characters that are not spaces or tabs.\n *\n * @param s Null-terminated string to scan.\n * @return Number of words in s.\n */\nint count_words(const char *s)\n{\n    /* your code here */\n    return 0;\n}\n",
   "harness": "#include <stdio.h>\n#include <string.h>\n\n/* Provided by the candidate in solution.c */\nint count_words(const char *s);\n\nstatic void read_line(char *buffer, size_t size)\n{\n    if (fgets(buffer, (int)size, stdin) == NULL) {\n        buffer[0] = '\\0';\n        return;\n    }\n    buffer[strcspn(buffer, \"\\r\\n\")] = '\\0';\n}\n\nint main(void)\n{\n    char buffer[1024];\n    read_line(buffer, sizeof buffer);\n    printf(\"%d\\n\", count_words(buffer));\n    return 0;\n}\n",
   "generator": {
     "count": 4,
@@ -38,5 +38,5 @@
       "expected_stdout": "2"
     }
   ],
-  "reference_solution_b64": "aW50IGNvdW50X3dvcmRzKGNvbnN0IGNoYXIgKnMpCnsKICAgIGludCB3b3JkcyA9IDA7CiAgICBpbnQgaW5zaWRlID0gMDsKCiAgICBmb3IgKDsgKnMgIT0gJ1wwJzsgcysrKSB7CiAgICAgICAgaWYgKCpzID09ICcgJyB8fCAqcyA9PSAnXHQnKSB7CiAgICAgICAgICAgIGluc2lkZSA9IDA7CiAgICAgICAgfSBlbHNlIGlmICghaW5zaWRlKSB7CiAgICAgICAgICAgIGluc2lkZSA9IDE7CiAgICAgICAgICAgIHdvcmRzKys7CiAgICAgICAgfQogICAgfQoKICAgIHJldHVybiB3b3JkczsKfQo="
+  "reference_solution_b64": "LyoqCiAqIEBicmllZiBDb3VudCB0aGUgd29yZHMgaW4gYSBsaW5lIG9mIHRleHQsIHdoZXJlIGEgd29yZCBpcyBhbnkgcnVuIG9mCiAqICAgICAgICBjaGFyYWN0ZXJzIHRoYXQgYXJlIG5vdCBzcGFjZXMgb3IgdGFicy4KICovCmludCBjb3VudF93b3Jkcyhjb25zdCBjaGFyICpzKQp7CiAgICBpbnQgd29yZHMgPSAwOwogICAgaW50IGluc2lkZSA9IDA7CgogICAgZm9yICg7ICpzICE9ICdcMCc7IHMrKykgewogICAgICAgIGlmICgqcyA9PSAnICcgfHwgKnMgPT0gJ1x0JykgewogICAgICAgICAgICBpbnNpZGUgPSAwOwogICAgICAgIH0gZWxzZSBpZiAoIWluc2lkZSkgewogICAgICAgICAgICBpbnNpZGUgPSAxOwogICAgICAgICAgICB3b3JkcysrOwogICAgICAgIH0KICAgIH0KCiAgICByZXR1cm4gd29yZHM7Cn0K"
 }

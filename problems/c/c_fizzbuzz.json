@@ -10,7 +10,7 @@
   ],
   "timeout_seconds": 5,
   "statement": "Print the numbers from `1` to `n`, one per line, with two\nsubstitutions:\n\n- multiples of **3** print `Fizz`\n- multiples of **5** print `Buzz`\n- multiples of **both** print `FizzBuzz`\n\n## Your function\n\n```\nvoid fizzbuzz(int n);\n```\n\n## Watch out\n\n- Check the \"both\" case first, or every multiple of 15 comes out wrong.\n- When `n` is `0` (or negative) print nothing at all.\n- Output is compared line by line, so the spelling and capitalisation\n  have to match exactly.\n",
-  "starter_code": "#include <stdio.h>\n\n/* Print 1..n, one per line, substituting Fizz / Buzz / FizzBuzz. */\nvoid fizzbuzz(int n)\n{\n    /* your code here */\n}\n",
+  "starter_code": "#include <stdio.h>\n\n/**\n * @brief Print 1..n, one per line, substituting Fizz/Buzz/FizzBuzz for\n *        multiples of 3 and 5.\n *\n * @param n Highest number to print; nothing is printed when n <= 0.\n */\nvoid fizzbuzz(int n)\n{\n    /* your code here */\n}\n",
   "harness": "#include <stdio.h>\n\n/* Provided by the candidate in solution.c */\nvoid fizzbuzz(int n);\n\nint main(void)\n{\n    int n;\n    if (scanf(\"%d\", &n) != 1) {\n        return 1;\n    }\n    fizzbuzz(n);\n    return 0;\n}\n",
   "generator": {
     "count": 4,
@@ -28,5 +28,5 @@
       "expected_stdout": ""
     }
   ],
-  "reference_solution_b64": "I2luY2x1ZGUgPHN0ZGlvLmg+Cgp2b2lkIGZpenpidXp6KGludCBuKQp7CiAgICBmb3IgKGludCBpID0gMTsgaSA8PSBuOyBpKyspIHsKICAgICAgICBpZiAoaSAlIDE1ID09IDApIHsKICAgICAgICAgICAgcHJpbnRmKCJGaXp6QnV6elxuIik7CiAgICAgICAgfSBlbHNlIGlmIChpICUgMyA9PSAwKSB7CiAgICAgICAgICAgIHByaW50ZigiRml6elxuIik7CiAgICAgICAgfSBlbHNlIGlmIChpICUgNSA9PSAwKSB7CiAgICAgICAgICAgIHByaW50ZigiQnV6elxuIik7CiAgICAgICAgfSBlbHNlIHsKICAgICAgICAgICAgcHJpbnRmKCIlZFxuIiwgaSk7CiAgICAgICAgfQogICAgfQp9Cg=="
+  "reference_solution_b64": "I2luY2x1ZGUgPHN0ZGlvLmg+CgovKioKICogQGJyaWVmIFByaW50IDEuLm4sIG9uZSBwZXIgbGluZSwgc3Vic3RpdHV0aW5nIEZpenovQnV6ei9GaXp6QnV6eiBmb3IKICogICAgICAgIG11bHRpcGxlcyBvZiAzIGFuZCA1LgogKi8Kdm9pZCBmaXp6YnV6eihpbnQgbikKewogICAgZm9yIChpbnQgaSA9IDE7IGkgPD0gbjsgaSsrKSB7CiAgICAgICAgaWYgKGkgJSAxNSA9PSAwKSB7CiAgICAgICAgICAgIHByaW50ZigiRml6ekJ1enpcbiIpOwogICAgICAgIH0gZWxzZSBpZiAoaSAlIDMgPT0gMCkgewogICAgICAgICAgICBwcmludGYoIkZpenpcbiIpOwogICAgICAgIH0gZWxzZSBpZiAoaSAlIDUgPT0gMCkgewogICAgICAgICAgICBwcmludGYoIkJ1enpcbiIpOwogICAgICAgIH0gZWxzZSB7CiAgICAgICAgICAgIHByaW50ZigiJWRcbiIsIGkpOwogICAgICAgIH0KICAgIH0KfQo="
 }

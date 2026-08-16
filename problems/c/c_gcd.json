@@ -9,7 +9,7 @@
   ],
   "timeout_seconds": 5,
   "statement": "Find the largest number that divides both of two non-negative\nintegers.\n\n## Your function\n\n```\nint gcd(int a, int b);\n```\n\nBoth arguments are zero or positive and fit in an `int`.\n\n## Watch out\n\n- `gcd(0, n)` is `n`, and `gcd(0, 0)` is `0`. Every number divides zero.\n- Euclid's algorithm is three lines: while `b` is not zero, replace the pair\n  `(a, b)` with `(b, a % b)`. Trying every divisor from the smaller number\n  downwards also works, and is dramatically slower.\n- `%` on two non-negative `int`s is well behaved, so no sign juggling is\n  needed here.\n",
-  "starter_code": "int gcd(int a, int b)\n{\n    /* your code here */\n    return 0;\n}\n",
+  "starter_code": "/**\n * @brief Compute the greatest common divisor of two non-negative integers.\n *\n * @param a First value (zero or positive).\n * @param b Second value (zero or positive).\n * @return Largest integer dividing both a and b; gcd(0, n) is n.\n */\nint gcd(int a, int b)\n{\n    /* your code here */\n    return 0;\n}\n",
   "harness": "#include <stdio.h>\n\n/* Provided by the candidate in solution.c */\nint gcd(int a, int b);\n\nint main(void)\n{\n    int a, b;\n    if (scanf(\"%d %d\", &a, &b) != 2) {\n        return 1;\n    }\n    printf(\"%d\\n\", gcd(a, b));\n    return 0;\n}\n",
   "generator": {
     "count": 4,
@@ -39,5 +39,5 @@
       "expected_stdout": "1"
     }
   ],
-  "reference_solution_b64": "aW50IGdjZChpbnQgYSwgaW50IGIpCnsKICAgIHdoaWxlIChiICE9IDApIHsKICAgICAgICBpbnQgcmVtYWluZGVyID0gYSAlIGI7CiAgICAgICAgYSA9IGI7CiAgICAgICAgYiA9IHJlbWFpbmRlcjsKICAgIH0KICAgIHJldHVybiBhOwp9Cg=="
+  "reference_solution_b64": "LyoqIENvbXB1dGUgdGhlIGdyZWF0ZXN0IGNvbW1vbiBkaXZpc29yIG9mIHR3byBub24tbmVnYXRpdmUgaW50ZWdlcnMuICovCmludCBnY2QoaW50IGEsIGludCBiKQp7CiAgICB3aGlsZSAoYiAhPSAwKSB7CiAgICAgICAgaW50IHJlbWFpbmRlciA9IGEgJSBiOwogICAgICAgIGEgPSBiOwogICAgICAgIGIgPSByZW1haW5kZXI7CiAgICB9CiAgICByZXR1cm4gYTsKfQo="
 }
