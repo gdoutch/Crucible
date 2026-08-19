@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Fixed-Capacity LRU Cache · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · fiendish</p>
+  <h1>Fixed-Capacity LRU Cache (No Dynamic Allocation)</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Build two small helpers first</h2>
+
+<p>Almost everything this cache does is one of two operations on the
+recency list, applied to a slot index it already knows:</p>
+
+<ul>
+<li><strong>detach(slot)</strong> — remove <code>slot</code> from wherever
+  it currently sits in the list, fixing up whichever neighbours it had.</li>
+<li><strong>push_mru(slot)</strong> — insert <code>slot</code> at the
+  most-recently-used end, fresh.</li>
+</ul>
+
+<p>Every one of <code>lru_get</code>'s hit path, <code>lru_put</code>'s
+update path, and <code>lru_put</code>'s eviction path is <em>detach, then
+push_mru</em>, on a slot found a different way each time. Writing that pair
+once and reusing it is what keeps the three call sites from drifting out of
+sync with each other.</p>
+
+<h2>What detach has to update</h2>
+
+<pre><code>p = prev[slot], n = next[slot]
+if p exists: next[p] = n
+if n exists: prev[n] = p
+if slot was mru: mru = p
+if slot was lru: lru = n</code></pre>
+
+<p>The last two lines are the ones it is easy to forget, because they only
+matter when the detached slot was at an <em>end</em> of the list -- which
+is exactly the case eviction always hits, since it always detaches the
+current <code>lru</code>.</p>
+
+<div class="trap">
+<p>Trace <code>capacity == 1</code> through that pseudocode by hand: the
+only slot is both <code>mru</code> and <code>lru</code> at once, with no
+<code>prev</code> or <code>next</code> at all. Detaching it should leave
+the list genuinely empty (<code>mru = lru = -1</code>) for a moment, before
+<code>push_mru</code> puts the same slot straight back as the cache's only
+entry again. If your detach only updates one of <code>mru</code>/<code>lru</code>
+when a slot is both, this is where it shows.</p>
+</div>
+
+<h2>Where a new slot comes from</h2>
+
+<p>While <code>count &lt; capacity</code>, a new key claims slot number
+<code>count</code> and <code>count</code> increments -- slots are claimed
+in order, once each, forever. Once the cache is full, a new key does not
+get a slot of its own: it takes over whichever slot is currently
+<code>lru</code>, after detaching it.</p>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_lru_cache.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

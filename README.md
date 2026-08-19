@@ -65,7 +65,7 @@ The window is four panes, under one banner that reports on the problem itself:
 │  Medium   │ ▾ YOUR SOLUTION                     solution.c ⤢ │
 │   ★ done  │   editor, line numbers, syntax highlighting      │
 │  Hard     ├──────────────────────────────────────────────────┤
-│           │ ▾ RESULTS                                     ⤢  │
+│  Fiendish │ ▾ RESULTS                                     ⤢  │
 │           │  ┌──────────────────┬────────────────────────┐   │
 │           │  │ PASS  empty array│ INPUT     0            │   │
 │           │  │ FAIL  last elem  │ EXPECTED  6            │   │
@@ -411,7 +411,7 @@ the stylesheet does not load the pages are still ordinary readable HTML.
 
 ## What is in the box
 
-45 problems — 41 in C, 4 in Python. Every one of them mixes hand-written edge
+50 problems — 46 in C, 4 in Python. Every one of them mixes hand-written edge
 cases with four randomised ones, and ships a hint and a worked solution.
 
 The C set is deliberately weighted towards the things C makes you think about
@@ -465,6 +465,11 @@ with the `debugging` topic.
 | | C | Extract a Signed Sensor Reading | bitwise, embedded, sign-extension, twos-complement |
 | | C | Unpack a CAN Signal (Intel Byte Order) | embedded, can-bus, bitwise, sign-extension |
 | | C | Validate a CAN Message's Rolling Counter and Checksum | embedded, can-bus, functional-safety, state |
+| **fiendish** | C | Compute a CRC-16/CCITT-FALSE Checksum | embedded, bitwise, checksum, error-detection, misra |
+| | C | Decode a COBS-Framed Serial Buffer | embedded, framing, bitwise, error-detection |
+| | C | Fixed-Capacity LRU Cache (No Dynamic Allocation) | data-structures, embedded, pointers, linked lists |
+| | C | Match a Simplified Regular Expression ('.' and '*') | algorithms, dynamic programming, strings, recursion |
+| | C | Decode a Multiplexed CAN Signal Group | embedded, can-bus, bitwise, sign-extension |
 
 A few are worth calling out for what they are really testing:
 
@@ -494,6 +499,49 @@ A few are worth calling out for what they are really testing:
   both before and after the fix, because at that one block length the wrong
   count and the right count coincide; that case is in the suite to show what a
   test passing for the wrong reason looks like.
+
+### Fiendish: composing more than one trap at once
+
+**hard** is one well-known hazard per problem — a sign-extension, a
+read-modify-write, a DP recurrence. **fiendish** is what happens when a
+problem stops being satisfied with one: each of these five chains two or
+three ideas from elsewhere in the set together, or pushes a familiar shape
+to the one edge case that breaks a plausible-looking partial solution.
+
+- **Compute a CRC-16/CCITT-FALSE Checksum** is unforgiving in a way most
+  bugs are not: several other real, standard CRC-16 variants share this
+  polynomial and differ only in initial value or bit order, so a wrong
+  implementation is not "close" — it is a different checksum entirely,
+  and it disagrees with the reference on every input rather than an edge
+  case. The empty-input test exists because it is the one input where the
+  initial value (`0xFFFF`, not `0x0000`) is the *entire* answer.
+- **Decode a COBS-Framed Serial Buffer** has an inversion easy to get only
+  half right: almost every block implies a trailing zero byte, except a
+  full 254-byte block (code `0xFF`) and whichever block happens to be last
+  in the frame — two independent exceptions to the same default, joined by
+  one `&&`, and a fixed test built at exactly 254 non-zero bytes to prove
+  both are actually implemented rather than one copied from the other.
+- **Fixed-Capacity LRU Cache** asks for an intrusive doubly linked list
+  threaded through array indices instead of pointers — the standard
+  no-`malloc` shape — where a cache hit has to *move* the entry as a side
+  effect of reading it, an update has to touch recency without evicting,
+  and `capacity == 1` forces the detach/reinsert logic to correctly empty
+  and immediately refill the list around a single self-referential slot.
+- **Match a Simplified Regular Expression** takes edit distance's DP habit
+  and applies it somewhere the recursion has two branches instead of three,
+  one of which recurses on the *same* position — `a*` matching one more
+  character keeps re-asking "does `a*` still match what's left" until it
+  doesn't. A fixed test checks that `*` can be skipped in the *middle* of a
+  pattern, not only at the end, where it is easy to only handle the case
+  that happens to come up in the first example anyone tries.
+- **Decode a Multiplexed CAN Signal Group** is *Unpack a CAN Signal* and
+  *Extract a Signed Sensor Reading* combined and then given a third way to
+  fail: which of two totally different bit layouts applies is decided by a
+  multiplexor nibble that has to be masked out of a byte whose other nibble
+  is reserved noise, and an unrecognised multiplexor has to be rejected
+  outright rather than decoded as if it were one of the known ones —
+  checked with a fixed test that sends a full 8-byte frame specifically so
+  "plenty of bytes present" cannot be mistaken for "acceptable".
 
 ### Registers, not just algorithms
 
@@ -594,7 +642,7 @@ where several of these ideas meet at once.
 
 ### Written to MISRA C:2012
 
-Four C problems are written to **MISRA C:2012**, the coding standard most
+Five C problems are written to **MISRA C:2012**, the coding standard most
 safety-critical C shops build against — not just correct, but shaped the way
 a reviewer at an automotive or aerospace shop would expect. Nothing in
 Crucible runs a static analyser over a submission; the tests only check
@@ -627,6 +675,12 @@ leans on a different corner of the standard, deliberately:
   counter, wrap or no wrap, in one line with no branch. Casting to a signed
   type to "check the sign" reintroduces the undefined-overflow bug the
   unsigned type exists to avoid.
+- **Compute a CRC-16/CCITT-FALSE Checksum** — Rule 10.3 (an expression shall
+  not be assigned to an object of a narrower essential type): the running
+  16-bit register is computed through an `int`-promoted XOR and shift at
+  every step, and each explicit cast back down to `uint16_t` is the rule's
+  requirement made visible in the code rather than left for a reader to
+  infer from two operands' types.
 
 ### Beyond writing algorithms
 
@@ -693,7 +747,7 @@ carry no meaning — group them however you like.
   "id": "c_sum_array",           // unique; defaults to the filename
   "title": "Sum of an Array",
   "language": "c",               // must be a registered language id
-  "difficulty": "easy",          // easy | medium | hard
+  "difficulty": "easy",          // easy | medium | hard | fiendish
   "topics": ["arrays", "pointers"],
   "timeout_seconds": 5,          // per test case
 
@@ -805,7 +859,7 @@ tracebacks.
 python -m unittest discover -s tests -v
 ```
 
-89 tests covering output normalisation and diff hints, problem-schema
+113 tests covering output normalisation and diff hints, problem-schema
 validation (missing fields, bad base64, duplicate test names, unknown
 languages, malformed JSON), the run pipeline (correct, wrong, syntax error,
 runtime exception, timeout, progress callbacks), randomised data (determinism
@@ -855,7 +909,7 @@ crucible/
     theme.py           palettes and ttk styling
 problems/
   guides.css           shared by every guide page
-  c/                   33 problems, each with .json + .hint.html
+  c/                   42 problems, each with .json + .hint.html
   python/              3 problems,             + .solution.html
   uml/                 2 problems,             + .diagram.html
   safety/              3 problems

@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Compute a CRC-16/CCITT-FALSE Checksum · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · fiendish</p>
+  <h1>Compute a CRC-16/CCITT-FALSE Checksum</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>The shape of the algorithm</h2>
+
+<p>One 16-bit register, one byte at a time:</p>
+
+<pre><code>uint16_t crc = 0xFFFF;
+for each byte b in data:
+    crc ^= (uint16_t)((uint16_t)b &lt;&lt; 8);
+    repeat 8 times:
+        if top bit of crc is set:
+            crc = (crc &lt;&lt; 1) ^ 0x1021;
+        else:
+            crc = crc &lt;&lt; 1;
+return crc;</code></pre>
+
+<p>Every piece of that -- the starting value, XORing the byte into the
+<em>top</em> half of the register rather than the bottom, and shifting
+<em>left</em> -- is part of what makes this specifically CCITT-FALSE rather
+than one of the other CRC-16 variants that share the same polynomial.</p>
+
+<h2>Two variants that look almost right</h2>
+
+<div class="trap">
+<p>Starting the register at <code>0x0000</code> instead of <code>0xFFFF</code>
+produces CRC-16/XMODEM -- same polynomial, different checksum. The two only
+ever agree by coincidence. Check your implementation against an
+<strong>empty</strong> input first: CCITT-FALSE returns <code>0xFFFF</code>
+unchanged (nothing was ever folded in to move the register away from its
+start), which is the fastest way to notice a wrong initial value before it
+gets buried under real data.</p>
+</div>
+
+<p>Reflecting the bits -- feeding each byte in LSB-first and shifting the
+register right -- produces a different family of CRC-16 entirely (MODBUS,
+ARC). CCITT-FALSE never reflects anything: MSB-first in, shift left,
+top bit decides whether the polynomial gets XORed in.</p>
+
+<h2>Prove it against the standard check value</h2>
+
+<p>The CRC catalogue defines a reference input for exactly this reason: the
+nine bytes of the ASCII string <code>"123456789"</code> must produce
+<code>0x29B1</code>. If your function does not produce that, something about
+the bit order or the initial value is off, before you even get to your own
+test cases.</p>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_crc16_ccitt.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

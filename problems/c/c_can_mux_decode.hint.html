@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Decode a Multiplexed CAN Signal Group · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · fiendish</p>
+  <h1>Decode a Multiplexed CAN Signal Group</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Read the multiplexor in isolation first</h2>
+
+<pre><code>uint8_t mux = (uint8_t)(frame[0] &amp; 0x0FU);</code></pre>
+
+<p>Do this before anything else, and dispatch on <code>mux</code>, not on
+<code>frame[0]</code>. Every other decision in this function depends on
+getting this one masked value right first.</p>
+
+<h2>Length before bytes</h2>
+
+<p>Once you know which multiplexor you have, you know exactly how many
+bytes of <code>frame</code> that case needs. Compare <code>length</code>
+against that requirement -- and reject if it falls short -- before indexing
+any byte that case would read. There is no partial decode to fall back to.</p>
+
+<h2>Little-endian 16-bit reassembly, one more time</h2>
+
+<pre><code>uint32_t word = (uint32_t)frame[i] | ((uint32_t)frame[i + 1] &lt;&lt; 8);</code></pre>
+
+<p>Byte <code>i</code> is the low half, byte <code>i + 1</code> the high
+half -- same as the earlier CAN unpacking exercise, applied here to the
+bytes 1-2 pair for mux 0's first field.</p>
+
+<h2>Sign-extending a 12-bit field out of a 16-bit word</h2>
+
+<div class="trap">
+<p>Mask to the 12 bits that matter (<code>word &amp; 0x0FFFU</code>) before
+asking anything about sign -- the top 4 bits of the 16-bit word are not
+part of the value at all, not even as extra precision. Then check bit 11
+of the *masked* 12-bit result (<code>0x0800</code>), not bit 15 of the
+original word: if it is set, the value is negative, and the standard trick
+for widening it is to subtract <code>1 &lt;&lt; 12</code> (that is, 4096) from
+the unsigned 12-bit value once it is stored in a wide-enough signed type.</p>
+</div>
+
+<h2>The 8-bit case is the one you already know</h2>
+
+<p>An 8-bit two's-complement field sign-extends the same way a `signed
+char` does going into a wider `int` -- casting through `int8_t` and back
+out to `int32_t` gets the compiler to do exactly that conversion for you,
+correctly, without hand-rolling the subtract-256 arithmetic.</p>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_can_mux_decode.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

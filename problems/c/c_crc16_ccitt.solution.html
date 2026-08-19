@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Compute a CRC-16/CCITT-FALSE Checksum · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · fiendish</p>
+  <h1>Compute a CRC-16/CCITT-FALSE Checksum</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>uint16_t crc16_ccitt_false(const uint8_t *data, size_t length)
+{
+    uint16_t crc = 0xFFFFU;
+    for (size_t i = 0U; i &lt; length; i++) {
+        crc = (uint16_t)(crc ^ (uint16_t)((uint16_t)data[i] &lt;&lt; 8));
+        for (int bit = 0; bit &lt; 8; bit++) {
+            if ((crc &amp; 0x8000U) != 0U) {
+                crc = (uint16_t)((uint16_t)(crc &lt;&lt; 1) ^ 0x1021U);
+            } else {
+                crc = (uint16_t)(crc &lt;&lt; 1);
+            }
+        }
+    }
+    return crc;
+}</code></pre>
+
+<h2>Why 0xFFFF, and why it matters more than it looks like it should</h2>
+
+<div class="trap">
+<p>A CRC's initial value only ever does one job: it is what the register
+holds before any data has influenced it. For most inputs that fact is
+invisible, because a handful of XOR-and-shift rounds against real data
+sweeps the starting value's contribution away long before the loop ends.
+It stops being invisible at the one input where nothing happens at all --
+an empty buffer. <code>crc16_ccitt_false(data, 0)</code> never enters the
+loop, so whatever the register started at is exactly what comes back.
+CCITT-FALSE returns <code>0xFFFF</code> there; an implementation that
+initialised the register to <code>0</code> -- correctly implementing
+CRC-16/XMODEM instead -- returns <code>0x0000</code>. Both are real,
+standard CRC-16 variants. Only one of them is the one this problem asks
+for, and the empty-input case is what tells them apart without needing
+nine bytes of test data to do it.</p>
+</div>
+
+<h2>Why the byte goes into the <em>top</em> of the register</h2>
+
+<p><code>crc ^= (uint16_t)data[i] &lt;&lt; 8</code> places the incoming byte in
+bits 8-15 of the 16-bit register, not bits 0-7. That is what makes the
+following eight left-shifts process the byte's bits from the most
+significant one down to the least significant one: each shift moves the
+current top bit (originally the byte's own top bit, first time through)
+out where it decides whether <code>0x1021</code> gets folded in, then
+promotes the next bit up to take its place. Feeding the byte in at the
+<em>bottom</em> instead, or shifting right instead of left, computes a real
+CRC-16 -- just a reflected one, matching a different named variant
+(MODBUS/ARC-family) that starts from a different init value and reads the
+final register differently besides.</p>
+
+<h2>The promotion MISRA would flag</h2>
+
+<div class="trap">
+<p><code>data[i]</code> is <code>uint8_t</code>. In <code>data[i] &lt;&lt; 8</code>
+it is promoted to <code>int</code> before the shift happens at all --
+ordinary C integer promotion, invisible at the value level here because the
+result (at most <code>0xFF00</code>) fits in a 32-bit <code>int</code> with
+room to spare. The explicit casts back to <code>uint16_t</code> at each step
+are not decoration: they are what make the truncation back down to a 16-bit
+register a stated fact about the code rather than something the reader has
+to reconstruct from the types of two operands. This is exactly the shape
+MISRA's essential type model exists to make a reviewer stop and check on
+every occurrence, rather than trust by pattern-matching against the times it
+was harmless.</p>
+</div>
+
+<h2>Checking it against the standard</h2>
+
+<p>The CRC catalogue's check value for this variant is
+<code>crc16_ccitt_false("123456789")</code> = <code>0x29B1</code>. It is a
+fixed test in this problem's suite for the same reason it is the reference
+value the whole CRC community checks new implementations against: a
+disagreement here means the bit order or the initial value is wrong, not
+that some edge case was missed.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(length)</strong> — eight shift-and-maybe-XOR rounds per input
+byte, no lookup table, no allocation. A table-driven implementation trades
+this loop for one XOR and one table read per byte, at the cost of a 256-entry
+table computed from the same polynomial; it produces identical output, byte
+for byte, to the bit-by-bit form above.</p>
+
+<footer>
+  <p><a href="c_crc16_ccitt.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

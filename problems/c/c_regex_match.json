@@ -1,0 +1,51 @@
+{
+  "id": "c_regex_match",
+  "title": "Match a Simplified Regular Expression ('.' and '*')",
+  "language": "c",
+  "difficulty": "fiendish",
+  "topics": [
+    "algorithms",
+    "dynamic programming",
+    "strings",
+    "recursion"
+  ],
+  "timeout_seconds": 5,
+  "statement": "A parser that validates a configuration string against a shape (\"three\ndigits, a dash, then four digits\") is doing regular-expression matching,\nwhether or not anyone calls it that or reaches for a library to do it. This\nexercise builds the matcher itself, restricted to just enough syntax to\nbe genuinely awkward: a literal character, `.` for \"any one character\", and\n`*` for \"zero or more of whatever came immediately before it\".\n\n## Your function\n\n```\nbool regex_match(const char *s, const char *p);\n```\n\nReturn `true` if pattern `p` matches the **entire** string `s` -- not a\nsubstring, not a prefix, the whole thing. `s` contains only lowercase\nletters. `p` contains lowercase letters, `.`, and `*`; it is always\nwell-formed, meaning `*` never appears as the first character of `p` and\nnever appears twice in a row -- every `*` has exactly one atom (a letter or\na `.`) immediately before it that it applies to.\n\n## The recursive shape\n\nMatch `s` against `p` from the front. At each step, ask whether the pattern's\nnext atom matches the string's next character -- `p`'s next character equals\n`s`'s next character, or `p`'s next character is `.` and `s` has a character\nat all. Then:\n\n- if the atom is **not** followed by `*` in the pattern, the atom must\n  match, and both `s` and `p` advance by one atom;\n- if the atom **is** followed by `*`, there are two ways forward that both\n  have to be considered: skip the atom and its `*` entirely (zero\n  repetitions), or, if the atom matched, consume one character of `s` and\n  try the same pattern position again (one more repetition).\n\nThe base case: an empty pattern matches only an empty string.\n\n## Watch out\n\n- **`*` can legally match zero occurrences**, including of an atom that\n  never appears anywhere in `s` at all. `regex_match(\"\", \"a*\")` is `true`\n  -- there is no `a` in `s`, and none is required, because `a*` is allowed\n  to contribute nothing.\n- **Matching is anchored to the whole string.** `regex_match(\"aa\", \"a\")` is\n  `false`, not true-because-it-matches-a-prefix -- a real regex engine's\n  `search` finds `p` somewhere inside `s`; this function's contract is\n  `fullmatch`, and the two are not the same question.\n- **A `*` group can be skipped in the middle of a pattern, not only when\n  it is the last thing in it.** `regex_match(\"aa\", \"ab*a\")` is `true`:\n  `b*` contributes zero `b`s, and the pattern still has an `a` on the far\n  side of it to match the string's second character. A solution that only\n  considers \"skip the star group\" as an option when it is at the end of\n  the pattern gets this wrong.\n- **Plain recursion without memoisation can retry the same\n  `(s position, p position)` pair many times** when a pattern chains\n  several `*` groups together, because \"skip\" and \"consume one and stay\"\n  both recurse and their sub-problems overlap. It happens to be fast enough\n  on inputs this size either way, but recognising the overlapping\n  subproblem is what turns this from a brute-force search into the\n  dynamic-programming problem it actually is -- worth doing properly rather\n  than by accident.\n",
+  "starter_code": "#include <stdbool.h>\n\n/**\n * @brief Match string s against pattern p, supporting '.' and '*'.\n *\n * '.' matches any single character. '*' matches zero or more of the\n * pattern character immediately before it. The match must cover the whole\n * of s, not just a prefix.\n *\n * @param s String to match; lowercase letters only.\n * @param p Pattern; lowercase letters, '.' and '*'. Well-formed: '*' never\n *          starts the pattern and never appears twice in a row.\n * @return true if p matches all of s, false otherwise.\n */\nbool regex_match(const char *s, const char *p)\n{\n    /* your code here */\n    (void)s;\n    (void)p;\n    return false;\n}\n",
+  "harness": "#include <stdbool.h>\n#include <stdio.h>\n#include <string.h>\n\n/* Provided by the candidate in solution.c */\nbool regex_match(const char *s, const char *p);\n\nint main(void)\n{\n    char s[128], p[128];\n    while (scanf(\"%127s %127s\", s, p) == 2) {\n        const char *sp = (strcmp(s, \"_\") == 0) ? \"\" : s;\n        const char *pp = (strcmp(p, \"_\") == 0) ? \"\" : p;\n        printf(\"%s\\n\", regex_match(sp, pp) ? \"true\" : \"false\");\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random small-alphabet strings and well-formed patterns built from\nliteral-or-dot atoms, each optionally starred.\"\"\"\n\nimport string\n\nALPHABET = \"ab\"\n\n\ndef _random_pattern(rng, max_atoms):\n    n_atoms = rng.randint(0, max_atoms)\n    parts = []\n    for _ in range(n_atoms):\n        atom = \".\" if rng.random() < 0.3 else rng.choice(ALPHABET)\n        parts.append(atom)\n        if rng.random() < 0.4:\n            parts.append(\"*\")\n    return \"\".join(parts)\n\n\ndef _random_string(rng, max_len):\n    n = rng.randint(0, max_len)\n    return \"\".join(rng.choice(ALPHABET) for _ in range(n))\n\n\ndef generate(rng, count):\n    builders = (_random_pair, _string_from_pattern_ish, _star_heavy)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _tok(text):\n    return text if text else \"_\"\n\n\ndef _case(name, pairs, description=\"\"):\n    lines = [\"%s %s\" % (_tok(s), _tok(p)) for s, p in pairs]\n    return {\"name\": name, \"stdin\": \"\\n\".join(lines) + \"\\n\",\n            \"description\": description}\n\n\ndef _random_pair(rng, index):\n    pairs = [(_random_string(rng, 6), _random_pattern(rng, 5))\n             for _ in range(4)]\n    return _case(\"random strings against random patterns #%d\" % index, pairs)\n\n\ndef _string_from_pattern_ish(rng, index):\n    # Strings built from the same alphabet as a plausibly-matching pattern,\n    # biased towards strings the pattern was likely to actually accept.\n    pairs = []\n    for _ in range(4):\n        base = rng.choice(ALPHABET)\n        reps = rng.randint(0, 5)\n        s = base * reps\n        p = base + \"*\"\n        pairs.append((s, p))\n    return _case(\"repeated-character strings against a single star #%d\"\n                 % index, pairs)\n\n\ndef _star_heavy(rng, index):\n    pairs = []\n    for _ in range(3):\n        p = _random_pattern(rng, 8)\n        s = _random_string(rng, 8)\n        pairs.append((s, p))\n    return _case(\"longer patterns chaining several star groups #%d\" % index,\n                 pairs)\n"
+  },
+  "tests": [
+    {
+      "name": "an empty pattern only matches an empty string",
+      "stdin": "_ _\na _\n",
+      "expected_stdout": "true\nfalse"
+    },
+    {
+      "name": "a star can match zero occurrences of its atom",
+      "stdin": "_ a*\n_ a*b*c*\naaa a*\n",
+      "expected_stdout": "true\ntrue\ntrue",
+      "description": "a* is allowed to contribute nothing, even when there is no 'a' anywhere in s."
+    },
+    {
+      "name": "matching is anchored to the whole string, not a prefix",
+      "stdin": "aa a\nmississippi mis*is*p*.\n",
+      "expected_stdout": "false\nfalse",
+      "description": "'a' matches only the first character of 'aa' -- the leftover second character means no full match."
+    },
+    {
+      "name": "dot combined with star matches a run of any length",
+      "stdin": "ab .*\nmississippi mis*is*ip*.\n",
+      "expected_stdout": "true\ntrue"
+    },
+    {
+      "name": "a star group can be skipped in the middle of the pattern",
+      "stdin": "aa ab*a\naab c*a*b\n",
+      "expected_stdout": "true\ntrue",
+      "description": "ab*a: b* contributes zero b's, leaving the pattern's second 'a' to match s's second character -- not just possible at the end of a pattern."
+    }
+  ],
+  "reference_solution_b64": "I2luY2x1ZGUgPHN0ZGJvb2wuaD4KCnN0YXRpYyBib29sIG1hdGNoX2Zyb20oY29uc3QgY2hhciAqcywgY29uc3QgY2hhciAqcCkKewogICAgaWYgKCpwID09ICdcMCcpIHsKICAgICAgICByZXR1cm4gKnMgPT0gJ1wwJzsKICAgIH0KCiAgICBib29sIGZpcnN0X21hdGNoID0gKCpzICE9ICdcMCcpICYmICgoKnAgPT0gKnMpIHx8ICgqcCA9PSAnLicpKTsKCiAgICBpZiAoKihwICsgMSkgPT0gJyonKSB7CiAgICAgICAgcmV0dXJuIG1hdGNoX2Zyb20ocywgcCArIDIpCiAgICAgICAgICAgIHx8IChmaXJzdF9tYXRjaCAmJiBtYXRjaF9mcm9tKHMgKyAxLCBwKSk7CiAgICB9CiAgICByZXR1cm4gZmlyc3RfbWF0Y2ggJiYgbWF0Y2hfZnJvbShzICsgMSwgcCArIDEpOwp9Cgpib29sIHJlZ2V4X21hdGNoKGNvbnN0IGNoYXIgKnMsIGNvbnN0IGNoYXIgKnApCnsKICAgIHJldHVybiBtYXRjaF9mcm9tKHMsIHApOwp9Cg=="
+}

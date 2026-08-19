@@ -1,0 +1,53 @@
+{
+  "id": "c_can_mux_decode",
+  "title": "Decode a Multiplexed CAN Signal Group",
+  "language": "c",
+  "difficulty": "fiendish",
+  "topics": [
+    "embedded",
+    "can-bus",
+    "bitwise",
+    "sign-extension"
+  ],
+  "timeout_seconds": 5,
+  "statement": "A CAN frame has eight bytes and no room to waste, so signals that are\nnever relevant at the same time often share the same bit positions --\nwhich one applies is decided by a **multiplexor**, a small field elsewhere\nin the frame. Decoding a multiplexed message means reading the mux value\nfirst, and only then knowing which of several completely different bit\nlayouts the rest of the payload has to be read as. Get the mux value wrong\nand you do not get a wrong number back -- you get the *right kind of\nquestion* asked of the *wrong bits*, silently.\n\nThis one combines two things earlier CAN exercises kept separate: unpacking\na little-endian (Intel byte order) multi-byte field, and sign-extending a\ntwo's-complement bit field that is narrower than any C integer type.\n\n## Your function\n\n```\nint32_t can_mux_decode(const uint8_t *frame, int32_t length,\n                       int32_t *out_a, int32_t *out_b);\n```\n\nByte 0's **low nibble** (bits 0-3) is the multiplexor; its high nibble is\nreserved and carries no meaning. Depending on the multiplexor value:\n\n- **mux 0** -- requires `length >= 5`.\n  - `*out_a` = bytes 1-2 as an unsigned 16-bit value, **Intel (little-endian)\n    byte order**: byte 1 is the low byte, byte 2 the high byte.\n  - `*out_b` = bytes 3-4 as a little-endian 16-bit word, of which only the\n    **low 12 bits** are the field; sign-extend those 12 bits to a full\n    `int32_t` (two's complement, range -2048..2047). The top 4 bits of that\n    16-bit word are unused padding and must be masked off, not included in\n    either the value or the sign decision.\n  - Return `0`.\n- **mux 1** -- requires `length >= 3`.\n  - `*out_a` = byte 1, read as a signed 8-bit two's-complement value,\n    sign-extended to `int32_t` (range -128..127).\n  - `*out_b` = bit 0 of byte 2 only (`0` or `1`); the other 7 bits of that\n    byte are unused and must be masked off.\n  - Return `1`.\n- **any other multiplexor value (2-15), or `length` too short for the\n  multiplexor that was selected** -- reject the frame: return `-1` and\n  leave `*out_a` and `*out_b` untouched.\n\n## Watch out\n\n- **The multiplexor is the low nibble of byte 0, not the whole byte.** A\n  byte 0 of `0x10` has multiplexor `0`, not `16` -- `0x10 & 0x0F == 0`. Code\n  that switches on `frame[0]` directly instead of `frame[0] & 0x0F`\n  correctly handles every frame where the high nibble happens to be zero and\n  silently rejects every frame where it is not, for a reason that has\n  nothing to do with the actual multiplexor value.\n- **An unrecognised multiplexor must be rejected outright, even when the\n  frame is otherwise a perfectly plausible length.** There is no fallback\n  interpretation -- decoding unknown bits as if they were a known signal\n  shape is exactly the failure mode a multiplexor exists to prevent, and a\n  fixed test sends a full 8-byte frame with an out-of-range multiplexor to\n  check that length alone does not make it acceptable.\n- **Check `length` against what the *selected* multiplexor needs before\n  reading that far into `frame`.** A short frame that happens to claim\n  multiplexor 0 must be rejected on length grounds before any of bytes 3-4\n  are touched, not read speculatively and rejected afterwards.\n- The 12-bit field's sign bit is bit 11 of the 12-bit value (bit 3 of byte\n  4), not bit 15 of the containing 16-bit word -- the padding bits above it\n  are not part of the two's-complement representation at all.\n",
+  "starter_code": "#include <stdint.h>\n\n/**\n * @brief Decode a multiplexed CAN signal group.\n *\n * Byte 0's low nibble selects which of two signal layouts the rest of the\n * frame is read as; see the problem statement for the layout of each.\n *\n * @param frame   Frame payload bytes.\n * @param length  Number of valid bytes in frame.\n * @param[out] out_a First decoded value; untouched if the frame is rejected.\n * @param[out] out_b Second decoded value; untouched if the frame is rejected.\n * @return 0 for a mux-0 frame, 1 for a mux-1 frame, -1 if the frame is\n *         rejected (unrecognised multiplexor, or too short for the one it\n *         selects).\n */\nint32_t can_mux_decode(const uint8_t *frame, int32_t length,\n                       int32_t *out_a, int32_t *out_b)\n{\n    /* your code here */\n    (void)frame;\n    (void)length;\n    (void)out_a;\n    (void)out_b;\n    return -1;\n}\n",
+  "harness": "#include <stdint.h>\n#include <stdio.h>\n\n/* Provided by the candidate in solution.c */\nint32_t can_mux_decode(const uint8_t *frame, int32_t length,\n                       int32_t *out_a, int32_t *out_b);\n\nint main(void)\n{\n    int length;\n    while (scanf(\"%d\", &length) == 1) {\n        uint8_t frame[16];\n        for (int i = 0; i < length; i++) {\n            unsigned int byte_value;\n            if (scanf(\"%x\", &byte_value) != 1) {\n                return 1;\n            }\n            frame[i] = (uint8_t)byte_value;\n        }\n\n        int32_t out_a = 0, out_b = 0;\n        int32_t kind = can_mux_decode(frame, (int32_t)length, &out_a, &out_b);\n        if (kind == 0) {\n            printf(\"A %d %d\\n\", out_a, out_b);\n        } else if (kind == 1) {\n            printf(\"B %d %d\\n\", out_a, out_b);\n        } else {\n            printf(\"REJECT\\n\");\n        }\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random frames across both multiplexor values, plus unrecognised\nmultiplexors and frames too short for the one they select.\"\"\"\n\n\ndef generate(rng, count):\n    builders = (_mux0_frame, _mux1_frame, _unknown_mux, _too_short)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, frame, description=\"\"):\n    hexed = \" \".join(\"%02X\" % b for b in frame)\n    return {\"name\": name, \"stdin\": \"%d\\n%s\\n\" % (len(frame), hexed),\n            \"description\": description}\n\n\ndef _mux0_frame(rng, index):\n    high_nibble = rng.randrange(16) << 4\n    byte0 = high_nibble | 0\n    raw16 = rng.randrange(0, 65536)\n    raw12 = rng.randrange(0, 4096)\n    pad = rng.randrange(16) << 12\n    word = raw12 | pad\n    frame = [\n        byte0,\n        raw16 & 0xFF, (raw16 >> 8) & 0xFF,\n        word & 0xFF, (word >> 8) & 0xFF,\n    ]\n    return _case(\"a random mux-0 frame #%d\" % index, frame)\n\n\ndef _mux1_frame(rng, index):\n    high_nibble = rng.randrange(16) << 4\n    byte0 = high_nibble | 1\n    raw8 = rng.randrange(0, 256)\n    flag_byte = rng.randrange(0, 256)\n    frame = [byte0, raw8, flag_byte]\n    return _case(\"a random mux-1 frame #%d\" % index, frame)\n\n\ndef _unknown_mux(rng, index):\n    mux = rng.randrange(2, 16)\n    high_nibble = rng.randrange(16) << 4\n    byte0 = high_nibble | mux\n    length = rng.randrange(1, 9)\n    frame = [byte0] + [rng.randrange(256) for _ in range(length - 1)]\n    return _case(\"an unrecognised multiplexor value %d #%d\" % (mux, index),\n                 frame)\n\n\ndef _too_short(rng, index):\n    which = rng.choice((0, 1))\n    if which == 0:\n        length = rng.randrange(1, 5)\n        byte0 = (rng.randrange(16) << 4) | 0\n    else:\n        length = rng.randrange(1, 3)\n        byte0 = (rng.randrange(16) << 4) | 1\n    frame = [byte0] + [rng.randrange(256) for _ in range(length - 1)]\n    return _case(\"a frame too short for mux %d #%d\" % (which, index), frame)\n"
+  },
+  "tests": [
+    {
+      "name": "mux 0 unpacks a little-endian pair, ignoring byte 0's high nibble",
+      "stdin": "5\nF0 E8 03 64 00\n",
+      "expected_stdout": "A 1000 100",
+      "description": "byte0 = 0xF0: low nibble is mux 0, high nibble 0xF is noise that must not affect the result."
+    },
+    {
+      "name": "mux 0 sign-extends the 12-bit field at both boundaries",
+      "stdin": "5\n00 00 00 FF AF\n5\n00 00 00 00 38\n5\n00 00 00 FF 37\n",
+      "expected_stdout": "A 0 -1\nA 0 -2048\nA 0 2047",
+      "description": "Raw 12-bit values 0xFFF, 0x800 and 0x7FF are -1, the most negative value -2048, and the most positive value 2047 -- the padding nibble above each (0xA, 0x3, 0x3) must be masked off, not read as part of the value or the sign."
+    },
+    {
+      "name": "mux 1 sign-extends an 8-bit value and masks the flag to bit 0",
+      "stdin": "3\n21 80 FD\n3\n01 05 02\n",
+      "expected_stdout": "B -128 1\nB 5 0",
+      "description": "0x80 as a signed byte is -128; 0xFD's bit 0 is 1, its other bits are noise. 0x05 is positive; 0x02's bit 0 is 0."
+    },
+    {
+      "name": "an unrecognised multiplexor is rejected even in a full-length frame",
+      "stdin": "8\n02 FF FF FF FF FF FF FF\n4\n0F 11 22 33\n",
+      "expected_stdout": "REJECT\nREJECT",
+      "description": "mux 2 and mux 15 are both outside the recognised 0/1 range -- plenty of bytes present does not make an unknown multiplexor acceptable."
+    },
+    {
+      "name": "a frame too short for its own multiplexor is rejected, not overread",
+      "stdin": "3\n00 11 22\n2\n01 11\n",
+      "expected_stdout": "REJECT\nREJECT",
+      "description": "mux 0 needs 5 bytes and only has 3; mux 1 needs 3 and only has 2."
+    }
+  ],
+  "reference_solution_b64": "I2luY2x1ZGUgPHN0ZGludC5oPgoKaW50MzJfdCBjYW5fbXV4X2RlY29kZShjb25zdCB1aW50OF90ICpmcmFtZSwgaW50MzJfdCBsZW5ndGgsCiAgICAgICAgICAgICAgICAgICAgICAgaW50MzJfdCAqb3V0X2EsIGludDMyX3QgKm91dF9iKQp7CiAgICBpZiAobGVuZ3RoIDwgMSkgewogICAgICAgIHJldHVybiAtMTsKICAgIH0KICAgIHVpbnQ4X3QgbXV4ID0gKHVpbnQ4X3QpKGZyYW1lWzBdICYgMHgwRlUpOwoKICAgIGlmIChtdXggPT0gMFUpIHsKICAgICAgICBpZiAobGVuZ3RoIDwgNSkgewogICAgICAgICAgICByZXR1cm4gLTE7CiAgICAgICAgfQogICAgICAgIHVpbnQzMl90IHJhdzE2ICAgPSAodWludDMyX3QpZnJhbWVbMV0gfCAoKHVpbnQzMl90KWZyYW1lWzJdIDw8IDgpOwogICAgICAgIHVpbnQzMl90IHdvcmQgICAgPSAodWludDMyX3QpZnJhbWVbM10gfCAoKHVpbnQzMl90KWZyYW1lWzRdIDw8IDgpOwogICAgICAgIHVpbnQzMl90IGZpZWxkMTIgPSB3b3JkICYgMHgwRkZGVTsKICAgICAgICBpbnQzMl90IHNpZ25lZDEyID0gKGludDMyX3QpZmllbGQxMjsKICAgICAgICBpZiAoKGZpZWxkMTIgJiAweDA4MDBVKSAhPSAwVSkgewogICAgICAgICAgICBzaWduZWQxMiAtPSA0MDk2OwogICAgICAgIH0KICAgICAgICAqb3V0X2EgPSAoaW50MzJfdClyYXcxNjsKICAgICAgICAqb3V0X2IgPSBzaWduZWQxMjsKICAgICAgICByZXR1cm4gMDsKICAgIH0KCiAgICBpZiAobXV4ID09IDFVKSB7CiAgICAgICAgaWYgKGxlbmd0aCA8IDMpIHsKICAgICAgICAgICAgcmV0dXJuIC0xOwogICAgICAgIH0KICAgICAgICAqb3V0X2EgPSAoaW50MzJfdCkoaW50OF90KWZyYW1lWzFdOwogICAgICAgICpvdXRfYiA9IChpbnQzMl90KShmcmFtZVsyXSAmIDB4MDFVKTsKICAgICAgICByZXR1cm4gMTsKICAgIH0KCiAgICByZXR1cm4gLTE7Cn0K"
+}

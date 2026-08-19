@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Match a Simplified Regular Expression · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · fiendish</p>
+  <h1>Match a Simplified Regular Expression ('.' and '*')</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Ask one question at each position</h2>
+
+<p>Given where you are in <code>s</code> and where you are in <code>p</code>,
+there is exactly one thing to check first: does the pattern's <em>next
+atom</em> (one letter, or <code>.</code>) match the string's <em>next
+character</em>? Call that <code>first_match</code> -- it is false
+immediately if <code>s</code> has run out of characters, whatever the
+pattern says.</p>
+
+<h2>Then branch on what follows the atom in the pattern</h2>
+
+<pre><code>if next atom in p is followed by '*':
+    return  match(s, p skipping "atom*")           /* zero reps    */
+         or (first_match and match(s + 1, p))        /* one more rep */
+else:
+    return first_match and match(s + 1, p + 1 atom)</code></pre>
+
+<p>Notice the second branch of the `*` case recurses on the <em>same</em>
+pattern position, not past it -- that is what lets `a*` consume any number
+of `a`s one at a time rather than just zero or one.</p>
+
+<h2>The base case people forget to check first</h2>
+
+<div class="trap">
+<p>If the pattern is exhausted, the match succeeds only if the string is
+<em>also</em> exhausted. It is tempting to write this check after the
+`*`-lookahead logic instead of before it -- but looking ahead to "is the
+next pattern character a `*`" when there is no next pattern character at
+all is exactly the out-of-bounds read that base case exists to prevent.</p>
+</div>
+
+<h2>Proving the anchoring is right</h2>
+
+<p><code>regex_match("aa", "a")</code> should be <code>false</code>. If your
+implementation says <code>true</code>, it is finding <code>"a"</code> as a
+prefix of <code>"aa"</code> rather than requiring the whole string to be
+consumed -- check that the recursion's base case really does require both
+`s` and `p` to be empty together, not just `p`.</p>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_regex_match.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

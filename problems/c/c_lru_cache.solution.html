@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Fixed-Capacity LRU Cache · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · fiendish</p>
+  <h1>Fixed-Capacity LRU Cache (No Dynamic Allocation)</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>static void detach(LruCache *cache, int32_t slot)
+{
+    int32_t p = cache-&gt;prev[slot];
+    int32_t n = cache-&gt;next[slot];
+    if (p != -1) { cache-&gt;next[p] = n; }
+    if (n != -1) { cache-&gt;prev[n] = p; }
+    if (cache-&gt;mru == slot) { cache-&gt;mru = p; }
+    if (cache-&gt;lru == slot) { cache-&gt;lru = n; }
+}
+
+static void push_mru(LruCache *cache, int32_t slot)
+{
+    cache-&gt;prev[slot] = cache-&gt;mru;
+    cache-&gt;next[slot] = -1;
+    if (cache-&gt;mru != -1) { cache-&gt;next[cache-&gt;mru] = slot; }
+    cache-&gt;mru = slot;
+    if (cache-&gt;lru == -1) { cache-&gt;lru = slot; }
+}
+
+static int32_t find_slot(const LruCache *cache, int32_t key)
+{
+    for (int32_t i = 0; i &lt; cache-&gt;count; i++) {
+        if (cache-&gt;key[i] == key) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+void lru_init(LruCache *cache, int32_t capacity)
+{
+    cache-&gt;capacity = capacity;
+    cache-&gt;count = 0;
+    cache-&gt;mru = -1;
+    cache-&gt;lru = -1;
+}
+
+int32_t lru_get(LruCache *cache, int32_t key)
+{
+    int32_t slot = find_slot(cache, key);
+    if (slot &lt; 0) {
+        return -1;
+    }
+    detach(cache, slot);
+    push_mru(cache, slot);
+    return cache-&gt;value[slot];
+}
+
+void lru_put(LruCache *cache, int32_t key, int32_t value)
+{
+    int32_t slot = find_slot(cache, key);
+    if (slot &gt;= 0) {
+        cache-&gt;value[slot] = value;
+        detach(cache, slot);
+        push_mru(cache, slot);
+        return;
+    }
+
+    if (cache-&gt;count &lt; cache-&gt;capacity) {
+        slot = cache-&gt;count;
+        cache-&gt;count++;
+    } else {
+        slot = cache-&gt;lru;
+        detach(cache, slot);
+    }
+    cache-&gt;key[slot] = key;
+    cache-&gt;value[slot] = value;
+    push_mru(cache, slot);
+}</code></pre>
+
+<h2>Why detach and push_mru are worth splitting out</h2>
+
+<p>Three different situations end with the same two steps: a cache hit on
+<code>lru_get</code>, an update-in-place on <code>lru_put</code>, and an
+eviction on <code>lru_put</code> all detach a slot from wherever it is and
+push it back on at the most-recently-used end. Writing that pair once and
+calling it from all three places is not just less typing -- it is what
+guarantees the three call sites cannot quietly disagree about how
+"become most recently used" is implemented, which is exactly the kind of
+drift a hand-inlined version in each function invites.</p>
+
+<h2>Why <code>detach</code> checks <code>mru</code> and <code>lru</code>
+separately, both, unconditionally</h2>
+
+<div class="trap">
+<p>A slot being detached might be in the middle of the list (neither check
+fires), at one end (exactly one fires), or -- with <code>capacity == 1</code>
+-- the <em>only</em> node, in which case both fire. Writing
+<code>if (slot == mru) { mru = p; } else if (slot == lru) { lru = n; }</code>
+instead of two independent <code>if</code>s looks equivalent right up until
+that single-node case, where it silently leaves one of <code>mru</code> or
+<code>lru</code> still pointing at the slot that was just detached from
+everything else. The next lookup that trusts that stale pointer walks into
+a slot no longer linked to anything.</p>
+</div>
+
+<h2>Why eviction detaches before overwriting, not after</h2>
+
+<p><code>lru_put</code>'s full-cache branch calls <code>detach(cache,
+slot)</code> while <code>cache-&gt;key[slot]</code> and
+<code>cache-&gt;value[slot]</code> still hold the <em>evicted</em> entry's
+data. That ordering does not actually depend on the key or value -- detach
+only reads and writes <code>prev</code>/<code>next</code>/<code>mru</code>/<code>lru</code>
+-- but doing it before the overwrite keeps the invariant simple to state:
+by the time a slot's key and value are changed, it is guaranteed to already
+be out of the list, so <code>push_mru</code> is always inserting a slot
+that starts from a clean, unlinked state, whether it is brand new or being
+recycled.</p>
+
+<h2>Why a hit has to move the entry, not just read it</h2>
+
+<div class="trap">
+<p>The whole point of "least recently used" is that recency is tracked by
+*use*, and a <code>get</code> that finds a key is a use. A <code>lru_get</code>
+that only searches and returns leaves stale entries parked at the
+most-recently-used end forever (nothing ever pulls them back toward
+eviction) while entries that are actually being read regularly drift toward
+the least-recently-used end and get evicted out from under active use. The
+fixed test that reads a key and then fills the cache past capacity is built
+to catch exactly this: if the read entry is gone afterwards, <code>get</code>
+did not touch the list.</p>
+</div>
+
+<h2>Cost</h2>
+
+<p><strong>O(1)</strong> for <code>lru_get</code> and the touch/evict paths
+of <code>lru_put</code>'s bookkeeping -- <code>detach</code> and
+<code>push_mru</code> only ever follow a fixed number of index links,
+regardless of <code>capacity</code>. <code>find_slot</code> is
+<strong>O(capacity)</strong>, a linear scan over at most
+<code>LRU_MAX_CAPACITY</code> entries; a real high-capacity cache would pair
+this array with a hash table keyed on the same slot indices to make lookup
+O(1) too, which changes nothing about the linked-list logic above.</p>
+
+<footer>
+  <p><a href="c_lru_cache.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Decode a Multiplexed CAN Signal Group · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · fiendish</p>
+  <h1>Decode a Multiplexed CAN Signal Group</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>int32_t can_mux_decode(const uint8_t *frame, int32_t length,
+                       int32_t *out_a, int32_t *out_b)
+{
+    if (length &lt; 1) {
+        return -1;
+    }
+    uint8_t mux = (uint8_t)(frame[0] &amp; 0x0FU);
+
+    if (mux == 0U) {
+        if (length &lt; 5) {
+            return -1;
+        }
+        uint32_t raw16   = (uint32_t)frame[1] | ((uint32_t)frame[2] &lt;&lt; 8);
+        uint32_t word    = (uint32_t)frame[3] | ((uint32_t)frame[4] &lt;&lt; 8);
+        uint32_t field12 = word &amp; 0x0FFFU;
+        int32_t signed12 = (int32_t)field12;
+        if ((field12 &amp; 0x0800U) != 0U) {
+            signed12 -= 4096;
+        }
+        *out_a = (int32_t)raw16;
+        *out_b = signed12;
+        return 0;
+    }
+
+    if (mux == 1U) {
+        if (length &lt; 3) {
+            return -1;
+        }
+        *out_a = (int32_t)(int8_t)frame[1];
+        *out_b = (int32_t)(frame[2] &amp; 0x01U);
+        return 1;
+    }
+
+    return -1;
+}</code></pre>
+
+<h2>Why the multiplexor is masked before anything branches on it</h2>
+
+<div class="trap">
+<p><code>frame[0] &amp; 0x0FU</code> happens exactly once, before the first
+comparison against it. The alternative -- checking <code>frame[0] == 0</code>
+and <code>frame[0] == 1</code> directly -- is indistinguishable from the
+correct version on every frame whose byte 0 happens to have a zero high
+nibble, which is most hand-written test data and most frames a lazy fuzzer
+produces. It fails specifically on the frames a real bus actually sends,
+where the reserved high nibble is not guaranteed to be zero (it might carry
+a protocol version, a rolling counter, or genuinely be don't-care noise) --
+exactly the case the fixed test with a <code>0x10</code> first byte is
+built to catch.</p>
+</div>
+
+<h2>Why length is checked per branch, not once at the top</h2>
+
+<p>A single blanket check like <code>length &lt; 8</code> at the top of the
+function would be both too strict and not protective enough: it rejects
+perfectly valid, shorter mux-1 frames that never needed byte 4 at all, and
+it says nothing about a mux-0 frame that is 4 bytes long -- one byte short
+of what mux 0 specifically needs. Checking each branch's own requirement,
+right before that branch starts indexing further into <code>frame</code>,
+is what keeps "how many bytes does this reading need" and "how many bytes
+do we actually have" tied to the same decision.</p>
+
+<h2>The 12-bit sign extension, one bit at a time</h2>
+
+<div class="trap">
+<p><code>field12</code> is computed by masking <em>first</em>
+(<code>word &amp; 0x0FFFU</code>) -- the top 4 bits of the 16-bit word are
+padding, not extra magnitude or an extended sign, and including them in
+either the value or the sign test would make a padding bit that happens to
+be set silently corrupt the result. The sign test itself
+(<code>field12 &amp; 0x0800U</code>) looks at bit 11 -- the top bit of the
+12-bit field, once it has already been isolated -- not bit 15 of the
+original word. Subtracting <code>4096</code> (<code>1 &lt;&lt; 12</code>) from
+the unsigned 12-bit value when that bit is set is the standard two's
+-complement widening trick, generalised from the familiar 8-bit
+"subtract 256" version to whatever field width is actually in play.</p>
+</div>
+
+<h2>Why the 8-bit case gets to skip the manual arithmetic</h2>
+
+<p><code>(int32_t)(int8_t)frame[1]</code> does the same job the 12-bit case
+does by hand, but for a width the language already has a name for: casting
+an <code>unsigned</code> byte to <code>int8_t</code> reinterprets its bit
+pattern as two's complement, and the subsequent cast to <code>int32_t</code>
+sign-extends it, both defined behaviour in C. There is no width between 8
+and 32 bits that C has a built-in signed type for, which is exactly why the
+12-bit field above needs the mask-then-subtract approach spelled out
+instead.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(1)</strong> -- a fixed, small number of comparisons and byte
+reads regardless of which branch is taken, with no loop over the frame at
+all.</p>
+
+<footer>
+  <p><a href="c_can_mux_decode.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Match a Simplified Regular Expression · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · fiendish</p>
+  <h1>Match a Simplified Regular Expression ('.' and '*')</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>#include &lt;stdbool.h&gt;
+
+static bool match_from(const char *s, const char *p)
+{
+    if (*p == '\0') {
+        return *s == '\0';
+    }
+
+    bool first_match = (*s != '\0') && ((*p == *s) || (*p == '.'));
+
+    if (*(p + 1) == '*') {
+        return match_from(s, p + 2)
+            || (first_match && match_from(s + 1, p));
+    }
+    return first_match && match_from(s + 1, p + 1);
+}
+
+bool regex_match(const char *s, const char *p)
+{
+    return match_from(s, p);
+}</code></pre>
+
+<h2>Why the base case comes first</h2>
+
+<div class="trap">
+<p><code>*p == '\0'</code> is checked before anything else touches
+<code>*(p + 1)</code>. That ordering is load-bearing, not stylistic: a
+C string's terminating <code>'\0'</code> is a real, readable byte, but
+there is nothing *after* it to read, and <code>*(p + 1)</code> once
+<code>p</code> already points at the terminator reads past the end of the
+pattern's allocation. Handling "pattern exhausted" as the very first check
+means every later line can assume <code>*p</code> is a real pattern
+character, and that <code>*(p + 1)</code> -- whether it exists or is the
+terminator -- is safe to read.</p>
+</div>
+
+<h2>Why <code>first_match</code> checks <code>*s != '\0'</code> up front</h2>
+
+<p>An atom cannot match a character that is not there. Computing
+<code>first_match</code> once, before branching on whether a <code>*</code>
+follows, keeps that "nothing left in <code>s</code>" case from needing to be
+re-derived separately in both branches below it -- both the plain-match
+branch and the star branch's "consume one more" option read the same
+<code>first_match</code>, and both are correctly `false` the moment `s`
+runs out.</p>
+
+<h2>Why the star branch recurses on the same `p`, not past it</h2>
+
+<div class="trap">
+<p><code>match_from(s + 1, p)</code> -- not <code>p + 2</code> -- is what
+lets a run of `a`s any length match `a*`. Each recursive call in that
+branch consumes exactly one character of `s` and asks the identical
+question again: "does `a*` (still) match what is left?" The other call,
+<code>match_from(s, p + 2)</code>, is the *only* place that skips past
+the atom and its `*` -- representing zero repetitions -- and it is tried
+unconditionally, not just as a fallback after the other branch fails. Both
+have to be tried, in an `||`, because a pattern like `a*a` needs the
+zero-repetitions branch to eventually let the second `a` in the pattern
+have a character to match against.</p>
+</div>
+
+<h2>Why matching is a full match, not a prefix search</h2>
+
+<p>There is no code anywhere in this function that stops early because
+`p` ran out while `s` still has characters left over -- `match_from` only
+returns `true` from the base case, which explicitly requires `*s == '\0'`
+too. That single line is the entire difference between this and a
+`search`-style "does `p` occur somewhere in `s`" check: `regex_match("aa",
+"a")` reaches the base case with `p` exhausted and `s` still pointing at
+the second `'a'`, and returns `false` there.</p>
+
+<h2>The overlapping-subproblems issue, and what to do about it</h2>
+
+<p>This recursive form is correct, and fast enough for modest inputs -- but
+it is not memoised, so a pattern chaining several `*` groups can call
+`match_from` on the same `(s, p)` pair through more than one recursive
+path, redoing work each time. The fix, without changing the logic above at
+all, is to memoise on `(s, p)` (or equivalently on the two integer offsets
+into the original strings) and return a cached answer on a repeat visit --
+turning the same recursion into a bottom-up or top-down dynamic-programming
+solution with the each-pair-computed-once guarantee that name implies.</p>
+
+<h2>Cost</h2>
+
+<p>The recursion above is <strong>exponential in the worst case</strong>
+without memoisation, because both branches of a star group can recurse
+into overlapping sub-ranges of `s` and `p`. Memoised on the
+<code>(s, p)</code> position pair, it becomes
+<strong>O(len(s) * len(p))</strong> states, each doing O(1) work beyond its
+own recursive calls -- the standard bound for this problem, and the one
+worth aiming for once the recursive shape above is proven correct.</p>
+
+<footer>
+  <p><a href="c_regex_match.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

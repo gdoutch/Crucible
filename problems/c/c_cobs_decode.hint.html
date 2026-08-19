@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Decode a COBS-Framed Serial Buffer · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · fiendish</p>
+  <h1>Decode a COBS-Framed Serial Buffer</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>The loop, at a high level</h2>
+
+<pre><code>read = 0
+while read &lt; enc_len:
+    code = enc[read]
+    # bounds-check here, before touching anything past enc[read]
+    read += 1
+    copy (code - 1) bytes from enc[read..] to out, advancing read and out
+    # decide here whether a zero belongs on the output</code></pre>
+
+<p>Everything fiddly about this problem lives in that last line's decision,
+and in the bounds check before the copy.</p>
+
+<h2>The bounds check</h2>
+
+<p>Before trusting a code byte, you know exactly how many bytes it demands:
+<code>code - 1</code> literal bytes must still be available in <code>enc</code>
+from the current read position. If they are not, the frame is corrupt --
+return <code>-1</code> immediately, before copying anything.</p>
+
+<h2>When does a zero get appended?</h2>
+
+<div class="trap">
+<p>Almost always -- except in two situations, and it is easy to only
+remember one of them:</p>
+<ul>
+<li>the code byte was <code>0xFF</code> (this block never implies a
+  zero, regardless of position), or</li>
+<li>this block is the <strong>last</strong> one in the frame (there is
+  nothing left to read after it, so whatever zero might have followed it
+  in the original data was the frame delimiter, already gone).</li>
+</ul>
+<p>Both conditions are checkable from information you already have at that
+point in the loop: the code value itself, and whether your read position
+has reached <code>enc_len</code>.</p>
+</div>
+
+<h2>The block that never needed a copy loop at all</h2>
+
+<p>A code byte of <code>1</code> means zero literal bytes follow -- the
+copy loop for that block does nothing, and (per the rule above, since
+<code>1 != 0xFF</code>) a zero gets appended unless this was the last
+block. Encoding an originally-empty buffer produces exactly the single byte
+<code>0x01</code>: decoding it should walk through one block, copy nothing,
+and -- because it is also the last block -- append nothing either. Zero
+bytes out.</p>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_cobs_decode.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

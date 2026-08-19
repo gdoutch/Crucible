@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Decode a COBS-Framed Serial Buffer · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · fiendish</p>
+  <h1>Decode a COBS-Framed Serial Buffer</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>int cobs_decode(const uint8_t *enc, size_t enc_len, uint8_t *out)
+{
+    size_t read = 0;
+    size_t written = 0;
+
+    while (read &lt; enc_len) {
+        uint8_t code = enc[read];
+        if (code == 0U) {
+            return -1;                 /* a zero can never appear in enc */
+        }
+        if (read + (size_t)code &gt; enc_len) {
+            return -1;                 /* claims more bytes than remain */
+        }
+        read++;
+
+        for (uint8_t i = 1U; i &lt; code; i++) {
+            out[written] = enc[read];
+            written++;
+            read++;
+        }
+
+        if (code != 0xFFU &amp;&amp; read != enc_len) {
+            out[written] = 0U;
+            written++;
+        }
+    }
+    return (int)written;
+}</code></pre>
+
+<h2>Why the bounds check comes before the copy, not during it</h2>
+
+<div class="trap">
+<p><code>read + (size_t)code &gt; enc_len</code> is checked once, before a
+single byte of this block is copied. That ordering matters: a version that
+instead checked bounds inside the copy loop, byte by byte, would still
+report the frame as invalid eventually -- but only after already having
+written some of a corrupt block's bytes into <code>out</code>, on the
+assumption the rest would follow. A caller that used the return value
+correctly (checking for <code>-1</code> before trusting <code>out</code> at
+all) is unaffected either way, but a caller that read <code>out</code>
+first and the return value second would see a partially-decoded frame with
+no indication of where it stopped being trustworthy. Checking the whole
+block's requirement up front costs nothing extra and removes the question
+entirely.</p>
+</div>
+
+<h2>The two cases that suppress the trailing zero</h2>
+
+<div class="trap">
+<p><code>code != 0xFFU &amp;&amp; read != enc_len</code> is doing two separate
+jobs joined by one <code>&amp;&amp;</code>, and both matter:</p>
+<ul>
+<li><code>code != 0xFFU</code> -- a full 254-byte block never implies a
+  zero. It exists specifically so a run of 254 or more non-zero bytes does
+  not force an invented zero into the stream every 254 bytes; the encoder
+  emits <code>0xFF</code> precisely when it hits that count without
+  encountering an actual zero to report.</li>
+<li><code>read != enc_len</code> -- after advancing past this block's data,
+  if there is nothing left in <code>enc</code>, this was the last block.
+  Its implied zero, if it had one, was the frame delimiter -- already
+  consumed by the layer that handed you <code>enc</code> with the
+  delimiter stripped off. Appending one here manufactures a trailing zero
+  that was never part of the original message.</li>
+</ul>
+<p>Getting only one of these right is a believable partial implementation:
+it passes on short inputs that never reach 254 non-zero bytes in a row and
+never happen to end exactly on a block boundary, and then produces output
+one byte too long -- with everything after that point shifted -- the
+moment a longer or more awkwardly-shaped frame arrives.</p>
+</div>
+
+<h2>Why an all-zero payload round-trips through blocks of exactly code 1</h2>
+
+<p>Every original zero byte becomes its own block boundary: a code of
+<code>1</code> (zero literal bytes), followed by the appended zero standing
+in for the original one -- unless that zero happened to be the very last
+byte of the message, in which case, per the rule above, nothing is
+appended and the frame simply ends. Three original zero bytes therefore
+encode as three consecutive code-<code>1</code> blocks with the frame's own
+end supplying the final zero implicitly.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(enc_len)</strong> — every byte of the encoded input is visited
+exactly once, either as a code byte or as a literal data byte, with a
+single output byte written per input byte plus at most one implied zero per
+block.</p>
+
+<footer>
+  <p><a href="c_cobs_decode.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

@@ -28,7 +28,7 @@ from pathlib import Path
 
 from . import languages
 
-DIFFICULTIES = ("easy", "medium", "hard")
+DIFFICULTIES = ("easy", "medium", "hard", "fiendish")
 DEFAULT_TIMEOUT = 5.0
 DEFAULT_GENERATED_CASES = 4
 MAX_GENERATED_CASES = 25

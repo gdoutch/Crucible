@@ -1,0 +1,53 @@
+{
+  "id": "c_crc16_ccitt",
+  "title": "Compute a CRC-16/CCITT-FALSE Checksum",
+  "language": "c",
+  "difficulty": "fiendish",
+  "topics": [
+    "embedded",
+    "bitwise",
+    "checksum",
+    "error-detection",
+    "misra"
+  ],
+  "timeout_seconds": 5,
+  "statement": "A checksum that only catches the mistakes you already expected is not worth\nmuch. CRC-16/CCITT-FALSE is the checksum underneath a lot of embedded\nprotocols precisely because it does not have that problem -- it is built\nfrom a well-studied polynomial rather than an ad-hoc XOR fold, and it is\nmerciless about the two things that make CRCs slippery to reimplement:\n**bit order** and **initial value**.\n\nThis exercise asks for exactly the CCITT-FALSE variant, not \"a CRC-16\" --\nseveral different, mutually incompatible checksums share the CRC-16/CCITT\nname (CCITT-FALSE, XMODEM, MCRF4XX, X-25...), and they differ only in\ndetails that never show up in the polynomial: what the register starts at,\nand which end of each byte goes in first. Get either one wrong and you have\nimplemented a real CRC-16 -- just not this one, and every check value will\nbe off in a way that looks like a bug in something else.\n\n## Your function\n\n```\nuint16_t crc16_ccitt_false(const uint8_t *data, size_t length);\n```\n\nProcess `data[0..length-1]` **most-significant-bit first**, against\npolynomial `0x1021`, with the 16-bit CRC register starting at `0xFFFF`. There\nis no final XOR and no bit reflection anywhere in this variant -- the\nregister you end up with is the answer.\n\nThe standard byte-at-a-time form: XOR the next byte into the top eight bits\nof the register, then shift the whole 16-bit register left one bit at a time,\neight times, XORing in the polynomial whenever the bit shifted out of the top\nwas a 1.\n\n## The reference check value\n\nThe CRC catalogue's way of confirming an implementation is a fixed input\neveryone can try: the nine ASCII bytes `\"123456789\"` must produce `0x29B1`\nunder CRC-16/CCITT-FALSE. If your function disagrees with that on this input,\nit disagrees with the standard, whatever else it does right.\n\n## Watch out\n\n- **The initial value is `0xFFFF`, not `0x0000`.** Starting from zero is not\n  a small deviation -- it is a different, real checksum (CRC-16/XMODEM,\n  same polynomial, different init) that happens to only agree with\n  CCITT-FALSE on inputs that never make the top bit of the register matter\n  before the first byte is folded in. `crc16_ccitt_false` on an **empty**\n  buffer is the cleanest place this shows: the correct answer is `0xFFFF`\n  itself, since no byte was ever XORed in to change the register from its\n  starting value -- an implementation that started from `0` returns `0`\n  instead, and a fixed test checks exactly that.\n- **This variant is not bit-reflected.** Some CRC-16 variants (MODBUS, ARC)\n  process each byte least-significant-bit first and shift the register the\n  other way; mixing that convention into a CCITT-FALSE implementation\n  produces a plausible-looking 16-bit number that will not match the\n  standard check value, or anyone else's implementation of this variant.\n  MSB-first, shifting left, is the whole of this variant's bit order.\n- `data[i] << 8` promotes `data[i]` to `int` before the shift -- harmless\n  here because the result fits comfortably in an `int`, but it is exactly\n  the kind of implicit promotion MISRA's essential type model wants a\n  reviewer to notice and check, rather than have it pass unremarked.\n- A single byte with the top bit set (`0x80`) is worth testing on its own:\n  it is the first byte value where a signed-`char` build (if you ever port\n  this without `uint8_t`) sign-extends to a negative `int`, and `<< 8` on\n  a negative operand is undefined behaviour rather than merely surprising.\n",
+  "starter_code": "#include <stddef.h>\n#include <stdint.h>\n\n/**\n * @brief Compute the CRC-16/CCITT-FALSE checksum of a byte buffer.\n *\n * Polynomial 0x1021, initial register value 0xFFFF, most-significant-bit\n * first, no bit reflection, no final XOR.\n *\n * @param data   Buffer to checksum; may be NULL if length is 0.\n * @param length Number of bytes in data.\n * @return The 16-bit CRC.\n */\nuint16_t crc16_ccitt_false(const uint8_t *data, size_t length)\n{\n    /* your code here */\n    (void)data;\n    (void)length;\n    return 0U;\n}\n",
+  "harness": "#include <stdint.h>\n#include <stdio.h>\n\n/* Provided by the candidate in solution.c */\nuint16_t crc16_ccitt_false(const uint8_t *data, size_t length);\n\nint main(void)\n{\n    int length;\n    while (scanf(\"%d\", &length) == 1) {\n        uint8_t data[256];\n        for (int i = 0; i < length; i++) {\n            unsigned int byte_value;\n            if (scanf(\"%x\", &byte_value) != 1) {\n                return 1;\n            }\n            data[i] = (uint8_t)byte_value;\n        }\n        uint16_t crc = crc16_ccitt_false(data, (size_t)length);\n        printf(\"%04X\\n\", (unsigned int)crc);\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random byte buffers, weighted towards the values that catch a wrong\ninitial value, a wrong bit order, or an unguarded top-bit byte.\"\"\"\n\n\ndef generate(rng, count):\n    builders = (_random_bytes, _all_same, _top_bit_heavy)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, data, description=\"\"):\n    hexed = \" \".join(\"%02X\" % b for b in data)\n    stdin = \"%d\\n%s\\n\" % (len(data), hexed) if data else \"0\\n\\n\"\n    return {\"name\": name, \"stdin\": stdin, \"description\": description}\n\n\ndef _random_bytes(rng, index):\n    n = rng.randint(0, 40)\n    data = [rng.randrange(256) for _ in range(n)]\n    return _case(\"a random %d-byte buffer #%d\" % (n, index), data)\n\n\ndef _all_same(rng, index):\n    n = rng.randint(1, 20)\n    value = rng.randrange(256)\n    data = [value] * n\n    return _case(\"%d repeats of byte 0x%02X #%d\" % (n, value, index), data)\n\n\ndef _top_bit_heavy(rng, index):\n    n = rng.randint(1, 16)\n    data = [rng.randrange(128, 256) for _ in range(n)]\n    return _case(\"a %d-byte buffer with every top bit set #%d\" % (n, index),\n                 data,\n                 \"Every byte is >= 0x80 -- the promotion-to-int case.\")\n"
+  },
+  "tests": [
+    {
+      "name": "the standard check value: ASCII \"123456789\"",
+      "stdin": "9\n31 32 33 34 35 36 37 38 39\n",
+      "expected_stdout": "29B1",
+      "description": "The CRC catalogue's reference vector for this exact variant -- if this does not match, the bit order or the initial value is wrong."
+    },
+    {
+      "name": "an empty buffer returns the initial value unchanged",
+      "stdin": "0\n\n",
+      "expected_stdout": "FFFF",
+      "description": "No byte is ever folded in, so the register never moves from 0xFFFF. A wrong initial value of 0x0000 (CRC-16/XMODEM) returns 0000 here instead."
+    },
+    {
+      "name": "single bytes, including one with the top bit set",
+      "stdin": "1\n00\n1\nFF\n1\n80\n",
+      "expected_stdout": "E1F0\nFF00\n7078",
+      "description": "0x80 is the first byte value where a signed-char build would sign-extend before the shift; uint8_t sidesteps that entirely."
+    },
+    {
+      "name": "a short buffer with mixed bytes",
+      "stdin": "4\n01 02 03 04\n",
+      "expected_stdout": "89C3"
+    },
+    {
+      "name": "a leading zero byte is not the same as a shorter buffer",
+      "stdin": "5\n00 01 02 03 04\n4\n01 02 03 04\n",
+      "expected_stdout": "1C0F\n89C3",
+      "description": "Prepending 0x00 changes the checksum -- the byte is processed, not skipped, so the two buffers must not produce the same CRC."
+    }
+  ],
+  "reference_solution_b64": "I2luY2x1ZGUgPHN0ZGRlZi5oPgojaW5jbHVkZSA8c3RkaW50Lmg+Cgp1aW50MTZfdCBjcmMxNl9jY2l0dF9mYWxzZShjb25zdCB1aW50OF90ICpkYXRhLCBzaXplX3QgbGVuZ3RoKQp7CiAgICB1aW50MTZfdCBjcmMgPSAweEZGRkZVOwogICAgZm9yIChzaXplX3QgaSA9IDBVOyBpIDwgbGVuZ3RoOyBpKyspIHsKICAgICAgICBjcmMgPSAodWludDE2X3QpKGNyYyBeICh1aW50MTZfdCkoKHVpbnQxNl90KWRhdGFbaV0gPDwgOCkpOwogICAgICAgIGZvciAoaW50IGJpdCA9IDA7IGJpdCA8IDg7IGJpdCsrKSB7CiAgICAgICAgICAgIGlmICgoY3JjICYgMHg4MDAwVSkgIT0gMFUpIHsKICAgICAgICAgICAgICAgIGNyYyA9ICh1aW50MTZfdCkoKHVpbnQxNl90KShjcmMgPDwgMSkgXiAweDEwMjFVKTsKICAgICAgICAgICAgfSBlbHNlIHsKICAgICAgICAgICAgICAgIGNyYyA9ICh1aW50MTZfdCkoY3JjIDw8IDEpOwogICAgICAgICAgICB9CiAgICAgICAgfQogICAgfQogICAgcmV0dXJuIGNyYzsKfQo="
+}
