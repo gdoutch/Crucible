@@ -1,0 +1,55 @@
+{
+  "id": "cs_binary_search_insertion_point",
+  "title": "Binary Search With an Insertion-Point Convention",
+  "language": "csharp",
+  "difficulty": "hard",
+  "topics": [
+    "algorithms",
+    "search",
+    "bitwise"
+  ],
+  "timeout_seconds": 5,
+  "statement": "`Array.BinarySearch` and `List<T>.BinarySearch` both return more than a\nplain \"did I find it\": on a miss, the return value is negative, and its\n**bitwise complement** (`~result`) is the index the target would have to\nbe inserted at to keep the collection sorted. It is a genuinely odd-looking\nconvention the first time you meet it -- and it is real, load-bearing BCL\nbehaviour, not a curiosity, because it means a single call answers both\n\"is it here\" and \"where would it go\" without the caller needing a second\npass either way.\n\n## Your function\n\n```\npublic static int BinarySearchInsertionPoint(int[] sortedValues, int target);\n```\n\n`sortedValues` is sorted ascending and contains no duplicate values.\nMatch the convention above exactly:\n\n- If `target` is present, return its index (always `>= 0`).\n- If `target` is absent, return the **bitwise complement** of the index\n  it would need to be inserted at to keep `sortedValues` sorted -- that\n  is, `~insertionIndex`, which is always negative since the complement of\n  any non-negative index is negative.\n\n## Watch out\n\n- **The complement, not the negative.** `~5` is `-6`, not `-5` --\n  `~x` is `-x - 1` for a non-negative `x`, which is exactly what makes the\n  encoding reversible: `~(~x) == x` for any `x`, so a caller can always\n  recover the intended insertion index from a negative result by\n  complementing it again. Returning `-insertionIndex` directly loses the\n  ability to represent an insertion index of `0` as a distinguishable\n  negative number (`-0 == 0`, which looks like a *found* result).\n- **The insertion index for a target larger than every element is\n  `sortedValues.Length`** -- one past the end, same as inserting at the\n  front (index `0`) for a target smaller than every element. Both are\n  legal insertion points; neither is a special case requiring different\n  handling from \"wherever the binary search's bounds ended up\".\n- `low + (high - low) / 2` rather than `(low + high) / 2` for the\n  midpoint -- the difference only shows up on an array large enough for\n  `low + high` to overflow `int`, but the safer form costs nothing on\n  every array smaller than that, so there is no reason to write the\n  version with the latent overflow.\n",
+  "starter_code": "/// <summary>\n/// Search sortedValues (ascending, no duplicates) for target. If present,\n/// return its index. If absent, return the bitwise complement of the index\n/// it would need to be inserted at to keep sortedValues sorted -- matching\n/// the convention Array.BinarySearch and List&lt;T&gt;.BinarySearch use.\n/// </summary>\npublic static class Solution\n{\n    public static int BinarySearchInsertionPoint(int[] sortedValues, int target)\n    {\n        // your code here\n        return ~0;\n    }\n}\n",
+  "harness": "class Program\n{\n    static void Main()\n    {\n        string line;\n        while ((line = Console.ReadLine()) != null)\n        {\n            var header = line.Split(' ');\n            if (header.Length < 2) { continue; }\n            int n = int.Parse(header[0]);\n            int target = int.Parse(header[1]);\n            var values = new int[n];\n            if (n > 0)\n            {\n                var parts = Console.ReadLine().Split(' ');\n                for (int i = 0; i < n; i++)\n                {\n                    values[i] = int.Parse(parts[i]);\n                }\n            }\n            else\n            {\n                Console.ReadLine();\n            }\n            Console.WriteLine(Solution.BinarySearchInsertionPoint(values, target));\n        }\n    }\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random sorted, duplicate-free arrays, with targets chosen both from\ninside the array (a hit) and strictly between/outside its elements (a\nmiss, exercising every insertion point including the two ends).\"\"\"\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    n = rng.randint(1, 20)\n    values = sorted(rng.sample(range(-100, 100), n))\n    lines = []\n    for _ in range(4):\n        if rng.random() < 0.5 and values:\n            target = rng.choice(values)\n        else:\n            target = rng.randint(-110, 110)\n            while target in values:\n                target = rng.randint(-110, 110)\n        lines.append(\"%d %d\" % (n, target))\n        lines.append(\" \".join(map(str, values)) if values else \"\")\n    return {\"name\": \"an array of %d elements, mixed hits and misses #%d\"\n                    % (n, index),\n            \"stdin\": \"\\n\".join(lines) + \"\\n\"}\n"
+  },
+  "tests": [
+    {
+      "name": "target present, in the middle",
+      "stdin": "6 7\n1 3 5 7 9 11\n",
+      "expected_stdout": "3"
+    },
+    {
+      "name": "target absent, belongs in the middle",
+      "stdin": "6 4\n1 3 5 7 9 11\n",
+      "expected_stdout": "-3",
+      "description": "4 belongs at index 2 (between 3 and 5) -- ~2 == -3."
+    },
+    {
+      "name": "target belongs before everything -- insertion index 0",
+      "stdin": "3 -5\n1 3 5\n",
+      "expected_stdout": "-1",
+      "description": "Insertion index 0 must encode as ~0 == -1, not -0 (which is indistinguishable from 0, a found result)."
+    },
+    {
+      "name": "target belongs after everything -- one past the end",
+      "stdin": "3 100\n1 3 5\n",
+      "expected_stdout": "-4",
+      "description": "Insertion index 3 (== the array length) -- ~3 == -4."
+    },
+    {
+      "name": "the first and last elements are found, not treated as misses",
+      "stdin": "4 1\n1 3 5 7\n4 7\n1 3 5 7\n",
+      "expected_stdout": "0\n3"
+    },
+    {
+      "name": "a single-element array, both a hit and a miss",
+      "stdin": "1 5\n5\n1 9\n5\n",
+      "expected_stdout": "0\n-2"
+    }
+  ],
+  "reference_solution_b64": "cHVibGljIHN0YXRpYyBjbGFzcyBTb2x1dGlvbgp7CiAgICBwdWJsaWMgc3RhdGljIGludCBCaW5hcnlTZWFyY2hJbnNlcnRpb25Qb2ludChpbnRbXSBzb3J0ZWRWYWx1ZXMsIGludCB0YXJnZXQpCiAgICB7CiAgICAgICAgaW50IGxvdyA9IDA7CiAgICAgICAgaW50IGhpZ2ggPSBzb3J0ZWRWYWx1ZXMuTGVuZ3RoIC0gMTsKCiAgICAgICAgd2hpbGUgKGxvdyA8PSBoaWdoKQogICAgICAgIHsKICAgICAgICAgICAgaW50IG1pZCA9IGxvdyArIChoaWdoIC0gbG93KSAvIDI7CiAgICAgICAgICAgIGlmIChzb3J0ZWRWYWx1ZXNbbWlkXSA9PSB0YXJnZXQpCiAgICAgICAgICAgIHsKICAgICAgICAgICAgICAgIHJldHVybiBtaWQ7CiAgICAgICAgICAgIH0KICAgICAgICAgICAgaWYgKHNvcnRlZFZhbHVlc1ttaWRdIDwgdGFyZ2V0KQogICAgICAgICAgICB7CiAgICAgICAgICAgICAgICBsb3cgPSBtaWQgKyAxOwogICAgICAgICAgICB9CiAgICAgICAgICAgIGVsc2UKICAgICAgICAgICAgewogICAgICAgICAgICAgICAgaGlnaCA9IG1pZCAtIDE7CiAgICAgICAgICAgIH0KICAgICAgICB9CiAgICAgICAgcmV0dXJuIH5sb3c7CiAgICB9Cn0K"
+}

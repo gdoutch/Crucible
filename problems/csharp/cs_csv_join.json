@@ -1,0 +1,41 @@
+{
+  "id": "cs_csv_join",
+  "title": "Join a List Into a CSV Line",
+  "language": "csharp",
+  "difficulty": "easy",
+  "topics": [
+    "strings",
+    "lists"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Turning a list of fields into one comma-separated line sounds like it should\nbe a one-liner, and in C# it is -- but only once you have decided what an\nempty list is supposed to produce, which is exactly the case a hand-rolled\nloop is most likely to get wrong.\n\n## Your function\n\n```\npublic static string JoinCsv(List<string> items);\n```\n\nReturn every element of `items` joined by a single comma, with no comma\nbefore the first element or after the last. `items` may be empty; none of\nits elements are ever `null`.\n\n## Watch out\n\n- **An empty list joins to the empty string, not to nothing at all and not\n  to an error.** `JoinCsv(new List<string>())` returns `\"\"` -- a\n  zero-length string is still a string, and is the correct, representable\n  answer here.\n- **A one-element list has no commas in it.** `JoinCsv(new List<string> {\n  \"solo\" })` returns `\"solo\"`, not `\"solo,\"` or `\",solo\"` -- the comma is a\n  *separator* between elements, and one element has no neighbour to be\n  separated from.\n- A loop that appends `item + \",\"` after every element and only fixes the\n  trailing comma up afterwards works, but there is a single method that\n  does the whole job -- and does not need the fix-up in the first place.\n",
+  "starter_code": "/// <summary>\n/// Join items with a single comma between consecutive elements. items may\n/// be empty; none of its elements are ever null.\n/// </summary>\npublic static class Solution\n{\n    public static string JoinCsv(List<string> items)\n    {\n        // your code here\n        return \"\";\n    }\n}\n",
+  "harness": "class Program\n{\n    static void Main()\n    {\n        int n;\n        while (int.TryParse(Console.ReadLine(), out n))\n        {\n            var items = new List<string>();\n            for (int i = 0; i < n; i++)\n            {\n                items.Add(Console.ReadLine());\n            }\n            Console.WriteLine(\"[\" + Solution.JoinCsv(items) + \"]\");\n        }\n    }\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random word lists of varying length, including empty and single-element\nlists.\"\"\"\n\nimport string\n\nWORDS = [\"red\", \"blue\", \"north\", \"south\", \"up\", \"down\", \"east\", \"west\",\n         \"one\", \"two\", \"alpha\", \"beta\", \"x\", \"y9\", \"q\"]\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    n = rng.choice([0, 1, rng.randint(2, 8)])\n    items = [rng.choice(WORDS) for _ in range(n)]\n    lines = [str(n)] + items\n    return {\"name\": \"a %d-element list #%d\" % (n, index),\n            \"stdin\": \"\\n\".join(lines) + \"\\n\"}\n"
+  },
+  "tests": [
+    {
+      "name": "an empty list joins to the empty string",
+      "stdin": "0\n",
+      "expected_stdout": "[]"
+    },
+    {
+      "name": "a single-element list has no commas",
+      "stdin": "1\nsolo\n",
+      "expected_stdout": "[solo]"
+    },
+    {
+      "name": "two elements, one comma",
+      "stdin": "2\nfirst\nsecond\n",
+      "expected_stdout": "[first,second]"
+    },
+    {
+      "name": "several elements",
+      "stdin": "4\na\nb\nc\nd\n",
+      "expected_stdout": "[a,b,c,d]"
+    }
+  ],
+  "reference_solution_b64": "cHVibGljIHN0YXRpYyBjbGFzcyBTb2x1dGlvbgp7CiAgICBwdWJsaWMgc3RhdGljIHN0cmluZyBKb2luQ3N2KExpc3Q8c3RyaW5nPiBpdGVtcykKICAgIHsKICAgICAgICByZXR1cm4gc3RyaW5nLkpvaW4oIiwiLCBpdGVtcyk7CiAgICB9Cn0K"
+}

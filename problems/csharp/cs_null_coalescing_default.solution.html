@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Nullable Value or Fallback · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C# · easy</p>
+  <h1>Nullable Value or Fallback</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>public static int ValueOrDefault(int? value, int fallback)
+{
+    return value ?? fallback;
+}</code></pre>
+
+<h2>Why this is the whole function</h2>
+
+<p><code>??</code> is defined for exactly this shape: its left operand is a
+nullable type (or any reference type), its right operand is the value to
+produce if the left one turns out to be <code>null</code>, and the result
+is the underlying non-nullable type -- an <code>int</code>, here, not an
+<code>int?</code>, because by the time the operator has run there is
+nothing left to be uncertain about. Writing the equivalent out by hand:</p>
+
+<pre><code>return value.HasValue ? value.Value : fallback;</code></pre>
+
+<p>produces the same answer, and is worth recognising as the same idea in
+more words -- <code>??</code> did not invent new behaviour, it named a
+pattern common enough to deserve its own operator.</p>
+
+<div class="trap">
+<p>The version to actively avoid is <code>value.Value</code> reached for
+directly, on the assumption that "the caller wouldn't send null for no
+reason" -- one of the fixed tests sends exactly that, and
+<code>InvalidOperationException: Nullable object must have a value.</code>
+is not a passing test result under any interpretation of this
+function's contract.</p>
+</div>
+
+<h2>Cost</h2>
+
+<p><strong>O(1)</strong> -- a single comparison and, at most, one value
+read.</p>
+
+<footer>
+  <p><a href="cs_null_coalescing_default.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

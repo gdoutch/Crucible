@@ -1,0 +1,53 @@
+{
+  "id": "cs_balanced_brackets",
+  "title": "Balanced Brackets, Three Kinds",
+  "language": "csharp",
+  "difficulty": "medium",
+  "topics": [
+    "stacks",
+    "strings"
+  ],
+  "timeout_seconds": 5,
+  "statement": "`(`, `[` and `{` each need to be closed by the matching `)`, `]` or `}` --\nand closed in the right order: `([)]` is not balanced even though it has\none of each character, because the `[` opens *after* the `(` but closes\n*before* it does. A `Stack<T>` is built for exactly this shape of problem:\nthe most recently opened bracket is always the first one that has to close.\n\n## Your function\n\n```\npublic static bool IsBalanced(string text);\n```\n\n`text` may contain any characters; only `(`, `)`, `[`, `]`, `{` and `}`\nparticipate in the check, and every other character is ignored. Return\n`true` if every closing bracket matches the type of the most recently\nunclosed opening bracket, and no opening bracket is left unclosed at the\nend.\n\n## Watch out\n\n- **`Stack<T>.Pop()` and `Stack<T>.Peek()` both throw\n  `InvalidOperationException` on an empty stack.** A closing bracket that\n  arrives with nothing open to match it -- `text` starts with `)`, say --\n  has to be checked for *before* popping, not discovered by catching the\n  exception popping raises.\n- **A stack that is not empty at the end means something was opened and\n  never closed.** `\"(()\"` never sees a closing bracket it disagrees with --\n  every `)` it does see matches correctly -- so the mismatch can only be\n  caught by checking the stack is empty once `text` is exhausted, not by\n  anything that happens while consuming it.\n- **The three bracket types do not interchange.** `\"(]\"` is unbalanced: `(`\n  was opened, `]` arrives, and `]` closes a `[`, not a `(` -- popping the\n  stack and finding the wrong opening character is exactly as much of a\n  failure as finding no opening character at all.\n",
+  "starter_code": "/// <summary>\n/// Decide whether the (), [] and {} brackets in text are balanced.\n/// Characters other than the six bracket characters are ignored entirely.\n/// </summary>\npublic static class Solution\n{\n    public static bool IsBalanced(string text)\n    {\n        // your code here\n        return false;\n    }\n}\n",
+  "harness": "class Program\n{\n    static void Main()\n    {\n        string line;\n        while ((line = Console.ReadLine()) != null)\n        {\n            Console.WriteLine(Solution.IsBalanced(line) ? \"true\" : \"false\");\n        }\n    }\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random bracket strings, some genuinely balanced (built by nesting), some\ndeliberately broken in one of the three ways the problem describes.\"\"\"\n\n\ndef generate(rng, count):\n    builders = (_balanced, _unclosed, _unopened, _mismatched_type)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\nPAIRS = [(\"(\", \")\"), (\"[\", \"]\"), (\"{\", \"}\")]\n\n\ndef _balanced_string(rng, depth):\n    if depth <= 0 or rng.random() < 0.3:\n        return \"x\" if rng.random() < 0.5 else \"\"\n    open_, close_ = rng.choice(PAIRS)\n    inner = _balanced_string(rng, depth - 1)\n    return open_ + inner + close_ + _balanced_string(rng, depth - 1)\n\n\ndef _case(name, text, description=\"\"):\n    return {\"name\": name, \"stdin\": text + \"\\n\", \"description\": description}\n\n\ndef _balanced(rng, index):\n    text = _balanced_string(rng, rng.randint(1, 4))\n    return _case(\"a balanced string, nested and interspersed with noise #%d\"\n                 % index, text)\n\n\ndef _unclosed(rng, index):\n    text = _balanced_string(rng, rng.randint(1, 3))\n    open_, _ = rng.choice(PAIRS)\n    return _case(\"balanced, plus one trailing unclosed bracket #%d\" % index,\n                 text + open_,\n                 \"Nothing ever mismatches while scanning -- only the stack \"\n                 \"being non-empty at the end catches this.\")\n\n\ndef _unopened(rng, index):\n    text = _balanced_string(rng, rng.randint(1, 3))\n    _, close_ = rng.choice(PAIRS)\n    return _case(\"a closing bracket with nothing open to match #%d\" % index,\n                 close_ + text)\n\n\ndef _mismatched_type(rng, index):\n    (open_a, _), (_, close_b) = rng.sample(PAIRS, 2)\n    return _case(\"an opening and closing bracket of different types #%d\"\n                 % index, open_a + close_b)\n"
+  },
+  "tests": [
+    {
+      "name": "an empty string is trivially balanced",
+      "stdin": "\n",
+      "expected_stdout": "true"
+    },
+    {
+      "name": "simple balanced pairs of each type",
+      "stdin": "()\n[]\n{}\n",
+      "expected_stdout": "true\ntrue\ntrue"
+    },
+    {
+      "name": "nested and sequential balanced brackets, with other text mixed in",
+      "stdin": "func([a, b], {x: 1})\n",
+      "expected_stdout": "true"
+    },
+    {
+      "name": "an unclosed opening bracket at the end",
+      "stdin": "(()\n[a, (b]\n",
+      "expected_stdout": "false\nfalse",
+      "description": "'(()' never mismatches while scanning -- only the final non-empty stack catches it."
+    },
+    {
+      "name": "a closing bracket with nothing open",
+      "stdin": ")\nfoo)\n",
+      "expected_stdout": "false\nfalse"
+    },
+    {
+      "name": "mismatched types: opened one kind, closed another",
+      "stdin": "(]\n([)]\n",
+      "expected_stdout": "false\nfalse",
+      "description": "([)]: [ opens after ( but closes before it -- wrong order, not just wrong count."
+    }
+  ],
+  "reference_solution_b64": "cHVibGljIHN0YXRpYyBjbGFzcyBTb2x1dGlvbgp7CiAgICBwdWJsaWMgc3RhdGljIGJvb2wgSXNCYWxhbmNlZChzdHJpbmcgdGV4dCkKICAgIHsKICAgICAgICB2YXIgY2xvc2VzRm9yID0gbmV3IERpY3Rpb25hcnk8Y2hhciwgY2hhcj4geyBbJyknXSA9ICcoJywgWyddJ10gPSAnWycsIFsnfSddID0gJ3snIH07CiAgICAgICAgdmFyIHN0YWNrID0gbmV3IFN0YWNrPGNoYXI+KCk7CgogICAgICAgIGZvcmVhY2ggKGNoYXIgYyBpbiB0ZXh0KQogICAgICAgIHsKICAgICAgICAgICAgaWYgKGMgPT0gJygnIHx8IGMgPT0gJ1snIHx8IGMgPT0gJ3snKQogICAgICAgICAgICB7CiAgICAgICAgICAgICAgICBzdGFjay5QdXNoKGMpOwogICAgICAgICAgICB9CiAgICAgICAgICAgIGVsc2UgaWYgKGNsb3Nlc0Zvci5Db250YWluc0tleShjKSkKICAgICAgICAgICAgewogICAgICAgICAgICAgICAgaWYgKHN0YWNrLkNvdW50ID09IDAgfHwgc3RhY2suUG9wKCkgIT0gY2xvc2VzRm9yW2NdKQogICAgICAgICAgICAgICAgewogICAgICAgICAgICAgICAgICAgIHJldHVybiBmYWxzZTsKICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgfQogICAgICAgIH0KICAgICAgICByZXR1cm4gc3RhY2suQ291bnQgPT0gMDsKICAgIH0KfQo="
+}

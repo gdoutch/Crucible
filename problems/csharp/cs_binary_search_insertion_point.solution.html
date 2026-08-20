@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Binary Search With an Insertion-Point Convention · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C# · hard</p>
+  <h1>Binary Search With an Insertion-Point Convention</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>public static int BinarySearchInsertionPoint(int[] sortedValues, int target)
+{
+    int low = 0;
+    int high = sortedValues.Length - 1;
+
+    while (low &lt;= high)
+    {
+        int mid = low + (high - low) / 2;
+        if (sortedValues[mid] == target)
+        {
+            return mid;
+        }
+        if (sortedValues[mid] &lt; target)
+        {
+            low = mid + 1;
+        }
+        else
+        {
+            high = mid - 1;
+        }
+    }
+    return ~low;
+}</code></pre>
+
+<h2>Why <code>low</code> is exactly the insertion point when the loop ends</h2>
+
+<p>Two invariants hold throughout the loop, maintained by which bound moves
+on each comparison: every index strictly less than <code>low</code> holds a
+value known to be less than <code>target</code>, and every index strictly
+greater than <code>high</code> holds a value known to be greater. The loop
+keeps narrowing that gap until <code>low</code> and <code>high</code> cross
+-- <code>low == high + 1</code> -- at which point <code>low</code> is the
+first index the "known greater" region begins at, which is precisely where
+<code>target</code> would have to go to keep everything before it smaller
+and everything from that point on no smaller. That holds whether
+<code>low</code> lands in the middle of the array, at <code>0</code>
+(target belongs before everything), or at
+<code>sortedValues.Length</code> (target belongs after everything) -- the
+same invariant produces the right answer at both ends without a separate
+check for either.</p>
+
+<h2>Why the complement, and why it round-trips</h2>
+
+<div class="trap">
+<p><code>~x</code> for a non-negative <code>x</code> is defined as
+<code>-x - 1</code> -- not <code>-x</code>. That extra <code>-1</code> is
+what makes every non-negative index map to a *distinct* negative number,
+including <code>0</code>: <code>~0 == -1</code>, unambiguously different
+from a genuine "found at index 0" result of <code>0</code>, whereas
+<code>-0 == 0</code> would collide with it outright. The same shift is
+also what makes the encoding reversible in the other direction: a caller
+holding a negative result can recover the insertion index with a second
+complement, <code>~result</code>, because <code>~(~x) == x</code> for
+every integer <code>x</code> -- complementing twice cancels out exactly.
+This is the same convention <code>Array.BinarySearch</code> and
+<code>List&lt;T&gt;.BinarySearch</code> use, which is the whole reason it is
+worth matching rather than inventing a different not-found signal.</p>
+</div>
+
+<h2>Cost</h2>
+
+<p><strong>O(log n)</strong> in the length of `sortedValues` -- each
+comparison discards half of what remains to be searched.</p>
+
+<footer>
+  <p><a href="cs_binary_search_insertion_point.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

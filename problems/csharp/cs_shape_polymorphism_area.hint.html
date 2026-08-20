@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Total Area Through an Interface · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C# · medium</p>
+  <h1>Total Area Through an Interface</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Trust the interface</h2>
+
+<pre><code>double total = 0;
+foreach (var shape in shapes) {
+    total += shape.Area();
+}
+return total;</code></pre>
+
+<p>That is the whole function. <code>shape.Area()</code> dispatches to
+whichever concrete type <code>shape</code> actually is at runtime --
+that dispatch is what an interface method call *is*.</p>
+
+<h2>The one thing not to write</h2>
+
+<div class="trap">
+<p>Any version of "if it's a <code>Circle</code>, do this; if it's a
+<code>Rectangle</code>, do that" is checking something the interface
+already answers for you, and it only knows about the two types the
+statement happened to name. A fixed test passes a third, undocumented
+<code>IShape</code> implementation specifically to catch code that branches
+on concrete type instead of calling <code>Area()</code> -- the branching
+version has no case for it and gets the wrong answer; the version that
+just calls <code>shape.Area()</code> was never told it needed one.</p>
+</div>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cs_shape_polymorphism_area.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

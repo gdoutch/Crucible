@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Division With Two Distinct Failure Modes · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C# · fiendish</p>
+  <h1>Division With Two Distinct Failure Modes</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Check both special cases before dividing at all</h2>
+
+<pre><code>if (b == 0) {
+    return (DivideStatus.DivideByZero, 0);
+}
+if (a == int.MinValue &amp;&amp; b == -1) {
+    return (DivideStatus.Overflow, 0);
+}
+return (DivideStatus.Ok, a / b);</code></pre>
+
+<h2>Why the second check cannot be a catch block</h2>
+
+<div class="trap">
+<p>It is tempting to let <code>a / b</code> run inside a
+<code>try</code> and catch whatever it throws -- but by the time it has
+thrown, the exception has already happened, at a cost, for an input this
+function is specifically supposed to recognise and handle *without*
+throwing at all. Worse, catching a bare <code>OverflowException</code>
+around the division and reporting it as <code>DivideByZero</code>
+(reusing the wrong-looking-but-nearby case) reports a reason for the
+failure that has nothing to do with what actually happened. Check
+<code>a == int.MinValue &amp;&amp; b == -1</code> explicitly, before the
+division ever runs.</p>
+</div>
+
+<p>If you are not certain integer division overflow-checks unconditionally
+in C# (unlike <code>+</code>/<code>-</code>/<code>*</code>, which only do
+inside a <code>checked</code> block), that is exactly the fact this
+exercise is built to make you confirm for yourself.</p>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cs_safe_divide_status.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

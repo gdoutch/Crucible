@@ -1,0 +1,43 @@
+{
+  "id": "cs_char_frequency_count",
+  "title": "Character Frequency Count",
+  "language": "csharp",
+  "difficulty": "medium",
+  "topics": [
+    "dictionaries",
+    "strings"
+  ],
+  "timeout_seconds": 5,
+  "statement": "A `Dictionary<TKey, TValue>` does not have a value sitting behind every\npossible key waiting to be incremented -- a key that has never been written\nsimply is not there, and asking for it either throws or (with the right\nmethod) tells you plainly that it is missing. A frequency counter has to\ndecide, for every single character, whether it is being seen for the first\ntime or the tenth, and get the \"first time\" case right without a special\nbranch for it.\n\n## Your function\n\n```\npublic static Dictionary<char, int> CountFrequencies(string text);\n```\n\nReturn a dictionary mapping each distinct character in `text` to how many\ntimes it occurs. `text` may be empty, in which case the result is an empty\ndictionary. Every character counts, including spaces and punctuation -- no\nfiltering.\n\n## Watch out\n\n- **`counts[c]++` throws `KeyNotFoundException` the first time `c` is\n  seen.** The increment operator expands to \"read the current value, add\n  one, write it back\" -- and reading a key that has never been written is\n  exactly what a plain dictionary indexer refuses to do silently.\n- **`GetValueOrDefault(c)` returns `0` for a key that is not present**,\n  which is the identity element for \"add one to the count\" -- `counts[c] =\n  counts.GetValueOrDefault(c) + 1;` handles the first occurrence and every\n  later one with the same line, no branch needed to tell them apart.\n- A character that appears once still gets an entry with the value `1` --\n  it is not omitted for having \"only\" occurred once.\n",
+  "starter_code": "/// <summary>\n/// Count how many times each distinct character occurs in text. text may\n/// be empty, producing an empty result. Every character counts, including\n/// spaces and punctuation.\n/// </summary>\npublic static class Solution\n{\n    public static Dictionary<char, int> CountFrequencies(string text)\n    {\n        // your code here\n        return new Dictionary<char, int>();\n    }\n}\n",
+  "harness": "class Program\n{\n    static void Main()\n    {\n        string line;\n        while ((line = Console.ReadLine()) != null)\n        {\n            var counts = Solution.CountFrequencies(line);\n            var parts = new List<string>();\n            foreach (var key in counts.Keys.OrderBy(k => k))\n            {\n                parts.Add(((int)key) + \":\" + counts[key]);\n            }\n            Console.WriteLine(string.Join(\" \", parts));\n        }\n    }\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random strings over a small alphabet, so repeats are common, plus a few\nstrings where every character is distinct -- the case a bare counts[c]++\nsurvives on repeats but fails immediately.\"\"\"\n\nimport string\n\nALPHABET = \"abcABC 123!?\"\n\n\ndef generate(rng, count):\n    builders = (_repeated, _all_distinct)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, text):\n    return {\"name\": name, \"stdin\": text + \"\\n\"}\n\n\ndef _repeated(rng, index):\n    n = rng.randint(0, 30)\n    text = \"\".join(rng.choice(ALPHABET) for _ in range(n))\n    return _case(\"a random %d-character string, repeats likely #%d\"\n                 % (n, index), text)\n\n\ndef _all_distinct(rng, index):\n    pool = list(string.ascii_lowercase)\n    rng.shuffle(pool)\n    n = rng.randint(1, 10)\n    text = \"\".join(pool[:n])\n    return _case(\"%d distinct characters, no repeats #%d\" % (n, index), text)\n"
+  },
+  "tests": [
+    {
+      "name": "an empty string produces no entries",
+      "stdin": "\n",
+      "expected_stdout": ""
+    },
+    {
+      "name": "every character distinct -- the case a bare counts[c]++ fails first",
+      "stdin": "abc\n",
+      "expected_stdout": "97:1 98:1 99:1",
+      "description": "a=97, b=98, c=99. No character repeats, so a solution that only breaks on a second occurrence looks fine right up until this case."
+    },
+    {
+      "name": "a repeated character",
+      "stdin": "aab\n",
+      "expected_stdout": "97:2 98:1"
+    },
+    {
+      "name": "spaces and punctuation count too",
+      "stdin": "a a!\n",
+      "expected_stdout": "32:1 33:1 97:2",
+      "description": "space=32 (once), '!'=33 (once), 'a'=97 (twice)."
+    }
+  ],
+  "reference_solution_b64": "cHVibGljIHN0YXRpYyBjbGFzcyBTb2x1dGlvbgp7CiAgICBwdWJsaWMgc3RhdGljIERpY3Rpb25hcnk8Y2hhciwgaW50PiBDb3VudEZyZXF1ZW5jaWVzKHN0cmluZyB0ZXh0KQogICAgewogICAgICAgIHZhciBjb3VudHMgPSBuZXcgRGljdGlvbmFyeTxjaGFyLCBpbnQ+KCk7CiAgICAgICAgZm9yZWFjaCAoY2hhciBjIGluIHRleHQpCiAgICAgICAgewogICAgICAgICAgICBjb3VudHNbY10gPSBjb3VudHMuR2V0VmFsdWVPckRlZmF1bHQoYykgKyAxOwogICAgICAgIH0KICAgICAgICByZXR1cm4gY291bnRzOwogICAgfQp9Cg=="
+}

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Total Area Through an Interface · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C# · medium</p>
+  <h1>Total Area Through an Interface</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>public static double TotalArea(List&lt;IShape&gt; shapes)
+{
+    double total = 0;
+    foreach (var shape in shapes)
+    {
+        total += shape.Area();
+    }
+    return total;
+}</code></pre>
+
+<h2>Why this needs no knowledge of Circle or Rectangle at all</h2>
+
+<div class="trap">
+<p><code>shape.Area()</code> is a virtual dispatch through the
+<code>IShape</code> interface: at runtime, the call lands on whichever
+concrete type's <code>Area()</code> actually implements it, decided by the
+object's real type, not by the compile-time type of the <code>shape</code>
+variable (which is just <code>IShape</code>, and stays that way throughout
+this function). That is precisely what makes this function correct for a
+type it has never heard of -- a hidden third implementation, say, with its
+own formula for its own <code>Area()</code> -- with zero changes required
+here. A function that instead asks "is this a <code>Circle</code>? is this
+a <code>Rectangle</code>?" has reimplemented the interface's own dispatch
+by hand, badly: it only recognises the types someone remembered to check
+for, and a fixed test's undocumented third shape exposes exactly that gap.</p>
+</div>
+
+<h2>Why an empty list needs no special case</h2>
+
+<p><code>total</code> starts at <code>0</code>, and <code>foreach</code>
+over an empty list simply never executes its body -- the function returns
+<code>0</code> without an explicit check, the same way a sum over zero
+elements always should.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(n)</strong> in the number of shapes -- one virtual call to
+<code>Area()</code> per shape, no allocation.</p>
+
+<footer>
+  <p><a href="cs_shape_polymorphism_area.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

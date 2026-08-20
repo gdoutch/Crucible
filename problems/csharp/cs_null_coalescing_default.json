@@ -1,0 +1,42 @@
+{
+  "id": "cs_null_coalescing_default",
+  "title": "Nullable Value or Fallback",
+  "language": "csharp",
+  "difficulty": "easy",
+  "topics": [
+    "nullable types",
+    "operators"
+  ],
+  "timeout_seconds": 5,
+  "statement": "`int` cannot be `null` -- it is a value type, and a value type variable\nalways holds an actual value. `int?` (short for `System.Nullable<int>`)\nadds exactly one more state on top: \"an `int`, or nothing at all\", which is\nprecisely the shape a sensor reading that has not arrived yet, or an\noptional setting nobody configured, actually has.\n\n## Your function\n\n```\npublic static int ValueOrDefault(int? value, int fallback);\n```\n\nReturn `value` if it holds one, or `fallback` if it does not.\n\n## Watch out\n\n- **`value.Value` throws if `value` is `null`.** It is legal, compiling\n  code -- `int? x = null; int y = x.Value;` -- and it throws\n  `InvalidOperationException` the moment it runs. This function exists\n  specifically so a caller never has to reach for `.Value` (or check\n  `.HasValue` by hand first) at all.\n- **`??`, the null-coalescing operator, is the whole function.**\n  `value ?? fallback` reads as \"`value`, or `fallback` if `value` is\n  `null`\" -- which is exactly the specification above, word for word. A\n  solution built out of an explicit `if (value.HasValue)` branch is not\n  wrong, just longer than the language already offers to make it.\n- `fallback` itself is a plain non-nullable `int` -- it is always a real\n  value, never something that itself needs a further fallback.\n",
+  "starter_code": "/// <summary>\n/// Return value if it holds one, or fallback if value is null.\n/// </summary>\npublic static class Solution\n{\n    public static int ValueOrDefault(int? value, int fallback)\n    {\n        // your code here\n        return fallback;\n    }\n}\n",
+  "harness": "class Program\n{\n    static void Main()\n    {\n        string line;\n        while ((line = Console.ReadLine()) != null)\n        {\n            if (line.Trim().Length == 0) { continue; }\n            var parts = line.Split(' ');\n            int? value = parts[0] == \"null\" ? (int?)null : int.Parse(parts[0]);\n            int fallback = int.Parse(parts[1]);\n            Console.WriteLine(Solution.ValueOrDefault(value, fallback));\n        }\n    }\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random (value, fallback) pairs, value sometimes present and sometimes\nthe null sentinel.\"\"\"\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    rows = []\n    for _ in range(4):\n        fallback = rng.randint(-1000, 1000)\n        if rng.random() < 0.5:\n            rows.append(\"null %d\" % fallback)\n        else:\n            value = rng.randint(-1000, 1000)\n            rows.append(\"%d %d\" % (value, fallback))\n    return {\"name\": \"a mix of present and absent values #%d\" % index,\n            \"stdin\": \"\\n\".join(rows) + \"\\n\"}\n"
+  },
+  "tests": [
+    {
+      "name": "a present value is returned unchanged, fallback ignored",
+      "stdin": "5 99\n",
+      "expected_stdout": "5"
+    },
+    {
+      "name": "an absent value falls back",
+      "stdin": "null 99\n",
+      "expected_stdout": "99"
+    },
+    {
+      "name": "a present value of zero is not confused with absent",
+      "stdin": "0 42\n",
+      "expected_stdout": "0",
+      "description": "0 is a real value -- .HasValue is true for it, unlike for null."
+    },
+    {
+      "name": "negative values round-trip through the nullable normally",
+      "stdin": "-7 3\nnull -3\n",
+      "expected_stdout": "-7\n-3"
+    }
+  ],
+  "reference_solution_b64": "cHVibGljIHN0YXRpYyBjbGFzcyBTb2x1dGlvbgp7CiAgICBwdWJsaWMgc3RhdGljIGludCBWYWx1ZU9yRGVmYXVsdChpbnQ/IHZhbHVlLCBpbnQgZmFsbGJhY2spCiAgICB7CiAgICAgICAgcmV0dXJuIHZhbHVlID8/IGZhbGxiYWNrOwogICAgfQp9Cg=="
+}

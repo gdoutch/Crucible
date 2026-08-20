@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Mutating Structs Inside a List · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C# · fiendish</p>
+  <h1>Mutating Structs Inside a List</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Read, mutate the local, write back</h2>
+
+<pre><code>for (int i = 0; i &lt; counters.Count; i++) {
+    var c = counters[i];   // a copy
+    c.Increment();         // mutates the copy
+    counters[i] = c;       // writes the copy back into the list
+}</code></pre>
+
+<h2>What looks right and silently is not</h2>
+
+<div class="trap">
+<p><code>counters[i].Increment();</code> builds, runs, and throws nothing --
+and changes nothing. <code>counters[i]</code> is a property-style indexer
+access that hands back a *copy* of the struct stored at that position;
+<code>Increment()</code> then mutates that copy, which nothing holds a
+reference to and which is discarded the instant the statement finishes.
+The list's actual storage at index <code>i</code> is never touched. The
+same is true of <code>foreach (var c in counters) c.Increment();</code>,
+for the same underlying reason -- <code>c</code> is a copy, every time.</p>
+</div>
+
+<p>There is no way to get a genuine, list-backed reference to a struct
+element and mutate it in place through an ordinary indexer or
+<code>foreach</code> loop -- the read-modify-write pattern above, explicit
+about all three steps, is the standard fix.</p>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cs_struct_list_mutation.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

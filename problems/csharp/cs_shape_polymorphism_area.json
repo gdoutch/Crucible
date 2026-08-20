@@ -1,0 +1,50 @@
+{
+  "id": "cs_shape_polymorphism_area",
+  "title": "Total Area Through an Interface",
+  "language": "csharp",
+  "difficulty": "medium",
+  "topics": [
+    "interfaces",
+    "polymorphism",
+    "lists"
+  ],
+  "timeout_seconds": 5,
+  "statement": "An interface is a promise that every implementing type keeps in its own\nway: ask any `IShape` for its `Area()`, and it answers correctly, without\nthe code asking having to know or care *which* shape it is holding. That\nis the entire point of polymorphism -- and the easiest way to lose it by\naccident is to write code that checks the concrete type anyway.\n\n## The interface\n\n```\npublic interface IShape\n{\n    double Area();\n}\n```\n\nTwo implementations are already provided:\n\n```\npublic class Circle : IShape       // Area() = \u03c0 \u00d7 Radius\u00b2\npublic class Rectangle : IShape    // Area() = Width \u00d7 Height\n```\n\n## Your function\n\n```\npublic static double TotalArea(List<IShape> shapes);\n```\n\nReturn the sum of `Area()` across every shape in `shapes`. `shapes` may be\nempty, in which case the total is `0`.\n\n## Watch out\n\n- **`shapes` is not guaranteed to hold only `Circle` and `Rectangle`.**\n  Any type implementing `IShape` is a legal element -- including ones this\n  statement never names. Code that pattern-matches on `is Circle` /\n  `is Rectangle` and falls through to a default for anything else silently\n  gets the wrong answer (typically `0`, or a thrown exception) for a shape\n  it was never told the identity of, when calling `Area()` directly would\n  have worked without needing to know.\n- **`shapes.Sum(s => s.Area())` and a plain loop that adds `shape.Area()`\n  into a running total are the same operation** -- pick whichever reads\n  more clearly to you; the correctness question here is not about the\n  looping construct, it is about calling `Area()` through the interface at\n  all rather than routing around it.\n",
+  "starter_code": "/// <summary>\n/// Sum Area() across every shape in shapes, which may hold any type\n/// implementing IShape -- not only Circle and Rectangle. shapes may be\n/// empty.\n/// </summary>\npublic static class Solution\n{\n    public static double TotalArea(List<IShape> shapes)\n    {\n        // your code here\n        return 0;\n    }\n}\n",
+  "harness": "public interface IShape\n{\n    double Area();\n}\n\npublic class Circle : IShape\n{\n    public double Radius;\n    public Circle(double radius) { Radius = radius; }\n    public double Area() => Math.PI * Radius * Radius;\n}\n\npublic class Rectangle : IShape\n{\n    public double Width;\n    public double Height;\n    public Rectangle(double width, double height) { Width = width; Height = height; }\n    public double Area() => Width * Height;\n}\n\n// Deliberately undocumented in the problem statement -- a correct solution\n// must not need to know this type exists to handle it correctly.\npublic class Triangle : IShape\n{\n    public double Base;\n    public double Height;\n    public Triangle(double b, double height) { Base = b; Height = height; }\n    public double Area() => 0.5 * Base * Height;\n}\n\nclass Program\n{\n    static IShape ParseShape(string line)\n    {\n        var parts = line.Split(' ');\n        double a = double.Parse(parts[1]);\n        switch (parts[0])\n        {\n            case \"circle\": return new Circle(a);\n            case \"rectangle\": return new Rectangle(a, double.Parse(parts[2]));\n            case \"triangle\": return new Triangle(a, double.Parse(parts[2]));\n            default: throw new ArgumentException(\"unknown shape \" + parts[0]);\n        }\n    }\n\n    static void Main()\n    {\n        int n;\n        while (int.TryParse(Console.ReadLine(), out n))\n        {\n            var shapes = new List<IShape>();\n            for (int i = 0; i < n; i++)\n            {\n                shapes.Add(ParseShape(Console.ReadLine()));\n            }\n            Console.WriteLine(Solution.TotalArea(shapes).ToString(\"F4\"));\n        }\n    }\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random shape lists, mixing all three kinds -- including the undocumented\nTriangle -- so a solution that only recognises Circle and Rectangle is\ncaught by more than just the one fixed test.\"\"\"\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    n = rng.randint(0, 8)\n    lines = []\n    for _ in range(n):\n        kind = rng.choice((\"circle\", \"rectangle\", \"triangle\"))\n        if kind == \"circle\":\n            lines.append(\"circle %.2f\" % rng.uniform(0.1, 20))\n        else:\n            lines.append(\"%s %.2f %.2f\" % (kind, rng.uniform(0.1, 20),\n                                            rng.uniform(0.1, 20)))\n    return {\"name\": \"%d random shapes, all three kinds #%d\" % (n, index),\n            \"stdin\": \"%d\\n%s\\n\" % (n, \"\\n\".join(lines)) if n else \"0\\n\"}\n"
+  },
+  "tests": [
+    {
+      "name": "an empty list totals to zero",
+      "stdin": "0\n",
+      "expected_stdout": "0.0000"
+    },
+    {
+      "name": "a single rectangle",
+      "stdin": "1\nrectangle 3 4\n",
+      "expected_stdout": "12.0000"
+    },
+    {
+      "name": "a circle and a rectangle together",
+      "stdin": "2\ncircle 2\nrectangle 3 4\n",
+      "expected_stdout": "24.5664",
+      "description": "pi * 2^2 + 3*4 = 12.56637... + 12 = 24.56637..."
+    },
+    {
+      "name": "an undocumented third shape must still be handled correctly",
+      "stdin": "1\ntriangle 6 4\n",
+      "expected_stdout": "12.0000",
+      "description": "0.5 * 6 * 4 = 12 -- code that only recognises Circle and Rectangle has no branch for this and gets it wrong; shape.Area() does not need to be told."
+    },
+    {
+      "name": "all three kinds mixed in one list",
+      "stdin": "3\ncircle 1\nrectangle 2 5\ntriangle 4 3\n",
+      "expected_stdout": "19.1416",
+      "description": "pi*1 + 10 + 6 = 3.14159... + 10 + 6 = 19.14159..."
+    }
+  ],
+  "reference_solution_b64": "cHVibGljIHN0YXRpYyBjbGFzcyBTb2x1dGlvbgp7CiAgICBwdWJsaWMgc3RhdGljIGRvdWJsZSBUb3RhbEFyZWEoTGlzdDxJU2hhcGU+IHNoYXBlcykKICAgIHsKICAgICAgICBkb3VibGUgdG90YWwgPSAwOwogICAgICAgIGZvcmVhY2ggKHZhciBzaGFwZSBpbiBzaGFwZXMpCiAgICAgICAgewogICAgICAgICAgICB0b3RhbCArPSBzaGFwZS5BcmVhKCk7CiAgICAgICAgfQogICAgICAgIHJldHVybiB0b3RhbDsKICAgIH0KfQo="
+}

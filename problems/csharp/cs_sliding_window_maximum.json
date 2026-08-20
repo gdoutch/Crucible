@@ -1,0 +1,53 @@
+{
+  "id": "cs_sliding_window_maximum",
+  "title": "Sliding Window Maximum",
+  "language": "csharp",
+  "difficulty": "hard",
+  "topics": [
+    "algorithms",
+    "linked lists",
+    "arrays"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Recomputing the maximum of every window from scratch is the honest,\nobvious solution -- and it is O(n \u00b7 windowSize), because each of the n\nwindows costs a fresh scan of its own. The values inside consecutive\nwindows overlap almost entirely, though, and a **monotonic deque** is what\nlets the algorithm reuse that overlap instead of paying for it twice:\nkept in the right shape, it always has the current window's maximum\nsitting at its front, for free, every time the window slides.\n\n## Your function\n\n```\npublic static int[] SlidingWindowMaximum(int[] values, int windowSize);\n```\n\n`values` has at least `windowSize` elements, and `windowSize` is at least\n`1`. Return an array of length `values.Length - windowSize + 1`, where\nelement `i` is the maximum of `values[i .. i + windowSize - 1]`.\n\n## The deque invariant\n\nKeep a `LinkedList<int>` of *indices* into `values`, front to back, with\ntwo properties maintained after every element is considered:\n\n1. Every index still in the deque is inside the current window.\n2. The **values** at those indices are strictly decreasing from front to\n   back -- so the front index always names the window's current maximum.\n\nSliding the window by one, for the next index `i`:\n\n- Drop indices off the **front** that have fallen out of the window\n  (`index <= i - windowSize`).\n- Drop indices off the **back** whose value is `<= values[i]` -- they can\n  never be the maximum again while `values[i]` is still in the window, so\n  keeping them around would only cost space without ever being read.\n- Add `i` to the back.\n- Once the window is full (`i >= windowSize - 1`), the front index's value\n  is this window's maximum.\n\n## Watch out\n\n- **The back-eviction check has to be `<=`, not `<`.** Equal values are\n  evicted too: if two elements tie for the maximum, only the *later* one\n  can still be the answer once the earlier one ages out of the window, so\n  the earlier one is no longer worth keeping even though it is not\n  strictly smaller.\n- **The deque never holds more indices than the window can -- but it is\n  not the same size as the window.** A strictly decreasing run of values\n  shrinks the deque to size 1 immediately; only a strictly *increasing*\n  run keeps every index, which is also the input shape a quadratic\n  from-scratch rescan is slowest on and this algorithm is fastest on.\n- `LinkedList<int>.First` and `.Last` are `LinkedListNode<int>`, not the\n  `int` itself -- read `.Value` off them to get the index they hold.\n",
+  "starter_code": "/// <summary>\n/// Return the maximum of every windowSize-length window in values, in\n/// order. values has at least windowSize elements; windowSize is at least\n/// 1. The result has values.Length - windowSize + 1 elements.\n/// </summary>\npublic static class Solution\n{\n    public static int[] SlidingWindowMaximum(int[] values, int windowSize)\n    {\n        // your code here\n        return new int[values.Length - windowSize + 1];\n    }\n}\n",
+  "harness": "class Program\n{\n    static void Main()\n    {\n        string line;\n        while ((line = Console.ReadLine()) != null)\n        {\n            var header = line.Split(' ');\n            if (header.Length < 2) { continue; }\n            int n = int.Parse(header[0]);\n            int windowSize = int.Parse(header[1]);\n            var parts = Console.ReadLine().Split(' ');\n            var values = new int[n];\n            for (int i = 0; i < n; i++)\n            {\n                values[i] = int.Parse(parts[i]);\n            }\n            var result = Solution.SlidingWindowMaximum(values, windowSize);\n            Console.WriteLine(string.Join(\" \", result));\n        }\n    }\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random arrays and window sizes, weighted towards the shapes that stress\nthe deque differently: monotonic runs (deque stays small or stays full) and\narrays full of ties.\"\"\"\n\n\ndef generate(rng, count):\n    builders = (_random, _increasing, _decreasing, _many_ties)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, values, window, description=\"\"):\n    return {\"name\": name,\n            \"stdin\": \"%d %d\\n%s\\n\" % (len(values), window,\n                                        \" \".join(map(str, values))),\n            \"description\": description}\n\n\ndef _random(rng, index):\n    n = rng.randint(1, 25)\n    window = rng.randint(1, n)\n    values = [rng.randint(-50, 50) for _ in range(n)]\n    return _case(\"a random array, window %d of %d #%d\" % (window, n, index),\n                 values, window)\n\n\ndef _increasing(rng, index):\n    n = rng.randint(3, 20)\n    window = rng.randint(1, n)\n    values = sorted(rng.sample(range(-50, 50), n))\n    return _case(\"a strictly increasing array #%d\" % index, values, window,\n                 \"Every index stays in the deque until it ages out -- the \"\n                 \"deque grows to the full window size.\")\n\n\ndef _decreasing(rng, index):\n    n = rng.randint(3, 20)\n    window = rng.randint(1, n)\n    values = sorted(rng.sample(range(-50, 50), n), reverse=True)\n    return _case(\"a strictly decreasing array #%d\" % index, values, window,\n                 \"Every new value evicts everything before it -- the deque \"\n                 \"never holds more than one index.\")\n\n\ndef _many_ties(rng, index):\n    n = rng.randint(5, 20)\n    window = rng.randint(2, n)\n    pool = [rng.randint(-5, 5) for _ in range(3)]\n    values = [rng.choice(pool) for _ in range(n)]\n    return _case(\"many repeated values #%d\" % index, values, window,\n                 \"Ties must be evicted from the back too, or stale equal \"\n                 \"values pile up unread.\")\n"
+  },
+  "tests": [
+    {
+      "name": "the classic worked example",
+      "stdin": "8 3\n1 3 -1 -3 5 3 6 7\n",
+      "expected_stdout": "3 3 5 5 6 7"
+    },
+    {
+      "name": "window size equal to the whole array",
+      "stdin": "5 5\n4 2 9 1 7\n",
+      "expected_stdout": "9"
+    },
+    {
+      "name": "window size of 1 -- every element is its own window",
+      "stdin": "4 1\n3 -1 4 1\n",
+      "expected_stdout": "3 -1 4 1"
+    },
+    {
+      "name": "a strictly increasing array keeps every index until it ages out",
+      "stdin": "6 3\n1 2 3 4 5 6\n",
+      "expected_stdout": "3 4 5 6"
+    },
+    {
+      "name": "ties must be evicted from the back, not just from the front",
+      "stdin": "6 2\n5 5 5 3 5 5\n",
+      "expected_stdout": "5 5 5 5 5",
+      "description": "Every window contains at least one 5 -- but only an eviction rule of <= (not <) keeps the deque from silently growing on a run of ties."
+    },
+    {
+      "name": "negative values throughout",
+      "stdin": "5 2\n-3 -1 -4 -1 -5\n",
+      "expected_stdout": "-1 -1 -1 -1"
+    }
+  ],
+  "reference_solution_b64": "cHVibGljIHN0YXRpYyBjbGFzcyBTb2x1dGlvbgp7CiAgICBwdWJsaWMgc3RhdGljIGludFtdIFNsaWRpbmdXaW5kb3dNYXhpbXVtKGludFtdIHZhbHVlcywgaW50IHdpbmRvd1NpemUpCiAgICB7CiAgICAgICAgdmFyIHJlc3VsdCA9IG5ldyBpbnRbdmFsdWVzLkxlbmd0aCAtIHdpbmRvd1NpemUgKyAxXTsKICAgICAgICB2YXIgZGVxdWUgPSBuZXcgTGlua2VkTGlzdDxpbnQ+KCk7CgogICAgICAgIGZvciAoaW50IGkgPSAwOyBpIDwgdmFsdWVzLkxlbmd0aDsgaSsrKQogICAgICAgIHsKICAgICAgICAgICAgd2hpbGUgKGRlcXVlLkNvdW50ID4gMCAmJiBkZXF1ZS5GaXJzdC5WYWx1ZSA8PSBpIC0gd2luZG93U2l6ZSkKICAgICAgICAgICAgewogICAgICAgICAgICAgICAgZGVxdWUuUmVtb3ZlRmlyc3QoKTsKICAgICAgICAgICAgfQogICAgICAgICAgICB3aGlsZSAoZGVxdWUuQ291bnQgPiAwICYmIHZhbHVlc1tkZXF1ZS5MYXN0LlZhbHVlXSA8PSB2YWx1ZXNbaV0pCiAgICAgICAgICAgIHsKICAgICAgICAgICAgICAgIGRlcXVlLlJlbW92ZUxhc3QoKTsKICAgICAgICAgICAgfQogICAgICAgICAgICBkZXF1ZS5BZGRMYXN0KGkpOwoKICAgICAgICAgICAgaWYgKGkgPj0gd2luZG93U2l6ZSAtIDEpCiAgICAgICAgICAgIHsKICAgICAgICAgICAgICAgIHJlc3VsdFtpIC0gd2luZG93U2l6ZSArIDFdID0gdmFsdWVzW2RlcXVlLkZpcnN0LlZhbHVlXTsKICAgICAgICAgICAgfQogICAgICAgIH0KICAgICAgICByZXR1cm4gcmVzdWx0OwogICAgfQp9Cg=="
+}

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Keep Only the Valid Integers · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C# · medium</p>
+  <h1>Keep Only the Valid Integers</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Let TryParse be the whole filter</h2>
+
+<pre><code>var result = new List&lt;int&gt;();
+foreach (var token in tokens) {
+    if (int.TryParse(token, out int value)) {
+        result.Add(value);
+    }
+}
+return result;</code></pre>
+
+<p>That is the entire function. Everything this exercise is actually
+testing is whether you trust <code>TryParse</code>'s judgement on edge
+cases rather than second-guessing it with your own pre-checks.</p>
+
+<h2>Do not pre-filter what TryParse already handles</h2>
+
+<div class="trap">
+<p>Rejecting a token for having leading or trailing spaces, or for being
+"too long to be a real number", before ever calling <code>TryParse</code>
+throws away inputs the method would have accepted correctly on its own.
+Call <code>TryParse</code> directly on the raw token and let its boolean
+result be the only decision that matters.</p>
+</div>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cs_parse_valid_integers.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

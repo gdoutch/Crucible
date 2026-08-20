@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Character Frequency Count · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C# · medium</p>
+  <h1>Character Frequency Count</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>One line, no branch</h2>
+
+<pre><code>var counts = new Dictionary&lt;char, int&gt;();
+foreach (char c in text) {
+    counts[c] = counts.GetValueOrDefault(c) + 1;
+}
+return counts;</code></pre>
+
+<h2>What breaks if you reach for <code>counts[c]++</code> instead</h2>
+
+<div class="trap">
+<p><code>counts[c]++</code> is shorthand for <code>counts[c] = counts[c] + 1</code>
+-- and the read half of that, <code>counts[c]</code>, throws
+<code>KeyNotFoundException</code> the very first time <code>c</code> shows
+up, because there is no entry yet to read. It works fine for the
+<em>second</em> occurrence of a character onward, which is exactly the kind
+of bug that survives casual testing on repeated input and only shows up on
+a string where every character is distinct.</p>
+</div>
+
+<h2>The empty-string case comes for free</h2>
+
+<p><code>foreach</code> over an empty string never runs its body, so the
+dictionary stays empty and is returned as-is -- no separate check needed
+for "there was nothing to count".</p>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cs_char_frequency_count.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

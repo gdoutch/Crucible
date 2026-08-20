@@ -1,0 +1,48 @@
+{
+  "id": "cs_value_tuple_stats",
+  "title": "Min, Max and Sum as a Value Tuple",
+  "language": "csharp",
+  "difficulty": "easy",
+  "topics": [
+    "tuples",
+    "arrays",
+    "loops"
+  ],
+  "timeout_seconds": 5,
+  "statement": "A function that needs to hand back three related numbers at once has,\ntraditionally, three bad options: pack them into an array and hope the\ncaller remembers which index is which, define a one-off class just to carry\nthree fields home, or take three `out` parameters and clutter the call\nsite. C#'s **value tuples** are the fourth option, built for exactly this:\na lightweight, named, temporary bundle that exists for the length of one\nreturn trip.\n\n## Your function\n\n```\npublic static (int Min, int Max, long Sum) Stats(int[] values);\n```\n\n`values` has at least one element. Return a tuple of its minimum, its\nmaximum, and the sum of all its elements.\n\n## Watch out\n\n- **The sum is a `long`, the elements are `int`.** `values` can hold up to\n  a few million elements, each up to `int.MaxValue` -- summed as `int` that\n  overflows and wraps to a nonsense negative number long before the array\n  is exhausted. Accumulate into the `long` the return type already commits\n  you to, not into an `int` you then convert at the end.\n- **`Min` and `Max` come from the values actually in the array**, not from\n  `int.MinValue`/`int.MaxValue` as starting points left unchecked -- an\n  array that happens to be entirely negative, or entirely positive, is a\n  fixed test precisely because a wrong choice of starting point can survive\n  unnoticed on an array that straddles zero.\n- The tuple's element names (`Min`, `Max`, `Sum`) are part of the\n  signature -- construct it as `(min, max, sum)` positionally, or\n  `(Min: min, Max: max, Sum: sum)` explicitly; either produces the same\n  tuple, since the names are compile-time metadata, not data the values\n  carry with them.\n",
+  "starter_code": "/// <summary>\n/// Compute the minimum, maximum and sum of values, which has at least one\n/// element.\n/// </summary>\npublic static class Solution\n{\n    public static (int Min, int Max, long Sum) Stats(int[] values)\n    {\n        // your code here\n        return (0, 0, 0);\n    }\n}\n",
+  "harness": "class Program\n{\n    static void Main()\n    {\n        int n;\n        while (int.TryParse(Console.ReadLine(), out n))\n        {\n            var values = new int[n];\n            var parts = Console.ReadLine().Split(' ');\n            for (int i = 0; i < n; i++)\n            {\n                values[i] = int.Parse(parts[i]);\n            }\n            var result = Solution.Stats(values);\n            Console.WriteLine(result.Min + \" \" + result.Max + \" \" + result.Sum);\n        }\n    }\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random arrays, including some entirely on one side of zero, since that is\nexactly what a wrongly-seeded min/max misses.\"\"\"\n\n\ndef generate(rng, count):\n    builders = (_mixed, _all_negative, _all_positive, _single_element)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, values, description=\"\"):\n    return {\"name\": name,\n            \"stdin\": \"%d\\n%s\\n\" % (len(values), \" \".join(map(str, values))),\n            \"description\": description}\n\n\ndef _mixed(rng, index):\n    n = rng.randint(1, 30)\n    values = [rng.randint(-1000, 1000) for _ in range(n)]\n    return _case(\"a %d-element array spanning both signs #%d\" % (n, index), values)\n\n\ndef _all_negative(rng, index):\n    n = rng.randint(1, 15)\n    values = [rng.randint(-1000, -1) for _ in range(n)]\n    return _case(\"an all-negative array #%d\" % index, values)\n\n\ndef _all_positive(rng, index):\n    n = rng.randint(1, 15)\n    values = [rng.randint(1, 1000) for _ in range(n)]\n    return _case(\"an all-positive array #%d\" % index, values)\n\n\ndef _single_element(rng, index):\n    value = rng.randint(-1000, 1000)\n    return _case(\"a single-element array #%d\" % index, [value])\n"
+  },
+  "tests": [
+    {
+      "name": "a single-element array",
+      "stdin": "1\n7\n",
+      "expected_stdout": "7 7 7"
+    },
+    {
+      "name": "a small mixed array",
+      "stdin": "5\n3 -1 4 -1 5\n",
+      "expected_stdout": "-1 5 10"
+    },
+    {
+      "name": "an all-negative array -- min/max cannot both come from int.MaxValue",
+      "stdin": "4\n-5 -1 -9 -3\n",
+      "expected_stdout": "-9 -1 -18"
+    },
+    {
+      "name": "an all-positive array -- the mirror case",
+      "stdin": "4\n5 1 9 3\n",
+      "expected_stdout": "1 9 18"
+    },
+    {
+      "name": "a sum that overflows a 32-bit int but not a 64-bit long",
+      "stdin": "3\n2000000000 2000000000 2000000000\n",
+      "expected_stdout": "2000000000 2000000000 6000000000",
+      "description": "6,000,000,000 is past int.MaxValue (~2.1 billion) -- accumulating as int wraps to a negative number."
+    }
+  ],
+  "reference_solution_b64": "cHVibGljIHN0YXRpYyBjbGFzcyBTb2x1dGlvbgp7CiAgICBwdWJsaWMgc3RhdGljIChpbnQgTWluLCBpbnQgTWF4LCBsb25nIFN1bSkgU3RhdHMoaW50W10gdmFsdWVzKQogICAgewogICAgICAgIGludCBtaW4gPSB2YWx1ZXNbMF07CiAgICAgICAgaW50IG1heCA9IHZhbHVlc1swXTsKICAgICAgICBsb25nIHN1bSA9IDA7CgogICAgICAgIGZvcmVhY2ggKGludCB2IGluIHZhbHVlcykKICAgICAgICB7CiAgICAgICAgICAgIGlmICh2IDwgbWluKSB7IG1pbiA9IHY7IH0KICAgICAgICAgICAgaWYgKHYgPiBtYXgpIHsgbWF4ID0gdjsgfQogICAgICAgICAgICBzdW0gKz0gdjsKICAgICAgICB9CgogICAgICAgIHJldHVybiAobWluLCBtYXgsIHN1bSk7CiAgICB9Cn0K"
+}

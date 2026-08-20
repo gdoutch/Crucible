@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Palindrome Check · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C# · easy</p>
+  <h1>Palindrome Check</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>public static bool IsPalindrome(string text)
+{
+    int left = 0;
+    int right = text.Length - 1;
+
+    while (left &lt; right)
+    {
+        if (!char.IsLetterOrDigit(text[left])) { left++; continue; }
+        if (!char.IsLetterOrDigit(text[right])) { right--; continue; }
+
+        if (char.ToLowerInvariant(text[left]) != char.ToLowerInvariant(text[right]))
+        {
+            return false;
+        }
+        left++;
+        right--;
+    }
+    return true;
+}</code></pre>
+
+<h2>Why skipping is two separate checks, not one</h2>
+
+<div class="trap">
+<p>The two <code>if</code>s that advance past punctuation are independent
+on purpose: a string like <code>"A, ."</code> can have non-alphanumeric
+characters on <em>both</em> sides at once (the comma near the front, the
+full stop at the back), and each pointer has to be free to skip forward on
+its own rather than waiting for its counterpart. Combining them into one
+"skip if either side is punctuation" check would move both pointers
+together and silently skip past a letter that should have been compared.</p>
+</div>
+
+<h2>Why the loop condition is enough of a base case</h2>
+
+<p><code>left &lt; right</code> stops the loop once the pointers meet or cross,
+and the function falls through to <code>return true</code>. That covers the
+empty string (<code>left</code> starts at <code>0</code>, <code>right</code>
+at <code>-1</code>, the loop never runs) and a string with nothing
+alphanumeric in it (the pointers walk past everything and cross without
+ever comparing anything) the same way, with no separate check for either --
+both are "nothing was found to disagree", which is exactly what a
+palindrome check should say about them.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(n)</strong> in the length of `text` -- each pointer only ever
+moves forward (or backward), so the two together visit each character at
+most once. No copy of the string is made.</p>
+
+<footer>
+  <p><a href="cs_is_palindrome.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Join a List Into a CSV Line · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C# · easy</p>
+  <h1>Join a List Into a CSV Line</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>public static string JoinCsv(List&lt;string&gt; items)
+{
+    return string.Join(",", items);
+}</code></pre>
+
+<h2>Why this needs no special case for empty or single-element lists</h2>
+
+<div class="trap">
+<p><code>string.Join</code>'s contract is "place the separator strictly
+*between* consecutive elements", which already implies both edge cases
+without any extra code: zero elements means zero separators and an empty
+result; one element means zero separators (there is no second element to
+separate it from) and the element itself, unchanged. A hand-rolled loop
+that appends <code>item + separator</code> after *every* element is
+answering a subtly different question -- "put a separator after each
+element" -- which happens to produce the right answer for the *interior*
+elements and the wrong one at the boundary, needing a trim or an
+end-of-loop check to correct.</p>
+</div>
+
+<h2>Cost</h2>
+
+<p><strong>O(n)</strong> in the total length of all the strings involved --
+<code>string.Join</code> computes the total output length up front and
+writes into one buffer, rather than repeatedly reallocating the way
+<code>result += item</code> in a loop would.</p>
+
+<footer>
+  <p><a href="cs_csv_join.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

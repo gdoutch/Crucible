@@ -163,6 +163,22 @@
         "sigfpe": "SIGFPE (arithmetic error, e.g. divide by zero)",
         "killed_by_signal": "killed by signal {signal}"
       }
+    },
+    "csharp": {
+      "install_help_windows": "No .NET SDK found.\n\nPick whichever is easiest for you:\n\n  1. winget      -- from an elevated prompt:\n     winget install Microsoft.DotNet.SDK.8\n\n  2. Installer   -- download the .NET 8 SDK installer.\n     https://dotnet.microsoft.com/download\n\n  3. Visual Studio -- you already have VS installed; open the Visual\n     Studio Installer, click Modify, and tick '.NET desktop development'.\n\nRe-check from the Tools menu once installed -- no restart needed.",
+      "install_help_posix": "No .NET SDK found.\n\n  Debian/Ubuntu:  sudo apt install dotnet-sdk-8.0\n  Fedora:         sudo dnf install dotnet-sdk-8.0\n  macOS:          brew install dotnet-sdk\n  Any platform:   https://dotnet.microsoft.com/download\n\nRe-check from the Tools menu once installed.",
+      "summary_not_found": "C#: no .NET SDK found",
+      "detail_not_found": "Searched PATH and the usual install locations for dotnet.",
+      "summary_no_sdk": "C#: .NET runtime found, but no SDK",
+      "detail_no_sdk": "dotnet: {path}\n'dotnet --version' failed -- this looks like a runtime-only install, which can run a program but not build one.",
+      "summary": "C#: .NET SDK {version}",
+      "detail": "dotnet: {path}",
+      "build_timeout": "Compilation timed out after 90s.",
+      "exit": {
+        "unhandled_exception": "unhandled exception (see stderr)",
+        "sigabrt": "SIGABRT (abort) -- likely an unhandled exception",
+        "killed_by_signal": "killed by signal {signal}"
+      }
     }
   },
   "app": {

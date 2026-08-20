@@ -1,0 +1,55 @@
+{
+  "id": "cs_safe_divide_status",
+  "title": "Division With Two Distinct Failure Modes",
+  "language": "csharp",
+  "difficulty": "fiendish",
+  "topics": [
+    "arithmetic",
+    "enums",
+    "tuples",
+    "overflow"
+  ],
+  "timeout_seconds": 5,
+  "statement": "`b == 0` is the failure mode every division function remembers to guard.\nIt is not the only one 32-bit signed integer division has: there is\nexactly one other input that fails, for a completely different reason, and\nit involves no zero at all.\n\n## The status type\n\n```\npublic enum DivideStatus { Ok, DivideByZero, Overflow }\n```\n\n## Your function\n\n```\npublic static (DivideStatus Status, int Value) SafeDivide(int a, int b);\n```\n\nDivide `a` by `b`, reporting which of three things happened rather than\nthrowing:\n\n- **`b == 0`** -- return `(DivideStatus.DivideByZero, 0)`.\n- **`a == int.MinValue && b == -1`** -- return `(DivideStatus.Overflow, 0)`.\n  `int.MinValue` is `-2147483648`; its magnitude has no positive `int`\n  counterpart (`int.MaxValue` is only `2147483647`), so the mathematically\n  correct result of this division, `2147483648`, cannot be represented as\n  an `int` at all.\n- **Otherwise** -- return `(DivideStatus.Ok, a / b)`, ordinary C# integer\n  division (which truncates towards zero, not towards negative infinity).\n\n## Watch out\n\n- **`int.MinValue / -1` throws `System.OverflowException` at runtime, in\n  C#, unconditionally** -- unlike `+`, `-` and `*`, which only overflow-check\n  inside a `checked` block and silently wrap otherwise, integer *division*\n  overflow-checks and throws every time, `checked` or not. There is no way\n  to make `a / b` itself \"just wrap\" for this one input; the specific\n  values have to be caught and handled *before* the division runs, not\n  after it throws.\n- **This is a genuinely separate failure from `b == 0`.** Nothing about\n  `b == -1` looks like a division by zero, and conflating the two --\n  treating every exception a division could throw as\n  `DivideStatus.DivideByZero` -- reports the wrong reason for a failure\n  that has nothing to do with zero at all.\n- **Every other input, including `int.MinValue` divided by anything other\n  than `-1`, is `Ok`.** `int.MinValue / 1` is `int.MinValue`, representable\n  and unremarkable; it is specifically the combination of `int.MinValue`\n  as the dividend *and* `-1` as the divisor that overflows.\n",
+  "starter_code": "/// <summary>\n/// Divide a by b, reporting which of three outcomes occurred rather than\n/// throwing:\n///   b == 0                       -> (DivideByZero, 0)\n///   a == int.MinValue, b == -1   -> (Overflow, 0)\n///   otherwise                    -> (Ok, a / b)\n/// </summary>\npublic static class Solution\n{\n    public static (DivideStatus Status, int Value) SafeDivide(int a, int b)\n    {\n        // your code here\n        return (DivideStatus.Ok, 0);\n    }\n}\n",
+  "harness": "public enum DivideStatus { Ok, DivideByZero, Overflow }\n\nclass Program\n{\n    static void Main()\n    {\n        string line;\n        while ((line = Console.ReadLine()) != null)\n        {\n            var parts = line.Split(' ');\n            int a = int.Parse(parts[0]);\n            int b = int.Parse(parts[1]);\n            var result = Solution.SafeDivide(a, b);\n            switch (result.Status)\n            {\n                case DivideStatus.Ok:\n                    Console.WriteLine(\"OK \" + result.Value);\n                    break;\n                case DivideStatus.DivideByZero:\n                    Console.WriteLine(\"DIVIDE_BY_ZERO\");\n                    break;\n                case DivideStatus.Overflow:\n                    Console.WriteLine(\"OVERFLOW\");\n                    break;\n            }\n        }\n    }\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random (a, b) pairs, weighted towards the two special cases and the\nvalues immediately next to them, alongside ordinary divisions.\"\"\"\n\nINT_MIN = -2147483648\nINT_MAX = 2147483647\n\n\ndef generate(rng, count):\n    builders = (_ordinary, _near_zero_divisor, _near_overflow)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, rows, description=\"\"):\n    lines = [\"%d %d\" % row for row in rows]\n    return {\"name\": name, \"stdin\": \"\\n\".join(lines) + \"\\n\",\n            \"description\": description}\n\n\ndef _ordinary(rng, index):\n    rows = []\n    for _ in range(4):\n        a = rng.randint(-1000, 1000)\n        b = rng.randint(-1000, 1000)\n        if b == 0:\n            b = 1\n        rows.append((a, b))\n    return _case(\"ordinary divisions, no special case #%d\" % index, rows)\n\n\ndef _near_zero_divisor(rng, index):\n    rows = [\n        (rng.randint(-1000, 1000), 0),\n        (0, 0),\n        (rng.randint(-1000, 1000), rng.choice([1, -1])),\n    ]\n    return _case(\"divisor of zero, plus neighbours #%d\" % index, rows)\n\n\ndef _near_overflow(rng, index):\n    rows = [\n        (INT_MIN, -1),\n        (INT_MIN, 1),\n        (INT_MIN + 1, -1),\n        (INT_MAX, -1),\n    ]\n    return _case(\"int.MinValue / -1 and the values right next to it #%d\"\n                 % index, rows,\n                 \"Only the exact pairing (INT_MIN, -1) overflows -- every \"\n                 \"neighbour of it is Ok.\")\n"
+  },
+  "tests": [
+    {
+      "name": "an ordinary division",
+      "stdin": "10 2\n-7 2\n",
+      "expected_stdout": "OK 5\nOK -3",
+      "description": "C# integer division truncates towards zero: -7 / 2 == -3, not -4."
+    },
+    {
+      "name": "divisor of zero",
+      "stdin": "5 0\n-5 0\n0 0\n",
+      "expected_stdout": "DIVIDE_BY_ZERO\nDIVIDE_BY_ZERO\nDIVIDE_BY_ZERO"
+    },
+    {
+      "name": "the exact overflow pairing",
+      "stdin": "-2147483648 -1\n",
+      "expected_stdout": "OVERFLOW"
+    },
+    {
+      "name": "int.MinValue divided by anything except -1 is Ok",
+      "stdin": "-2147483648 1\n-2147483648 2\n-2147483648 -2\n",
+      "expected_stdout": "OK -2147483648\nOK -1073741824\nOK 1073741824"
+    },
+    {
+      "name": "the value next to int.MinValue does not overflow on -1",
+      "stdin": "-2147483647 -1\n",
+      "expected_stdout": "OK 2147483647",
+      "description": "-2147483647 is not int.MinValue -- its negation fits in an int, so this is an ordinary division."
+    },
+    {
+      "name": "the two failure modes are reported distinctly, not conflated",
+      "stdin": "-2147483648 -1\n5 0\n",
+      "expected_stdout": "OVERFLOW\nDIVIDE_BY_ZERO"
+    }
+  ],
+  "reference_solution_b64": "cHVibGljIHN0YXRpYyBjbGFzcyBTb2x1dGlvbgp7CiAgICBwdWJsaWMgc3RhdGljIChEaXZpZGVTdGF0dXMgU3RhdHVzLCBpbnQgVmFsdWUpIFNhZmVEaXZpZGUoaW50IGEsIGludCBiKQogICAgewogICAgICAgIGlmIChiID09IDApCiAgICAgICAgewogICAgICAgICAgICByZXR1cm4gKERpdmlkZVN0YXR1cy5EaXZpZGVCeVplcm8sIDApOwogICAgICAgIH0KICAgICAgICBpZiAoYSA9PSBpbnQuTWluVmFsdWUgJiYgYiA9PSAtMSkKICAgICAgICB7CiAgICAgICAgICAgIHJldHVybiAoRGl2aWRlU3RhdHVzLk92ZXJmbG93LCAwKTsKICAgICAgICB9CiAgICAgICAgcmV0dXJuIChEaXZpZGVTdGF0dXMuT2ssIGEgLyBiKTsKICAgIH0KfQo="
+}

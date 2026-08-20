@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Group Anagrams · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C# · medium</p>
+  <h1>Group Anagrams</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>public static List&lt;List&lt;string&gt;&gt; GroupAnagrams(List&lt;string&gt; words)
+{
+    string Key(string word) =&gt; new string(word.OrderBy(c =&gt; c).ToArray());
+
+    var groups = new Dictionary&lt;string, List&lt;string&gt;&gt;();
+    foreach (var word in words)
+    {
+        var key = Key(word);
+        if (!groups.TryGetValue(key, out var list))
+        {
+            list = new List&lt;string&gt;();
+            groups[key] = list;
+        }
+        list.Add(word);
+    }
+
+    var result = new List&lt;List&lt;string&gt;&gt;();
+    var emitted = new HashSet&lt;string&gt;();
+    foreach (var word in words)
+    {
+        var key = Key(word);
+        if (emitted.Add(key))
+        {
+            result.Add(groups[key]);
+        }
+    }
+    return result;
+}</code></pre>
+
+<h2>Why grouping and ordering are two separate passes</h2>
+
+<div class="trap">
+<p>The first loop's only job is correctness -- every word ends up in the
+list its anagram signature maps to, and <code>TryGetValue</code> plus a
+lazily-created list handles "is this the first word with this signature"
+without a separate <code>ContainsKey</code> check. It says nothing about
+what order <code>groups</code> itself would enumerate in, and nothing in
+<code>Dictionary&lt;TKey, TValue&gt;</code>'s contract promises that order
+matches insertion order -- it is an implementation detail of the current
+runtime, not part of the type's specification. The second loop is what
+actually produces the order the problem asks for: walking
+<code>words</code> again, in its own original order, and using
+<code>HashSet&lt;string&gt;.Add</code>'s return value (true the first time a
+key is added, false after) to emit each group exactly once, at the point
+its first word appears.</p>
+</div>
+
+<h2>Why the key is built once, as a local function</h2>
+
+<p><code>Key(word)</code> is called twice per word across the two passes --
+once while grouping, once while deciding emission order -- and defining it
+once as a local function keeps both call sites unable to quietly compute
+the signature two different ways. <code>word.OrderBy(c =&gt; c)</code> sorts
+the characters (an ordinal sort, since <code>char</code> compares by code
+point), and <code>new string(...)</code> turns the sorted
+<code>IEnumerable&lt;char&gt;</code> back into a string cheaply enough not to
+matter for words of realistic length.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(n · k log k)</strong> where n is the number of words and k the
+length of the longest one -- sorting each word's characters dominates, run
+twice per word across the two passes. The grouping and ordering themselves
+are O(n) beyond that, using a dictionary and a hash set for O(1) average
+lookups.</p>
+
+<footer>
+  <p><a href="cs_group_anagrams.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,43 @@
+{
+  "id": "cs_struct_list_mutation",
+  "title": "Mutating Structs Inside a List",
+  "language": "csharp",
+  "difficulty": "fiendish",
+  "topics": [
+    "structs",
+    "value semantics",
+    "lists"
+  ],
+  "timeout_seconds": 5,
+  "statement": "A `struct` is a value type: every time one is read out of somewhere --\nassigned to a variable, passed to a method, returned from an indexer --\nwhat you get is a *copy*. That is invisible and harmless right up until\nthe somewhere it was read out of is a `List<T>`, and the whole point was\nto change the original.\n\n## The type\n\n```\npublic struct Counter\n{\n    public int Value;\n    public void Increment() { Value++; }\n}\n```\n\n`Counter` is a mutable struct: `Increment()` changes `Value` on whatever\n`Counter` it is called on.\n\n## Your function\n\n```\npublic static void IncrementAll(List<Counter> counters);\n```\n\nCall `Increment()` on every element of `counters`, **mutating the list in\nplace** -- after this function returns, `counters[i].Value` must be one\ngreater than it was before, for every `i`.\n\n## Watch out\n\n- **`counters[i].Increment();` compiles cleanly and does nothing to the\n  list.** `List<T>`'s indexer getter returns a *copy* of the struct at\n  that position -- `counters[i]` is a value, not a reference to the slot\n  it came from -- so `Increment()` mutates that copy, which is then\n  discarded the moment the statement ends. No warning, no exception: the\n  list is silently unchanged.\n- **`foreach (var c in counters) { c.Increment(); }` has exactly the same\n  problem** -- `c` is a fresh copy on every iteration, not a window onto\n  the list's own storage, so mutating it mutates nothing the caller can\n  see afterwards.\n- **The fix is read, mutate, write back, explicitly**: read the struct out\n  of the list into a local variable, call `Increment()` on the *local*,\n  then assign the local back into the list at the same index. Three\n  separate steps, because the read and the write are the only two\n  operations that actually touch the list's own storage -- the mutation in\n  between only ever touches the local copy.\n",
+  "starter_code": "/// <summary>\n/// Call Increment() on every element of counters, mutating the list in\n/// place: after this returns, counters[i].Value must be one greater than\n/// it was before, for every i.\n/// </summary>\npublic static class Solution\n{\n    public static void IncrementAll(List<Counter> counters)\n    {\n        // your code here\n    }\n}\n",
+  "harness": "public struct Counter\n{\n    public int Value;\n    public void Increment() { Value++; }\n}\n\nclass Program\n{\n    static void Main()\n    {\n        string line;\n        while ((line = Console.ReadLine()) != null)\n        {\n            var header = line.Split(' ');\n            int n = int.Parse(header[0]);\n            int rounds = int.Parse(header[1]);\n            var initial = n > 0 ? Console.ReadLine().Split(' ') : Array.Empty<string>();\n\n            var counters = new List<Counter>();\n            for (int i = 0; i < n; i++)\n            {\n                counters.Add(new Counter { Value = int.Parse(initial[i]) });\n            }\n\n            for (int r = 0; r < rounds; r++)\n            {\n                Solution.IncrementAll(counters);\n            }\n\n            var values = new List<string>();\n            foreach (var c in counters)\n            {\n                values.Add(c.Value.ToString());\n            }\n            Console.WriteLine(string.Join(\" \", values));\n        }\n    }\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random counter lists, incremented a random number of rounds -- a\nsolution that silently does nothing reports the original values back\nunchanged no matter how many rounds run.\"\"\"\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    n = rng.randint(1, 10)\n    rounds = rng.randint(1, 5)\n    initial = [rng.randint(-20, 20) for _ in range(n)]\n    lines = [\"%d %d\" % (n, rounds), \" \".join(map(str, initial))]\n    return {\"name\": \"%d counters, %d round(s) #%d\" % (n, rounds, index),\n            \"stdin\": \"\\n\".join(lines) + \"\\n\"}\n"
+  },
+  "tests": [
+    {
+      "name": "a single counter, one round",
+      "stdin": "1 1\n0\n",
+      "expected_stdout": "1"
+    },
+    {
+      "name": "several counters, one round each",
+      "stdin": "3 1\n0 5 -2\n",
+      "expected_stdout": "1 6 -1"
+    },
+    {
+      "name": "the same list incremented across several separate calls",
+      "stdin": "2 3\n0 10\n",
+      "expected_stdout": "3 13",
+      "description": "IncrementAll is called three times in a row -- a solution that mutates a temporary and discards it reports '0 10' unchanged, whichever round is checked."
+    },
+    {
+      "name": "negative starting values increment towards zero and beyond",
+      "stdin": "2 1\n-1 -5\n",
+      "expected_stdout": "0 -4"
+    }
+  ],
+  "reference_solution_b64": "cHVibGljIHN0YXRpYyBjbGFzcyBTb2x1dGlvbgp7CiAgICBwdWJsaWMgc3RhdGljIHZvaWQgSW5jcmVtZW50QWxsKExpc3Q8Q291bnRlcj4gY291bnRlcnMpCiAgICB7CiAgICAgICAgZm9yIChpbnQgaSA9IDA7IGkgPCBjb3VudGVycy5Db3VudDsgaSsrKQogICAgICAgIHsKICAgICAgICAgICAgdmFyIGMgPSBjb3VudGVyc1tpXTsKICAgICAgICAgICAgYy5JbmNyZW1lbnQoKTsKICAgICAgICAgICAgY291bnRlcnNbaV0gPSBjOwogICAgICAgIH0KICAgIH0KfQo="
+}

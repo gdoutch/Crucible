@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Interleave Two Sequences, Lazily · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C# · hard</p>
+  <h1>Interleave Two Sequences, Lazily</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>public static IEnumerable&lt;int&gt; Interleave(IEnumerable&lt;int&gt; a, IEnumerable&lt;int&gt; b)
+{
+    using var ea = a.GetEnumerator();
+    using var eb = b.GetEnumerator();
+    bool aHasMore = ea.MoveNext();
+    bool bHasMore = eb.MoveNext();
+
+    while (aHasMore || bHasMore)
+    {
+        if (aHasMore)
+        {
+            yield return ea.Current;
+            aHasMore = ea.MoveNext();
+        }
+        if (bHasMore)
+        {
+            yield return eb.Current;
+            bHasMore = eb.MoveNext();
+        }
+    }
+}</code></pre>
+
+<h2>Why two independent flags, not one shared loop variable</h2>
+
+<div class="trap">
+<p><code>aHasMore</code> and <code>bHasMore</code> are tracked separately
+because the two sequences finish independently -- one might still have a
+thousand elements left when the other runs dry after two. Folding them
+into a single "keep going" condition checked with <code>&amp;&amp;</code>
+answers a different question than the one this exercise asks: it stops
+the whole interleave the moment the <em>shorter</em> sequence is
+exhausted, discarding everything left in the longer one. The <code>||</code>
+in the loop condition, paired with the two independent <code>if</code>s
+inside it, is what lets each side keep contributing for exactly as long as
+it has something left, with no dependency on the other side's state.</p>
+</div>
+
+<h2>Why this has to be <code>GetEnumerator()</code> and `MoveNext()`,
+not two `foreach` loops</h2>
+
+<p>A <code>foreach</code> loop owns its enumerator for the loop's entire
+body and cannot yield control back to an outer context mid-iteration to
+let a *different* sequence take its turn -- there is no way to write
+"advance <code>a</code> by one, then pause, then advance <code>b</code> by
+one" using <code>foreach</code> on either sequence alone. Pulling the
+enumerators out by hand is what makes "one step from each, alternating"
+expressible at all: each <code>MoveNext()</code> call advances exactly one
+side, exactly one element, and the method's own state (which side goes
+next) lives in the local variables between calls -- which is also
+precisely what the compiler's generated state machine for
+<code>yield return</code> exists to preserve across pauses.</p>
+
+<h2>Why the enumerators are wrapped in <code>using</code></h2>
+
+<p><code>IEnumerator&lt;T&gt;</code> extends <code>IDisposable</code>, and a
+caller is free to stop enumerating the interleaved result before it runs
+to completion -- taking only the first three elements with
+<code>.Take(3)</code>, say. <code>using var ea = ...;</code> guarantees
+<code>ea</code>'s (and <code>eb</code>'s) `Dispose()` runs when the
+iterator itself is disposed, whether that happens because it ran to
+completion or because a caller walked away early; for a plain in-memory
+sequence like a <code>List&lt;int&gt;</code> this has nothing real to clean
+up, but the same code interleaving two sequences backed by open files or
+network streams would leak a handle per abandoned enumeration without it.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(n + m)</strong> where n and m are the two sequences' lengths --
+each element from each source is visited exactly once, and nothing is
+buffered: the whole sequence is produced lazily, one element per
+<code>MoveNext()</code> on the result.</p>
+
+<footer>
+  <p><a href="cs_interleave_iterator.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Palindrome Check · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C# · easy</p>
+  <h1>Palindrome Check</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Two pointers, walking inward</h2>
+
+<pre><code>int left = 0, right = text.Length - 1;
+while (left &lt; right) {
+    // if text[left] isn't alphanumeric, left++ and try again
+    // if text[right] isn't alphanumeric, right--  and try again
+    // otherwise compare them (case-folded) and move both inward
+}
+return true;</code></pre>
+
+<p>No new string needs to be built to hold "just the letters and digits" --
+the two pointers can skip past punctuation in place, one side at a time.</p>
+
+<h2>Skip, don't stop</h2>
+
+<div class="trap">
+<p>When <code>text[left]</code> is not alphanumeric, the right move is
+<code>left++; continue;</code> -- try the *next* character on that side,
+not give up on the comparison. A solution that treats a punctuation
+character as an automatic mismatch fails on <code>"A man, a plan, a canal,
+Panama"</code> at the very first comma.</p>
+</div>
+
+<p><code>char.IsLetterOrDigit</code> and <code>char.ToLowerInvariant</code>
+are the two checks doing all the work here -- the first decides what counts
+as "part of the word", the second makes the comparison case-blind.</p>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cs_is_palindrome.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

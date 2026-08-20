@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Mutating Structs Inside a List · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C# · fiendish</p>
+  <h1>Mutating Structs Inside a List</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>public static void IncrementAll(List&lt;Counter&gt; counters)
+{
+    for (int i = 0; i &lt; counters.Count; i++)
+    {
+        var c = counters[i];
+        c.Increment();
+        counters[i] = c;
+    }
+}</code></pre>
+
+<h2>Why <code>counters[i].Increment()</code> compiles and does nothing</h2>
+
+<div class="trap">
+<p><code>List&lt;T&gt;.this[int]</code> is a property, and reading a property
+means calling its getter and receiving whatever it returns. For a struct
+element type, what it returns is a <strong>copy</strong> of the value
+stored internally -- structs do not have identity the way objects do, so
+"the struct at index <code>i</code>" and "a copy of the struct at index
+<code>i</code>" are, once read out, indistinguishable values with no
+lingering connection back to the list's own array. Calling
+<code>Increment()</code> directly on the indexer's result mutates that
+copy -- which nothing else refers to, and which is thrown away the moment
+the statement ends -- while the list's actual storage never changes. No
+diagnostic fires because nothing here is actually illegal: the code does
+exactly what it says, mutate a value, the value in question just is not
+connected to anything durable.</p>
+</div>
+
+<h2>Why three separate statements, not one</h2>
+
+<p>Only two operations in the fixed version ever touch the list's real
+storage: <code>counters[i]</code> on the right of an assignment (the
+getter, reading a copy out) and <code>counters[i] = c</code> (the setter,
+writing a value in). Everything that happens to <code>c</code> in between
+-- here, one call to <code>Increment()</code> -- operates purely on the
+local copy, and is only preserved because the very next line explicitly
+writes that local back into the slot it came from. Skip the final
+assignment and the mutation is computed correctly and then discarded,
+exactly as it was in the one-liner this replaces.</p>
+
+<h2>What this would look like with a class instead</h2>
+
+<p>If <code>Counter</code> were declared as a <code>class</code> instead of
+a <code>struct</code>, <code>counters[i]</code> would return a
+<em>reference</em> to the one shared object at that position -- and
+<code>counters[i].Increment()</code> would work exactly as the naive
+version here hoped it would, because there would be only one
+<code>Counter</code> object per element, not a fresh copy on every read.
+That is precisely why this trap is specific to value types: it is not
+about `List<T>`'s indexer being unusual, it is about what "read a value
+out of a collection" *means* when the element type is a struct rather than
+a class.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(n)</strong> in the number of counters -- one read, one
+mutation and one write per element, all O(1).</p>
+
+<footer>
+  <p><a href="cs_struct_list_mutation.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

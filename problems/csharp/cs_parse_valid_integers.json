@@ -1,0 +1,52 @@
+{
+  "id": "cs_parse_valid_integers",
+  "title": "Keep Only the Valid Integers",
+  "language": "csharp",
+  "difficulty": "medium",
+  "topics": [
+    "parsing",
+    "strings",
+    "lists"
+  ],
+  "timeout_seconds": 5,
+  "statement": "`int.Parse` throws on anything it cannot read as a 32-bit integer.\n`int.TryParse` doesn't -- it hands back `true` or `false` and never raises,\nwhich is exactly the shape a \"keep the ones that work, skip the ones that\ndon't\" filter needs, and exactly why wrapping `int.Parse` in a `try`/`catch`\nfor the same job is treating an ordinary, expected outcome (this token is\nnot a number) as if it were exceptional.\n\n## Your function\n\n```\npublic static List<int> ParseValidIntegers(List<string> tokens);\n```\n\nReturn every element of `tokens` that parses as a valid 32-bit signed\ninteger, converted to `int`, in their original order. Tokens that do not\nparse are simply left out -- not an error, not a `0` standing in for them.\n\n## Watch out\n\n- **`int.TryParse` tolerates leading and trailing whitespace** --\n  `\"  42  \"` parses to `42`, not a rejection. Trimming the token yourself\n  before calling `TryParse` is harmless but redundant; assuming whitespace\n  needs handling by hand and rejecting it outright is not.\n- **A value that overflows `int` fails to parse, even though every\n  character in it is an ordinary digit.** `\"2147483648\"` -- one more than\n  `int.MaxValue` -- is not a valid `int`, and `TryParse` correctly says so.\n  `int.MinValue` itself, `\"-2147483648\"`, *is* valid; it is only the next\n  value further out, on either end, that tips over.\n- **`\"3.5\"`, `\"0x1F\"` and `\"1e3\"` are not valid `int` tokens.** `TryParse`\n  (called without extra `NumberStyles`) only accepts an optional sign\n  followed by decimal digits -- no decimal point, no hex prefix, no\n  scientific notation. A regular expression built to \"look like\" what\n  `TryParse` accepts is a second, separate implementation of a rule the\n  method already enforces correctly; call `TryParse` and trust its answer.\n",
+  "starter_code": "/// <summary>\n/// Return the elements of tokens that parse as a valid 32-bit signed\n/// integer, converted to int, in their original order. Tokens that do not\n/// parse are simply omitted.\n/// </summary>\npublic static class Solution\n{\n    public static List<int> ParseValidIntegers(List<string> tokens)\n    {\n        // your code here\n        return new List<int>();\n    }\n}\n",
+  "harness": "class Program\n{\n    static void Main()\n    {\n        int n;\n        while (int.TryParse(Console.ReadLine(), out n))\n        {\n            var tokens = new List<string>();\n            for (int i = 0; i < n; i++)\n            {\n                tokens.Add(Console.ReadLine());\n            }\n            var result = Solution.ParseValidIntegers(tokens);\n            Console.WriteLine(string.Join(\" \", result));\n        }\n    }\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random mixes of genuinely valid integers and near-miss tokens that look\nnumeric but are not valid ints.\"\"\"\n\n\ndef _valid(rng):\n    return str(rng.randint(-1000000, 1000000))\n\n\ndef _invalid(rng):\n    choices = [\"3.5\", \"0x1F\", \"1e3\", \"abc\", \"\", \"12a\", \"--5\", \"1 2\", \"NaN\"]\n    return rng.choice(choices)\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    n = rng.randint(1, 12)\n    tokens = [(_valid(rng) if rng.random() < 0.6 else _invalid(rng))\n             for _ in range(n)]\n    lines = [str(n)] + tokens\n    return {\"name\": \"%d mixed tokens #%d\" % (n, index),\n            \"stdin\": \"\\n\".join(lines) + \"\\n\"}\n"
+  },
+  "tests": [
+    {
+      "name": "all valid tokens pass through unchanged",
+      "stdin": "3\n1\n2\n3\n",
+      "expected_stdout": "1 2 3"
+    },
+    {
+      "name": "invalid tokens are dropped, not replaced with 0",
+      "stdin": "5\n1\nabc\n2\n3.5\n3\n",
+      "expected_stdout": "1 2 3"
+    },
+    {
+      "name": "whitespace around a token is tolerated, not a rejection",
+      "stdin": "2\n  42  \n7\n",
+      "expected_stdout": "42 7"
+    },
+    {
+      "name": "int.MinValue parses; one further out does not",
+      "stdin": "2\n-2147483648\n-2147483649\n",
+      "expected_stdout": "-2147483648"
+    },
+    {
+      "name": "int.MaxValue plus one overflows and is dropped",
+      "stdin": "2\n2147483647\n2147483648\n",
+      "expected_stdout": "2147483647"
+    },
+    {
+      "name": "hex, scientific notation and decimals are all rejected",
+      "stdin": "3\n0x1F\n1e3\n3.5\n",
+      "expected_stdout": ""
+    }
+  ],
+  "reference_solution_b64": "cHVibGljIHN0YXRpYyBjbGFzcyBTb2x1dGlvbgp7CiAgICBwdWJsaWMgc3RhdGljIExpc3Q8aW50PiBQYXJzZVZhbGlkSW50ZWdlcnMoTGlzdDxzdHJpbmc+IHRva2VucykKICAgIHsKICAgICAgICB2YXIgcmVzdWx0ID0gbmV3IExpc3Q8aW50PigpOwogICAgICAgIGZvcmVhY2ggKHZhciB0b2tlbiBpbiB0b2tlbnMpCiAgICAgICAgewogICAgICAgICAgICBpZiAoaW50LlRyeVBhcnNlKHRva2VuLCBvdXQgaW50IHZhbHVlKSkKICAgICAgICAgICAgewogICAgICAgICAgICAgICAgcmVzdWx0LkFkZCh2YWx1ZSk7CiAgICAgICAgICAgIH0KICAgICAgICB9CiAgICAgICAgcmV0dXJuIHJlc3VsdDsKICAgIH0KfQo="
+}

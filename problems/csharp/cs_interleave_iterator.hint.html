@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Interleave Two Sequences, Lazily · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C# · hard</p>
+  <h1>Interleave Two Sequences, Lazily</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Two enumerators, advanced in lockstep</h2>
+
+<pre><code>using var ea = a.GetEnumerator();
+using var eb = b.GetEnumerator();
+bool aHasMore = ea.MoveNext();
+bool bHasMore = eb.MoveNext();
+
+while (aHasMore || bHasMore) {
+    if (aHasMore) {
+        yield return ea.Current;
+        aHasMore = ea.MoveNext();
+    }
+    if (bHasMore) {
+        yield return eb.Current;
+        bHasMore = eb.MoveNext();
+    }
+}</code></pre>
+
+<h2>Why the loop condition is <code>||</code>, not <code>&amp;&amp;</code></h2>
+
+<div class="trap">
+<p><code>while (aHasMore &amp;&amp; bHasMore)</code> stops the instant either
+side runs out -- which drops the rest of whichever sequence was longer,
+exactly the behaviour the statement rules out. <code>||</code> keeps the
+loop going as long as *either* side still has something left, and the two
+independent <code>if</code>s inside it -- each only yielding and advancing
+its own side when that side still has more -- are what let one side keep
+contributing after the other has already gone quiet.</p>
+</div>
+
+<p><code>aHasMore</code> and <code>bHasMore</code> are read, not
+recomputed, inside the loop -- each is only ever updated by its own
+side's <code>MoveNext()</code> call, right after that side yields.</p>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cs_interleave_iterator.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

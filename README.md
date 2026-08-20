@@ -24,6 +24,7 @@ python -m crucible
 - [Quick start](#quick-start)
 - [Profiles](#profiles)
 - [Installing a C compiler](#installing-a-c-compiler)
+- [Installing the .NET SDK](#installing-the-net-sdk)
 - [How a submission is run](#how-a-submission-is-run)
 - [The reference-solution gate](#the-reference-solution-gate)
 - [Randomised test data](#randomised-test-data)
@@ -195,6 +196,26 @@ Under MSVC the build adds `/D_CRT_SECURE_NO_WARNINGS`, and `cl`'s filename echo
 and `Generating Code...` are filtered out. Both exist so that a correct
 submission produces genuinely empty build output, rather than warnings about
 `scanf` that the candidate did not cause and cannot fix.
+
+## Installing the .NET SDK
+
+The app searches `PATH` and the usual install locations for `dotnet`. If it
+is found but `dotnet --version` fails, that is a runtime-only install — it
+can run a published app but not build one — reported as its own distinct
+status rather than "no toolchain", because the remedy is different (install
+the SDK, not reinstall .NET from scratch).
+
+| Option | How |
+| --- | --- |
+| **Windows** | `winget install Microsoft.DotNet.SDK.8`, or the installer at <https://dotnet.microsoft.com/download> |
+| **Linux** | `sudo apt install dotnet-sdk-8.0` / `sudo dnf install dotnet-sdk-8.0` |
+| **macOS** | `brew install dotnet-sdk` |
+
+Then *Tools → Re-check compilers*. Every submission builds as a small,
+disposable `net8.0` console project generated fresh in a temp directory —
+the first build on a machine restores the SDK's reference packages into the
+shared NuGet cache (a few seconds); every build after that, anywhere, reuses
+the cache and takes about as long as a C compile.
 
 ## How a submission is run
 
@@ -412,12 +433,19 @@ the stylesheet does not load the pages are still ordinary readable HTML.
 
 ## What is in the box
 
-50 problems — 46 in C, 4 in Python. Every one of them mixes hand-written edge
-cases with four randomised ones, and ships a hint and a worked solution.
+65 problems — 46 in C, 4 in Python, 15 in C#. Every one of them mixes
+hand-written edge cases with four randomised ones, and ships a hint and a
+worked solution.
 
 The C set is deliberately weighted towards the things C makes you think about
 and other languages do not: what the pointer points at, who owns the memory,
-what happens at the boundary, and what the standard actually promises.
+what happens at the boundary, and what the standard actually promises. The C#
+set asks the mirror question: what does the runtime hand you for free, and
+where does trusting that abstraction stop being safe? A `struct` inside a
+`List<T>`, integer division that overflow-checks when nothing else does, an
+interface call that costs nothing to get right and everything to fake with a
+type switch -- see [C#: what the compiler will not catch for
+you](#c-what-the-compiler-will-not-catch-for-you) below.
 
 Most problems start from an empty function. A few start from a *full* one that
 is already wrong — the editor opens on plausible code carrying one planted
@@ -439,6 +467,11 @@ with the `debugging` topic.
 | | C | Slew-Rate Limit a Demand Signal | embedded, control, signal-processing |
 | | C | Check Whether a Sensor Reading Is In Range (MISRA Essential Types) | embedded, calibration, essential-types, misra |
 | | Python | Two Sum | dictionaries, arrays |
+| | C# | Count the Vowels | strings, loops |
+| | C# | Palindrome Check | strings, two pointers |
+| | C# | Min, Max and Sum as a Value Tuple | tuples, arrays, loops |
+| | C# | Nullable Value or Fallback | nullable types, operators |
+| | C# | Join a List Into a CSV Line | strings, lists |
 | **medium** | C | Binary Search | algorithms, arrays, search |
 | | C | Palindrome Check | strings, two pointers, ctype |
 | | C | Remove Duplicates From a Sorted Array | arrays, in-place, two pointers |
@@ -460,17 +493,27 @@ with the `debugging` topic.
 | | C | Fix the Sample Averager | debugging, code-review, pointers, arrays |
 | | Python | Balanced Brackets | stacks, strings, parsing |
 | | Python | Run-Length Encoding | strings, iteration |
+| | C# | Group Anagrams | dictionaries, strings, linq |
+| | C# | Keep Only the Valid Integers | parsing, strings, lists |
+| | C# | Character Frequency Count | dictionaries, strings |
+| | C# | Balanced Brackets, Three Kinds | stacks, strings |
+| | C# | Total Area Through an Interface | interfaces, polymorphism, lists |
 | **hard** | C | Maximum Subarray Sum | algorithms, dynamic programming, arrays |
 | | C | Reverse a Linked List | pointers, linked lists |
 | | C | Edit Distance | dynamic programming, strings |
 | | C | Extract a Signed Sensor Reading | bitwise, embedded, sign-extension, twos-complement |
 | | C | Unpack a CAN Signal (Intel Byte Order) | embedded, can-bus, bitwise, sign-extension |
 | | C | Validate a CAN Message's Rolling Counter and Checksum | embedded, can-bus, functional-safety, state |
+| | C# | Sliding Window Maximum | algorithms, linked lists, arrays |
+| | C# | Binary Search With an Insertion-Point Convention | algorithms, search, bitwise |
+| | C# | Interleave Two Sequences, Lazily | iterators, yield, linq |
 | **fiendish** | C | Compute a CRC-16/CCITT-FALSE Checksum | embedded, bitwise, checksum, error-detection, misra |
 | | C | Decode a COBS-Framed Serial Buffer | embedded, framing, bitwise, error-detection |
 | | C | Fixed-Capacity LRU Cache (No Dynamic Allocation) | data-structures, embedded, pointers, linked lists |
 | | C | Match a Simplified Regular Expression ('.' and '*') | algorithms, dynamic programming, strings, recursion |
 | | C | Decode a Multiplexed CAN Signal Group | embedded, can-bus, bitwise, sign-extension |
+| | C# | Division With Two Distinct Failure Modes | arithmetic, enums, tuples, overflow |
+| | C# | Mutating Structs Inside a List | structs, value semantics, lists |
 
 A few are worth calling out for what they are really testing:
 
@@ -683,6 +726,59 @@ leans on a different corner of the standard, deliberately:
   requirement made visible in the code rather than left for a reader to
   infer from two operands' types.
 
+### C#: what the compiler will not catch for you
+
+Fifteen problems, spread across all four difficulty tiers, in a language
+where the compiler is unusually good at catching real mistakes -- which is
+exactly what makes the ones it does not catch worth building a whole track
+around. None of these are C ported into C# syntax; each one is chosen
+because the trap only exists *because* of something C# specifically gives
+you: a nullable value type, a value-tuple return, `Dictionary<TKey,TValue>`'s
+indexer, a `yield return` state machine, an interface's virtual dispatch.
+
+- **Mutating Structs Inside a List** is the fiendish centrepiece of the set.
+  `counters[i].Increment();` compiles cleanly, throws nothing, and changes
+  nothing: `List<T>`'s indexer returns a *copy* of a struct element, so the
+  mutation lands on a temporary that is discarded the instant the statement
+  ends. The fix -- read into a local, mutate the local, write the local
+  back -- is three statements where the broken version only needed one, and
+  there is no compiler warning marking the difference.
+- **Division With Two Distinct Failure Modes** trades on a fact most C#
+  developers have never had reason to learn: unlike `+`, `-` and `*`,
+  which only overflow-check inside a `checked` block, integer *division*
+  overflow-checks unconditionally. `int.MinValue / -1` throws
+  `OverflowException` every time, `checked` or not, and it is a completely
+  different failure from `b == 0` -- the fixed tests check that a solution
+  reports which one occurred rather than catching both under one name.
+- **Total Area Through an Interface** hides an undocumented third
+  `IShape` implementation in one fixed test, specifically to catch a
+  solution that pattern-matches on `is Circle` / `is Rectangle` instead of
+  trusting `shape.Area()` to dispatch correctly on its own -- the entire
+  point of an interface, demonstrated by what breaks when code quietly
+  routes around it.
+- **Sliding Window Maximum** and **Interleave Two Sequences, Lazily** both
+  ask for a specific *shape* of solution, not just a correct answer: a
+  monotonic deque built from `LinkedList<int>` for the first, two
+  hand-managed `IEnumerator<int>`s inside a `yield return` iterator for the
+  second -- because the whole lesson in each is a C# collection or language
+  feature that a `List<T>.Contains` scan or a pair of `foreach` loops would
+  quietly sidestep.
+- **Group Anagrams** is a reminder that `Dictionary<TKey, TValue>`'s
+  enumeration order is an implementation detail, not part of its contract:
+  the fixed test checking output order is built so that relying on
+  insertion-order-shaped enumeration (which happens to hold on today's
+  runtime) gives the wrong answer the moment the specification's actual
+  rule -- order of first appearance in the input, tracked explicitly --
+  is not the rule being followed.
+
+The toolchain is the .NET SDK (`dotnet build`), targeting `net8.0` for the
+same reason the C track picks a real standard rather than a compiler's
+latest defaults: a submission should build the same way next year. Nullable
+reference types are off project-wide -- these problems are about nullable
+*value* types, structs, iterators and interfaces, not about fighting the
+compiler's reference-nullability warnings on every problem regardless of
+whether that problem has anything to do with them.
+
 ### Beyond writing algorithms
 
 Five problems sit next to programming rather than in it — reading a UML
@@ -842,6 +938,13 @@ has nothing to link, so it compiles the source instead — that way a syntax
 error is reported once as a build failure rather than n times as identical
 tracebacks.
 
+`crucible/languages/csharp_lang.py` sits between the two: like C, it produces
+a genuine linked artifact (`dotnet build`, with a generated, throwaway
+`.csproj` standing in for a compiler invocation's list of flags); like
+Python, `detect_toolchain` is a single well-known executable search with no
+environment-capture step, because the .NET SDK — unlike MSVC — needs nothing
+beyond its own install directory to run.
+
 ## Internationalisation
 
 Every string the app or the CLI shows -- window titles, menu labels, dialog
@@ -915,14 +1018,14 @@ owner than translating "Save draft" and "No compiler available".
 python -m unittest discover -s tests -v
 ```
 
-128 tests covering output normalisation and diff hints, problem-schema
+133 tests covering output normalisation and diff hints, problem-schema
 validation (missing fields, bad base64, duplicate test names, unknown
 languages, malformed JSON), the run pipeline (correct, wrong, syntax error,
 runtime exception, timeout, progress callbacks), randomised data (determinism
 per seed, expected output actually coming from the reference, generators that
 raise, loop, print, return rubbish, or try to state the answer), data-set
-storage, the language registry, and the C diagnostic/exit-code helpers that can
-be checked without a compiler.
+storage, the language registry, and the C and C# diagnostic/exit-code helpers
+that can be checked without a toolchain installed.
 
 The guides are covered too: the lookup convention on its own, and then every
 shipped page — both required ones exist, each names its problem, each links to
@@ -971,6 +1074,7 @@ crucible/
     base.py            Language ABC, process runner, result types
     c_lang.py          gcc / clang / cc / MSVC, toolchain discovery
     python_lang.py     worked example of a second language
+    csharp_lang.py     dotnet build, generated .csproj, native apphost
   ui/
     app.py             main window
     editor.py          editor widget: gutter, highlighting, indentation
@@ -981,6 +1085,7 @@ problems/
   guides.css           shared by every guide page
   c/                   42 problems, each with .json + .hint.html
   python/              3 problems,             + .solution.html
+  csharp/              15 problems,            + .solution.html
   uml/                 2 problems,             + .diagram.html
   safety/              3 problems
 tests/

@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Sliding Window Maximum · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C# · hard</p>
+  <h1>Sliding Window Maximum</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>The shape of the loop</h2>
+
+<pre><code>var deque = new LinkedList&lt;int&gt;();  // indices, values decreasing front-to-back
+for (int i = 0; i &lt; values.Length; i++) {
+    // 1. evict from the front: indices that fell out of the window
+    // 2. evict from the back: indices whose value &lt;= values[i]
+    // 3. add i to the back
+    // 4. if the window is full, front's value is this window's max
+}</code></pre>
+
+<h2>Why the back eviction uses <code>&lt;=</code></h2>
+
+<div class="trap">
+<p>Picture two equal values, an earlier one already in the deque and
+<code>values[i]</code> arriving now with the same value. The earlier one is
+about to become useless the moment it ages out of the window -- and when it
+does, the later, equal one is still there and is just as valid an answer.
+Keeping the earlier one around anyway (using <code>&lt;</code> instead of
+<code>&lt;=</code> for the eviction check) does not produce a wrong
+<em>maximum</em> -- ties do not change what the biggest value is -- but it
+does let stale, no-longer-useful indices pile up in the deque without ever
+being read again, which is the difference between the deque staying small
+and it slowly growing back toward the size of the window it was supposed
+to avoid rescanning.</p>
+</div>
+
+<h2>Front eviction happens before back eviction, every iteration</h2>
+
+<p>Checking whether the front index has aged out of the window has to
+happen first, before anything about the current value is considered --
+otherwise a front index that should already be gone could still be read as
+"the current maximum" for one iteration too long.</p>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cs_sliding_window_maximum.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

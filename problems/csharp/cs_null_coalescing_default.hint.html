@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Nullable Value or Fallback · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C# · easy</p>
+  <h1>Nullable Value or Fallback</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>One operator</h2>
+
+<p>C# has a single operator whose entire job is "this, unless it's null, in
+which case that": <code>??</code>. <code>a ?? b</code> evaluates to
+<code>a</code> if <code>a</code> is not <code>null</code>, and to
+<code>b</code> otherwise -- and it works directly on an <code>int?</code>
+against a plain <code>int</code>, producing a plain <code>int</code> back.</p>
+
+<h2>What not to reach for</h2>
+
+<div class="trap">
+<p><code>value.Value</code> assumes <code>value</code> actually holds
+something -- it throws <code>InvalidOperationException</code> the instant
+it is evaluated on a <code>null</code> value, rather than returning
+anything at all. If your first instinct is to write <code>.Value</code>
+somewhere, that is the line to double back to and check.</p>
+</div>
+
+<h2>Zero is not the same as absent</h2>
+
+<p>A stored value of <code>0</code> still has <code>HasValue == true</code>
+-- <code>??</code> returns it unchanged, the same as any other present
+value. Only an actual <code>null</code> reaches for <code>fallback</code>.</p>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cs_null_coalescing_default.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

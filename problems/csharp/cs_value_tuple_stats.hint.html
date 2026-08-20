@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Min, Max and Sum as a Value Tuple · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C# · easy</p>
+  <h1>Min, Max and Sum as a Value Tuple</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Seed from the array, not from a constant</h2>
+
+<pre><code>int min = values[0];
+int max = values[0];
+long sum = 0;
+foreach (int v in values) {
+    // update min, max, sum
+}
+return (min, max, sum);</code></pre>
+
+<p>Seeding <code>min</code> and <code>max</code> from <code>values[0]</code>
+means every other element only ever has to prove it is *more* extreme than
+what has been seen so far -- there is no separate "is this the first
+element" branch needed inside the loop.</p>
+
+<h2>The overflow the return type is already warning you about</h2>
+
+<div class="trap">
+<p><code>sum</code> is declared <code>long</code> in the return type for a
+reason: accumulating into an <code>int</code> local and only converting to
+<code>long</code> at the very end (<code>return (min, max, (long)sum);</code>)
+overflows during the accumulation itself, before the conversion ever runs --
+the cast comes too late to save a value that has already wrapped. Declare
+the running total as <code>long</code> from its first assignment.</p>
+</div>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cs_value_tuple_stats.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

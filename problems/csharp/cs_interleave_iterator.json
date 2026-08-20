@@ -1,0 +1,53 @@
+{
+  "id": "cs_interleave_iterator",
+  "title": "Interleave Two Sequences, Lazily",
+  "language": "csharp",
+  "difficulty": "hard",
+  "topics": [
+    "iterators",
+    "yield",
+    "linq"
+  ],
+  "timeout_seconds": 5,
+  "statement": "`yield return` turns a method into a state machine the compiler writes for\nyou: each call to the resulting sequence's `MoveNext()` runs the method\nbody until the next `yield return`, then pauses there -- mid-loop, mid\nwhatever it was doing -- until asked to resume. Writing an iterator that\npulls from *two* sequences at once means managing that pause point by\nhand, one `IEnumerator<T>` per source, because nothing hands you both\nsequences' current positions in a single `foreach`.\n\n## Your function\n\n```\npublic static IEnumerable<int> Interleave(IEnumerable<int> a, IEnumerable<int> b);\n```\n\nYield elements alternately from `a` and `b`: `a`'s first element, then\n`b`'s first, then `a`'s second, then `b`'s second, and so on. Once one\nsequence is exhausted, yield the remainder of the other one in order --\ndo not stop early, and do not pad the exhausted side with anything.\nEither sequence may be empty.\n\n## Watch out\n\n- **`GetEnumerator()` and `MoveNext()`, not `foreach`.** A `foreach` loop\n  owns its enumerator for its entire body and cannot be paused\n  mid-iteration to let the *other* sequence take a turn -- interleaving\n  two sequences means holding one `IEnumerator<int>` per source yourself,\n  calling `MoveNext()` on each in turn, and reading `.Current` only when\n  the matching `MoveNext()` just returned `true`.\n- **Once a sequence is exhausted, stop asking it for more, but keep\n  asking the other one.** A loop that keeps trying to advance a\n  finished enumerator does no harm (`MoveNext()` on an exhausted\n  enumerator just keeps returning `false`), but a loop that stops the\n  *whole* interleave the moment either side finishes drops every\n  remaining element of the longer sequence -- exactly what \"yield the\n  remainder\" rules out.\n- `IEnumerator<T>` implements `IDisposable`; wrap each one in a `using`\n  (or a `using` declaration) so it is disposed whether the interleave\n  runs to completion or a caller stops enumerating partway through.\n",
+  "starter_code": "/// <summary>\n/// Yield elements alternately from a and b (a's first, b's first, a's\n/// second, ...); once one is exhausted, yield the remainder of the other.\n/// Either sequence may be empty.\n/// </summary>\npublic static class Solution\n{\n    public static IEnumerable<int> Interleave(IEnumerable<int> a, IEnumerable<int> b)\n    {\n        // your code here\n        yield break;\n    }\n}\n",
+  "harness": "class Program\n{\n    static List<int> ReadList()\n    {\n        var parts = Console.ReadLine().Split(' ', StringSplitOptions.RemoveEmptyEntries);\n        var result = new List<int>();\n        foreach (var p in parts)\n        {\n            result.Add(int.Parse(p));\n        }\n        return result;\n    }\n\n    static void Main()\n    {\n        string line;\n        while ((line = Console.ReadLine()) != null)\n        {\n            if (line.Trim().Length == 0) { continue; }\n            int na = int.Parse(line);\n            var a = na > 0 ? ReadList() : new List<int>();\n            if (na == 0) { Console.ReadLine(); }\n            int nb = int.Parse(Console.ReadLine());\n            var b = nb > 0 ? ReadList() : new List<int>();\n            if (nb == 0) { Console.ReadLine(); }\n\n            var result = Solution.Interleave(a, b).ToList();\n            Console.WriteLine(string.Join(\" \", result));\n        }\n    }\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random pairs of integer lists, deliberately of different lengths so the\n\"exhaust one side, drain the other\" path is exercised often.\"\"\"\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _line(values):\n    return \"%d\\n%s\" % (len(values), \" \".join(map(str, values)) if values else \"\")\n\n\ndef _case(rng, index):\n    na = rng.randint(0, 10)\n    nb = rng.randint(0, 10)\n    a = [rng.randint(-50, 50) for _ in range(na)]\n    b = [rng.randint(-50, 50) for _ in range(nb)]\n    return {\"name\": \"lengths %d and %d #%d\" % (na, nb, index),\n            \"stdin\": _line(a) + \"\\n\" + _line(b) + \"\\n\"}\n"
+  },
+  "tests": [
+    {
+      "name": "both empty",
+      "stdin": "0\n\n0\n\n",
+      "expected_stdout": ""
+    },
+    {
+      "name": "equal lengths, simple alternation",
+      "stdin": "3\n1 2 3\n3\n10 20 30\n",
+      "expected_stdout": "1 10 2 20 3 30"
+    },
+    {
+      "name": "a is empty -- the whole result is just b",
+      "stdin": "0\n\n3\n5 6 7\n",
+      "expected_stdout": "5 6 7"
+    },
+    {
+      "name": "b is empty -- the whole result is just a",
+      "stdin": "3\n5 6 7\n0\n\n",
+      "expected_stdout": "5 6 7"
+    },
+    {
+      "name": "a shorter than b -- b's remainder is not dropped",
+      "stdin": "1\n1\n4\n10 20 30 40\n",
+      "expected_stdout": "1 10 20 30 40",
+      "description": "After a's single element is used, b still has three more to yield."
+    },
+    {
+      "name": "b shorter than a -- the mirror case",
+      "stdin": "4\n1 2 3 4\n1\n10\n",
+      "expected_stdout": "1 10 2 3 4"
+    }
+  ],
+  "reference_solution_b64": "cHVibGljIHN0YXRpYyBjbGFzcyBTb2x1dGlvbgp7CiAgICBwdWJsaWMgc3RhdGljIElFbnVtZXJhYmxlPGludD4gSW50ZXJsZWF2ZShJRW51bWVyYWJsZTxpbnQ+IGEsIElFbnVtZXJhYmxlPGludD4gYikKICAgIHsKICAgICAgICB1c2luZyB2YXIgZWEgPSBhLkdldEVudW1lcmF0b3IoKTsKICAgICAgICB1c2luZyB2YXIgZWIgPSBiLkdldEVudW1lcmF0b3IoKTsKICAgICAgICBib29sIGFIYXNNb3JlID0gZWEuTW92ZU5leHQoKTsKICAgICAgICBib29sIGJIYXNNb3JlID0gZWIuTW92ZU5leHQoKTsKCiAgICAgICAgd2hpbGUgKGFIYXNNb3JlIHx8IGJIYXNNb3JlKQogICAgICAgIHsKICAgICAgICAgICAgaWYgKGFIYXNNb3JlKQogICAgICAgICAgICB7CiAgICAgICAgICAgICAgICB5aWVsZCByZXR1cm4gZWEuQ3VycmVudDsKICAgICAgICAgICAgICAgIGFIYXNNb3JlID0gZWEuTW92ZU5leHQoKTsKICAgICAgICAgICAgfQogICAgICAgICAgICBpZiAoYkhhc01vcmUpCiAgICAgICAgICAgIHsKICAgICAgICAgICAgICAgIHlpZWxkIHJldHVybiBlYi5DdXJyZW50OwogICAgICAgICAgICAgICAgYkhhc01vcmUgPSBlYi5Nb3ZlTmV4dCgpOwogICAgICAgICAgICB9CiAgICAgICAgfQogICAgfQp9Cg=="
+}

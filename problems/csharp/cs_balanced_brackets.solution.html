@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Balanced Brackets, Three Kinds · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C# · medium</p>
+  <h1>Balanced Brackets, Three Kinds</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>public static bool IsBalanced(string text)
+{
+    var closesFor = new Dictionary&lt;char, char&gt; { [')'] = '(', [']'] = '[', ['}'] = '{' };
+    var stack = new Stack&lt;char&gt;();
+
+    foreach (char c in text)
+    {
+        if (c == '(' || c == '[' || c == '{')
+        {
+            stack.Push(c);
+        }
+        else if (closesFor.ContainsKey(c))
+        {
+            if (stack.Count == 0 || stack.Pop() != closesFor[c])
+            {
+                return false;
+            }
+        }
+    }
+    return stack.Count == 0;
+}</code></pre>
+
+<h2>Why the empty-stack check comes first, in the same expression</h2>
+
+<div class="trap">
+<p><code>stack.Count == 0 || stack.Pop() != closesFor[c]</code> relies on
+<code>||</code> short-circuiting: when the stack is empty, the left side is
+<code>true</code> and <code>Pop()</code> is never called at all, so the
+<code>InvalidOperationException</code> it would otherwise throw never has a
+chance to. Writing the two checks as separate statements works too, as
+long as the empty check genuinely happens first and genuinely returns
+before reaching the <code>Pop()</code> call -- the risk with separating
+them is a refactor later moving one past the other without the ordering
+being obviously load-bearing the way it is when they share one
+short-circuited expression.</p>
+</div>
+
+<h2>Why the final check is on the stack, not on anything seen while scanning</h2>
+
+<p><code>"(()"</code> never encounters a closing bracket that disagrees
+with what is open -- there simply are not enough closing brackets to reach
+the point of disagreement. Nothing about scanning left to right ever
+notices that; the only place it shows up is that the stack still has an
+unclosed <code>'('</code> on it once <code>text</code> runs out. That is
+exactly what <code>return stack.Count == 0;</code> is checking: not "did
+I ever see a mismatch", but "is there anything still waiting to be closed".</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(n)</strong> in the length of `text` -- each character is
+looked at once, and each bracket does at most one push or one pop.</p>
+
+<footer>
+  <p><a href="cs_balanced_brackets.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

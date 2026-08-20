@@ -1,0 +1,55 @@
+{
+  "id": "cs_count_vowels",
+  "title": "Count the Vowels",
+  "language": "csharp",
+  "difficulty": "easy",
+  "topics": [
+    "strings",
+    "loops"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Every language track needs a \"read a string, look at each character\" warm-up,\nand counting vowels is the plainest version of it: no data structure to pick,\nno algorithm to choose, just the discipline of getting the character\ncomparison right for every character the string can actually contain.\n\n## Your function\n\n```\npublic static int CountVowels(string text);\n```\n\nReturn how many of `text`'s characters are one of `a`, `e`, `i`, `o`, `u`.\n`text` may be empty, and is never `null`.\n\n## Watch out\n\n- **`text` can contain upper-case letters.** `\"Crucible\"` has three: the two\n  `i`s aren't there, but the `u`, the first `i`, and the... count them\n  yourself, and check your function agrees. The point is that upper-case\n  vowels are still vowels -- comparing only against lower-case letters\n  quietly undercounts every string that has any capitals in it at all,\n  which in ordinary English text is most of them.\n- **`y` is never a vowel here.** English usage genuinely disagrees about\n  `y` (compare \"myth\" and \"boy\"), so this exercise sidesteps the argument\n  entirely: the five letters above are the whole list, and `y` -- upper or\n  lower case -- is not one of them.\n- **Punctuation, digits and spaces are not errors.** They are simply not\n  vowels, and the loop should pass over them the same way it passes over\n  a consonant -- no special-casing, no exception, just characters that do\n  not match.\n",
+  "starter_code": "/// <summary>\n/// Count how many characters in <paramref name=\"text\"/> are a vowel\n/// (a, e, i, o, u), matched without regard to case. text may be empty and\n/// is never null.\n/// </summary>\npublic static class Solution\n{\n    public static int CountVowels(string text)\n    {\n        // your code here\n        return 0;\n    }\n}\n",
+  "harness": "class Program\n{\n    static void Main()\n    {\n        string line;\n        while ((line = Console.ReadLine()) != null)\n        {\n            Console.WriteLine(Solution.CountVowels(line));\n        }\n    }\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random strings mixing letters (both cases), digits and punctuation.\"\"\"\n\nimport string\n\nALPHABET = string.ascii_letters + string.digits + \" .,!?-'\\\"\"\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    n = rng.randint(0, 40)\n    text = \"\".join(rng.choice(ALPHABET) for _ in range(n))\n    return {\"name\": \"a random %d-character string #%d\" % (n, index),\n            \"stdin\": text + \"\\n\"}\n"
+  },
+  "tests": [
+    {
+      "name": "an empty string has no vowels",
+      "stdin": "\n",
+      "expected_stdout": "0"
+    },
+    {
+      "name": "every letter in the alphabet, lower case",
+      "stdin": "abcdefghijklmnopqrstuvwxyz\n",
+      "expected_stdout": "5",
+      "description": "Exactly a, e, i, o, u -- five vowels among 26 letters."
+    },
+    {
+      "name": "the same alphabet, upper case",
+      "stdin": "ABCDEFGHIJKLMNOPQRSTUVWXYZ\n",
+      "expected_stdout": "5",
+      "description": "Upper-case vowels count too -- a solution that only checks lower case undercounts this to 0."
+    },
+    {
+      "name": "mixed case in an ordinary sentence",
+      "stdin": "CRUCIBLE\nThe Quick Brown Fox\n",
+      "expected_stdout": "3\n5",
+      "description": "CRUCIBLE: u, i, e. 'The Quick Brown Fox': e, u, i, o, o."
+    },
+    {
+      "name": "y is never counted as a vowel",
+      "stdin": "yyy\nrhythm\n",
+      "expected_stdout": "0\n0"
+    },
+    {
+      "name": "punctuation and digits are simply not vowels",
+      "stdin": "1, 2, 3... go!\n",
+      "expected_stdout": "1",
+      "description": "Only the 'o' in 'go' is a vowel."
+    }
+  ],
+  "reference_solution_b64": "cHVibGljIHN0YXRpYyBjbGFzcyBTb2x1dGlvbgp7CiAgICBwdWJsaWMgc3RhdGljIGludCBDb3VudFZvd2VscyhzdHJpbmcgdGV4dCkKICAgIHsKICAgICAgICBpbnQgY291bnQgPSAwOwogICAgICAgIGZvcmVhY2ggKGNoYXIgYyBpbiB0ZXh0KQogICAgICAgIHsKICAgICAgICAgICAgY2hhciBsb3dlciA9IGNoYXIuVG9Mb3dlckludmFyaWFudChjKTsKICAgICAgICAgICAgaWYgKGxvd2VyID09ICdhJyB8fCBsb3dlciA9PSAnZScgfHwgbG93ZXIgPT0gJ2knCiAgICAgICAgICAgICAgICB8fCBsb3dlciA9PSAnbycgfHwgbG93ZXIgPT0gJ3UnKQogICAgICAgICAgICB7CiAgICAgICAgICAgICAgICBjb3VudCsrOwogICAgICAgICAgICB9CiAgICAgICAgfQogICAgICAgIHJldHVybiBjb3VudDsKICAgIH0KfQo="
+}

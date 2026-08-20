@@ -24,6 +24,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from crucible import guides, i18n, languages, profiles, randomise, runner, workspace
 from crucible.languages.c_lang import CLanguage
+from crucible.languages.csharp_lang import CSharpLanguage
 from crucible.problem import ProblemError, load_library, load_problem
 
 PROBLEMS_ROOT = Path(__file__).resolve().parents[1] / "problems"
@@ -1000,6 +1001,49 @@ class TestCDiagnostics(unittest.TestCase):
             self.skipTest("a C compiler is installed")
         self.assertTrue(status.remedy)
         self.assertIn("compiler", status.remedy.lower())
+
+
+class TestCSharpDiagnostics(unittest.TestCase):
+    """Testable without the .NET SDK installed."""
+
+    def setUp(self):
+        self.cs = CSharpLanguage()
+
+    def test_temp_paths_are_stripped_from_diagnostics(self):
+        import os
+        raw = (f"C:{os.sep}long{os.sep}temp{os.sep}crucible_x{os.sep}solution.cs"
+               f"(4,9): error CS1525: bad [C:{os.sep}long{os.sep}temp"
+               f"{os.sep}crucible_x{os.sep}crucible.csproj]")
+        self.assertEqual(self.cs.clean_diagnostics(raw),
+                         "solution.cs(4,9): error CS1525: bad")
+
+    def test_msbuild_reprint_and_tally_lines_are_stripped(self):
+        noisy = ("solution.cs(3,1): error CS1525: bad [x.csproj]\n"
+                 "\n"
+                 "Build FAILED.\n"
+                 "\n"
+                 "solution.cs(3,1): error CS1525: bad [x.csproj]\n"
+                 "    1 Warning(s)\n"
+                 "    1 Error(s)\n"
+                 "\n"
+                 "Time Elapsed 00:00:01.50\n")
+        cleaned = self.cs._strip_msbuild_noise(noisy)
+        self.assertEqual(cleaned, "solution.cs(3,1): error CS1525: bad [x.csproj]")
+
+    @unittest.skipUnless(sys.platform == "win32", "Windows-only exit code")
+    def test_unhandled_exception_is_described(self):
+        self.assertIn("unhandled exception", self.cs.describe_exit(0xE0434352))
+
+    def test_clean_exit_is_not_called_a_crash(self):
+        self.assertNotIn("crash", self.cs.describe_exit(0))
+        self.assertIn("0", self.cs.describe_exit(0))
+
+    def test_missing_sdk_reports_a_remedy(self):
+        status = self.cs.toolchain()
+        if status.available:
+            self.skipTest(".NET SDK is installed")
+        self.assertTrue(status.remedy)
+        self.assertIn("sdk", status.remedy.lower())
 
 
 # ---------------------------------------------------------------------------

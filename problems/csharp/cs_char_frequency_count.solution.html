@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Character Frequency Count · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C# · medium</p>
+  <h1>Character Frequency Count</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>public static Dictionary&lt;char, int&gt; CountFrequencies(string text)
+{
+    var counts = new Dictionary&lt;char, int&gt;();
+    foreach (char c in text)
+    {
+        counts[c] = counts.GetValueOrDefault(c) + 1;
+    }
+    return counts;
+}</code></pre>
+
+<h2>Why <code>GetValueOrDefault</code> needs no branch</h2>
+
+<div class="trap">
+<p><code>counts.GetValueOrDefault(c)</code> returns the stored value for
+<code>c</code> if there is one, and <code>0</code> -- the type's default --
+if there is not, rather than throwing the way the plain indexer's getter
+does. <code>0</code> is exactly the right answer to "how many times has
+<code>c</code> been seen so far" on its first occurrence, which is what
+makes <code>counts[c] = counts.GetValueOrDefault(c) + 1;</code> correct
+whether this is the character's first appearance or its hundredth: the
+same one line handles both, because the starting point for "add one" is
+already right either way.</p>
+<p>The version this replaces, <code>counts[c]++</code>, is not wrong in
+spirit -- it is exactly the operation being performed here -- it is wrong
+because the <em>read</em> half of that compound assignment goes through the
+indexer's plain getter, which throws <code>KeyNotFoundException</code> on a
+key that has never been written, rather than the more forgiving
+<code>GetValueOrDefault</code>.</p>
+</div>
+
+<h2>Why the whole alphabet does not need pre-populating</h2>
+
+<p>An alternative fix -- initialise every character that might appear to
+<code>0</code> before the loop runs, so the plain indexer never meets a
+missing key -- works, but requires knowing the whole alphabet up front and
+pre-populating an entry for each one, most of which the input will never
+actually use. <code>GetValueOrDefault</code> sidesteps needing that
+alphabet at all: entries are created lazily, exactly for the characters
+that actually occur, which is also why an empty <code>text</code> correctly
+produces an empty dictionary rather than one full of zeros.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(n)</strong> in the length of `text` -- one dictionary lookup
+and one write per character, both O(1) on average.</p>
+
+<footer>
+  <p><a href="cs_char_frequency_count.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

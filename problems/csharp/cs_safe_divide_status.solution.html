@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Division With Two Distinct Failure Modes · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C# · fiendish</p>
+  <h1>Division With Two Distinct Failure Modes</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>public static (DivideStatus Status, int Value) SafeDivide(int a, int b)
+{
+    if (b == 0)
+    {
+        return (DivideStatus.DivideByZero, 0);
+    }
+    if (a == int.MinValue &amp;&amp; b == -1)
+    {
+        return (DivideStatus.Overflow, 0);
+    }
+    return (DivideStatus.Ok, a / b);
+}</code></pre>
+
+<h2>Why integer division overflow-checks even when nothing else does</h2>
+
+<div class="trap">
+<p>C#'s <code>checked</code>/<code>unchecked</code> contexts govern
+whether <code>+</code>, <code>-</code> and <code>*</code> on integers throw
+on overflow or silently wrap -- <code>unchecked</code> is the default, and
+under it those three operators wrap without complaint. Division does not
+follow that rule: <code>int.MinValue / -1</code> throws
+<code>System.OverflowException</code> whether the surrounding code is
+<code>checked</code> or not, because the .NET runtime's division
+instruction itself faults on that specific input at the hardware level --
+there is no silently-wrapped answer for it to fall back to the way there
+is for addition or multiplication. That is what makes catching the
+exception after the fact strictly worse than checking for it up front:
+the fault has already happened, unconditionally, by the time a
+<code>catch</code> block would see it.</p>
+</div>
+
+<h2>Why the two failure modes get two different enum values</h2>
+
+<p><code>b == 0</code> and <code>a == int.MinValue &amp;&amp; b == -1</code>
+are entirely different questions with entirely different answers -- one is
+about the divisor alone, the other about a specific pairing of dividend and
+divisor. Reporting both as the same status (or catching a general exception
+and mapping every case of it to <code>DivideByZero</code> because that is
+the more familiar name) throws away information a caller might reasonably
+want: "there is no mathematical answer" and "the answer exists but does not
+fit in 32 bits" are different problems, and a caller deciding how to
+recover benefits from knowing which one it is.</p>
+
+<h2>Why the order of the two checks does not actually matter here</h2>
+
+<p><code>b == 0</code> and <code>b == -1</code> are mutually exclusive --
+no input can trigger both checks, so the two <code>if</code>s could be
+swapped without changing the function's behaviour on any input. They are
+written zero-check first here simply because it is the more familiar case
+to read first, not because the ordering carries any logical weight.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(1)</strong> -- two comparisons and, on the ordinary path, one
+division.</p>
+
+<footer>
+  <p><a href="cs_safe_divide_status.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

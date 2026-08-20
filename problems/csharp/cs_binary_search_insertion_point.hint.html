@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Binary Search With an Insertion-Point Convention · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C# · hard</p>
+  <h1>Binary Search With an Insertion-Point Convention</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>An ordinary binary search, with one change at the end</h2>
+
+<pre><code>int low = 0, high = sortedValues.Length - 1;
+while (low &lt;= high) {
+    int mid = low + (high - low) / 2;
+    if (sortedValues[mid] == target) return mid;
+    if (sortedValues[mid] &lt; target) low = mid + 1;
+    else high = mid - 1;
+}
+// not found: low is now sitting exactly at the insertion point
+return ~low;</code></pre>
+
+<h2>Why <code>low</code>, specifically, is the insertion point</h2>
+
+<p>Trace what <code>low</code> and <code>high</code> mean at every step:
+everything strictly before <code>low</code> is known to be smaller than
+<code>target</code>, and everything strictly after <code>high</code> is
+known to be larger. The loop only stops once <code>low &gt; high</code> --
+at which point <code>low</code> has become the first index whose value
+would be larger than <code>target</code>, which is exactly where
+<code>target</code> belongs.</p>
+
+<h2>The one line that is easy to get backwards</h2>
+
+<div class="trap">
+<p><code>~low</code>, not <code>-low</code>. <code>~5</code> is
+<code>-6</code>; <code>-5</code> is <code>-5</code>. If <code>low</code>
+ever comes out to <code>0</code> (the target belongs at the very front),
+<code>-0</code> is just <code>0</code> -- indistinguishable from "found at
+index 0" -- while <code>~0</code> is <code>-1</code>, unambiguous. The
+bitwise complement is what makes index <code>0</code> representable as a
+negative "not found, insert here" result at all.</p>
+</div>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cs_binary_search_insertion_point.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

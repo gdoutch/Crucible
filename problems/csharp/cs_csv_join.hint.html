@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Join a List Into a CSV Line · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C# · easy</p>
+  <h1>Join a List Into a CSV Line</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>One call</h2>
+
+<p><code>string.Join</code> takes a separator and a sequence, and produces
+exactly this: every element, separated by that separator, with none
+leading or trailing.</p>
+
+<pre><code>return string.Join(",", items);</code></pre>
+
+<h2>Why a hand-rolled loop needs an extra step this doesn't</h2>
+
+<div class="trap">
+<p>The natural-looking loop --</p>
+<pre><code>var result = "";
+foreach (var item in items) {
+    result += item + ",";
+}
+return result;</code></pre>
+<p>-- leaves one comma too many on the end, and needs a follow-up
+<code>TrimEnd(',')</code> or a "is this the last element" check inside the
+loop to fix. <code>string.Join</code> never has the problem in the first
+place, because it places the separator *between* elements rather than
+*after* each one.</p>
+</div>
+
+<p>On an empty list, <code>string.Join</code> returns <code>""</code>
+directly -- no loop runs, nothing needs trimming, there is simply nothing
+to join.</p>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cs_csv_join.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

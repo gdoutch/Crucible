@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Count the Vowels · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C# · easy</p>
+  <h1>Count the Vowels</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>One pass, one comparison</h2>
+
+<pre><code>int count = 0;
+foreach (char c in text) {
+    // is c a vowel, upper or lower case?
+}
+return count;</code></pre>
+
+<h2>Case-fold before you compare, not after</h2>
+
+<div class="trap">
+<p><code>char.ToLowerInvariant(c)</code> turns whatever case <code>c</code>
+happens to be into lower case, once, before it is compared against the five
+vowels. Writing the comparison against both cases instead --
+<code>c == 'a' || c == 'A' || ...</code> -- works too, but is ten
+comparisons where one case-fold and five will do, and is exactly the kind
+of thing that is easy to only do for some of the five letters under time
+pressure.</p>
+</div>
+
+<p><code>ToLowerInvariant</code> rather than plain <code>ToLower()</code> --
+the invariant form does not depend on the machine's configured locale,
+which matters more for letters than it might seem: a handful of locales
+lower-case a small number of Unicode letters differently, and there is no
+reason this exercise's answer should change depending on where it runs.</p>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cs_count_vowels.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

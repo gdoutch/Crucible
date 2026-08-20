@@ -1,0 +1,49 @@
+{
+  "id": "cs_group_anagrams",
+  "title": "Group Anagrams",
+  "language": "csharp",
+  "difficulty": "medium",
+  "topics": [
+    "dictionaries",
+    "strings",
+    "linq"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Two words are anagrams of each other if one is a rearrangement of the\nother's letters -- \"listen\" and \"silent\", \"state\" and \"taste\". Grouping a\nwhole list of words by that relationship is a natural job for a\n`Dictionary`: the trick is choosing a key that is the same for every word\nin a group and different for every pair of words that are not anagrams of\neach other, and then being deliberate about what order the groups come out\nin, since nothing about a `Dictionary` promises one on its own.\n\n## Your function\n\n```\npublic static List<List<string>> GroupAnagrams(List<string> words);\n```\n\nGroup `words` so that every group contains words that are anagrams of one\nanother (matching is case-sensitive; `\"Eat\"` and `\"ate\"` are *not*\nanagrams here), and every word from the input appears in exactly one\ngroup. `words` may be empty.\n\n**Output order is part of the contract**: groups appear in the order each\ngroup's *first* word appears in `words`, and within a group, words appear\nin the order they appeared in `words`.\n\n## Watch out\n\n- **A word's sorted letters make a natural grouping key** -- `\"eat\"`,\n  `\"tea\"` and `\"ate\"` all sort to `\"aet\"` -- but a `Dictionary`'s own\n  enumeration order is not something the language specification promises\n  will match insertion order, on this runtime or any other. Relying on it\n  directly for the output order is relying on an implementation detail\n  that happens to hold today.\n- **Build the output order from `words` itself, not from the dictionary.**\n  A second pass over the original list -- emitting a group the first time\n  its key is seen, and skipping it on every later word that maps to the\n  same key -- produces the order the specification actually asks for,\n  regardless of what order the dictionary would have handed groups back in.\n- A single-word group is still a group: `[\"solo\"]` is a valid entry in the\n  result, not an item to be dropped or merged into something else.\n",
+  "starter_code": "/// <summary>\n/// Group words so each group holds mutual anagrams (case-sensitive\n/// matching). Groups appear in the order their first word appears in\n/// words; words within a group keep their original relative order.\n/// </summary>\npublic static class Solution\n{\n    public static List<List<string>> GroupAnagrams(List<string> words)\n    {\n        // your code here\n        return new List<List<string>>();\n    }\n}\n",
+  "harness": "class Program\n{\n    static void Main()\n    {\n        int n;\n        while (int.TryParse(Console.ReadLine(), out n))\n        {\n            var words = new List<string>();\n            for (int i = 0; i < n; i++)\n            {\n                words.Add(Console.ReadLine());\n            }\n            var groups = Solution.GroupAnagrams(words);\n            var lines = new List<string>();\n            foreach (var group in groups)\n            {\n                lines.Add(string.Join(\",\", group));\n            }\n            Console.WriteLine(string.Join(\" | \", lines));\n        }\n    }\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random word lists built by shuffling a handful of anagram families, so\ngroups of size two and three actually show up alongside singletons.\"\"\"\n\nFAMILIES = [\n    [\"eat\", \"tea\", \"ate\"],\n    [\"listen\", \"silent\", \"enlist\"],\n    [\"cat\", \"act\", \"tac\"],\n    [\"star\", \"rats\", \"arts\", \"tars\"],\n    [\"night\", \"thing\"],\n]\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    words = []\n    n_families = rng.randint(1, len(FAMILIES))\n    chosen = rng.sample(FAMILIES, n_families)\n    for family in chosen:\n        n_take = rng.randint(1, len(family))\n        words.extend(rng.sample(family, n_take))\n    # A couple of standalone singletons that anagram with nothing else.\n    for word in (\"solo\", \"unique\", \"zzz\"):\n        if rng.random() < 0.5:\n            words.append(word)\n    rng.shuffle(words)\n    lines = [str(len(words))] + words\n    return {\"name\": \"%d words from %d anagram families, shuffled #%d\"\n                    % (len(words), n_families, index),\n            \"stdin\": \"\\n\".join(lines) + \"\\n\"}\n"
+  },
+  "tests": [
+    {
+      "name": "an empty list has no groups",
+      "stdin": "0\n",
+      "expected_stdout": ""
+    },
+    {
+      "name": "a single word is its own group",
+      "stdin": "1\nsolo\n",
+      "expected_stdout": "solo"
+    },
+    {
+      "name": "three words, two of them anagrams",
+      "stdin": "3\neat\ntea\ntree\n",
+      "expected_stdout": "eat,tea | tree",
+      "description": "eat and tea both sort to 'aet'; tree does not belong with either."
+    },
+    {
+      "name": "output order follows first appearance, not sorted order",
+      "stdin": "5\ntree\neat\nplant\ntea\nate\n",
+      "expected_stdout": "tree | eat,tea,ate | plant",
+      "description": "tree is a singleton seen first, so its group leads even though 'eat' would sort earlier alphabetically."
+    },
+    {
+      "name": "case-sensitive: Eat and ate are not the same group",
+      "stdin": "2\nEat\nate\n",
+      "expected_stdout": "Eat | ate"
+    }
+  ],
+  "reference_solution_b64": "cHVibGljIHN0YXRpYyBjbGFzcyBTb2x1dGlvbgp7CiAgICBwdWJsaWMgc3RhdGljIExpc3Q8TGlzdDxzdHJpbmc+PiBHcm91cEFuYWdyYW1zKExpc3Q8c3RyaW5nPiB3b3JkcykKICAgIHsKICAgICAgICBzdHJpbmcgS2V5KHN0cmluZyB3b3JkKSA9PiBuZXcgc3RyaW5nKHdvcmQuT3JkZXJCeShjID0+IGMpLlRvQXJyYXkoKSk7CgogICAgICAgIHZhciBncm91cHMgPSBuZXcgRGljdGlvbmFyeTxzdHJpbmcsIExpc3Q8c3RyaW5nPj4oKTsKICAgICAgICBmb3JlYWNoICh2YXIgd29yZCBpbiB3b3JkcykKICAgICAgICB7CiAgICAgICAgICAgIHZhciBrZXkgPSBLZXkod29yZCk7CiAgICAgICAgICAgIGlmICghZ3JvdXBzLlRyeUdldFZhbHVlKGtleSwgb3V0IHZhciBsaXN0KSkKICAgICAgICAgICAgewogICAgICAgICAgICAgICAgbGlzdCA9IG5ldyBMaXN0PHN0cmluZz4oKTsKICAgICAgICAgICAgICAgIGdyb3Vwc1trZXldID0gbGlzdDsKICAgICAgICAgICAgfQogICAgICAgICAgICBsaXN0LkFkZCh3b3JkKTsKICAgICAgICB9CgogICAgICAgIHZhciByZXN1bHQgPSBuZXcgTGlzdDxMaXN0PHN0cmluZz4+KCk7CiAgICAgICAgdmFyIGVtaXR0ZWQgPSBuZXcgSGFzaFNldDxzdHJpbmc+KCk7CiAgICAgICAgZm9yZWFjaCAodmFyIHdvcmQgaW4gd29yZHMpCiAgICAgICAgewogICAgICAgICAgICB2YXIga2V5ID0gS2V5KHdvcmQpOwogICAgICAgICAgICBpZiAoZW1pdHRlZC5BZGQoa2V5KSkKICAgICAgICAgICAgewogICAgICAgICAgICAgICAgcmVzdWx0LkFkZChncm91cHNba2V5XSk7CiAgICAgICAgICAgIH0KICAgICAgICB9CiAgICAgICAgcmV0dXJuIHJlc3VsdDsKICAgIH0KfQo="
+}

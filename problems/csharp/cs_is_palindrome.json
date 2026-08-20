@@ -1,0 +1,51 @@
+{
+  "id": "cs_is_palindrome",
+  "title": "Palindrome Check",
+  "language": "csharp",
+  "difficulty": "easy",
+  "topics": [
+    "strings",
+    "two pointers"
+  ],
+  "timeout_seconds": 5,
+  "statement": "\"A man, a plan, a canal, Panama\" is a palindrome, but only if you are\nwilling to ignore the spaces, the comma, and the fact that half the letters\nare capitals. Real palindrome checks almost always mean *that* looser\nquestion -- do the letters and digits read the same forwards and\nbackwards -- not \"is this string byte-for-byte a mirror image of itself\".\n\n## Your function\n\n```\npublic static bool IsPalindrome(string text);\n```\n\nReturn `true` if `text`, once you ignore anything that is not a letter or a\ndigit and ignore case, reads the same forwards and backwards. `text` may be\nempty, and is never `null`.\n\n## Watch out\n\n- **Punctuation and spaces are skipped, not treated as mismatches.**\n  `\"A man, a plan...\"` has a comma exactly where the mirrored half does not,\n  and that has to not matter -- the comparison walks past non-alphanumeric\n  characters on both sides rather than comparing them.\n- **Case is ignored.** `\"Aa\"` is a palindrome; comparing the raw characters\n  without folding case first says it is not.\n- **An empty string, and a string with nothing alphanumeric in it at all\n  (`\"...\"`, say), are both palindromes** -- there is nothing to disagree\n  with itself. Reject nothing on the grounds that there was \"nothing to\n  check\".\n",
+  "starter_code": "/// <summary>\n/// Decide whether text reads the same forwards and backwards once\n/// non-alphanumeric characters are ignored and case is ignored. text may be\n/// empty and is never null.\n/// </summary>\npublic static class Solution\n{\n    public static bool IsPalindrome(string text)\n    {\n        // your code here\n        return false;\n    }\n}\n",
+  "harness": "class Program\n{\n    static void Main()\n    {\n        string line;\n        while ((line = Console.ReadLine()) != null)\n        {\n            Console.WriteLine(Solution.IsPalindrome(line) ? \"true\" : \"false\");\n        }\n    }\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random strings, some built from a palindromic core so a meaningful share\nof cases actually come out true.\"\"\"\n\nimport string\n\nALPHANUM = string.ascii_letters + string.digits\nPUNCT = \" ,.\\'-!?\"\n\n\ndef generate(rng, count):\n    builders = (_random_string, _palindromic_core)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, text):\n    return {\"name\": name, \"stdin\": text + \"\\n\"}\n\n\ndef _random_string(rng, index):\n    n = rng.randint(0, 30)\n    text = \"\".join(rng.choice(ALPHANUM + PUNCT) for _ in range(n))\n    return _case(\"a random %d-character string #%d\" % (n, index), text)\n\n\ndef _palindromic_core(rng, index):\n    half_len = rng.randint(0, 10)\n    half = \"\".join(rng.choice(ALPHANUM) for _ in range(half_len))\n    core = half + half[::-1]\n    # Sprinkle in punctuation and randomise case without disturbing the\n    # underlying palindrome.\n    out = []\n    for ch in core:\n        if rng.random() < 0.3:\n            out.append(rng.choice(PUNCT))\n        out.append(ch.upper() if rng.random() < 0.5 else ch.lower())\n    text = \"\".join(out)\n    return _case(\"built from a palindromic core, punctuation and case mixed in #%d\"\n                 % index, text)\n"
+  },
+  "tests": [
+    {
+      "name": "an empty string is a palindrome",
+      "stdin": "\n",
+      "expected_stdout": "true"
+    },
+    {
+      "name": "punctuation-only string has nothing to disagree with itself",
+      "stdin": "...\n",
+      "expected_stdout": "true"
+    },
+    {
+      "name": "the classic sentence, comma, spaces, mixed case and all",
+      "stdin": "A man, a plan, a canal, Panama\n",
+      "expected_stdout": "true"
+    },
+    {
+      "name": "case alone must not cause a false negative",
+      "stdin": "Aa\nAba\n",
+      "expected_stdout": "true\ntrue"
+    },
+    {
+      "name": "an ordinary non-palindrome",
+      "stdin": "hello\n",
+      "expected_stdout": "false"
+    },
+    {
+      "name": "digits count as alphanumeric too",
+      "stdin": "12321\n1234\n",
+      "expected_stdout": "true\nfalse"
+    }
+  ],
+  "reference_solution_b64": "cHVibGljIHN0YXRpYyBjbGFzcyBTb2x1dGlvbgp7CiAgICBwdWJsaWMgc3RhdGljIGJvb2wgSXNQYWxpbmRyb21lKHN0cmluZyB0ZXh0KQogICAgewogICAgICAgIGludCBsZWZ0ID0gMDsKICAgICAgICBpbnQgcmlnaHQgPSB0ZXh0Lkxlbmd0aCAtIDE7CgogICAgICAgIHdoaWxlIChsZWZ0IDwgcmlnaHQpCiAgICAgICAgewogICAgICAgICAgICBpZiAoIWNoYXIuSXNMZXR0ZXJPckRpZ2l0KHRleHRbbGVmdF0pKSB7IGxlZnQrKzsgY29udGludWU7IH0KICAgICAgICAgICAgaWYgKCFjaGFyLklzTGV0dGVyT3JEaWdpdCh0ZXh0W3JpZ2h0XSkpIHsgcmlnaHQtLTsgY29udGludWU7IH0KCiAgICAgICAgICAgIGlmIChjaGFyLlRvTG93ZXJJbnZhcmlhbnQodGV4dFtsZWZ0XSkgIT0gY2hhci5Ub0xvd2VySW52YXJpYW50KHRleHRbcmlnaHRdKSkKICAgICAgICAgICAgewogICAgICAgICAgICAgICAgcmV0dXJuIGZhbHNlOwogICAgICAgICAgICB9CiAgICAgICAgICAgIGxlZnQrKzsKICAgICAgICAgICAgcmlnaHQtLTsKICAgICAgICB9CiAgICAgICAgcmV0dXJuIHRydWU7CiAgICB9Cn0K"
+}

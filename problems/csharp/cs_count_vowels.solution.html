@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Count the Vowels · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C# · easy</p>
+  <h1>Count the Vowels</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>public static int CountVowels(string text)
+{
+    int count = 0;
+    foreach (char c in text)
+    {
+        char lower = char.ToLowerInvariant(c);
+        if (lower == 'a' || lower == 'e' || lower == 'i'
+            || lower == 'o' || lower == 'u')
+        {
+            count++;
+        }
+    }
+    return count;
+}</code></pre>
+
+<h2>Why the case-fold happens once, up front</h2>
+
+<div class="trap">
+<p><code>char.ToLowerInvariant(c)</code> is computed a single time per
+character and reused for all five comparisons. The alternative -- comparing
+<code>c</code> against ten literals, five lower-case and five upper-case --
+is not wrong, but it is the shape most likely to end up covering only nine
+of the ten under a deadline: <code>"CRUCIBLE"</code>, all upper case, is
+the fixed test built specifically to catch a solution that quietly only
+checks lower-case letters and happens to still pass on mixed-case input by
+accident.</p>
+</div>
+
+<h2>An empty string is not a special case</h2>
+
+<p><code>foreach</code> over an empty string simply does not execute its
+body, and the function returns <code>0</code> without needing an explicit
+check. That is worth noticing rather than assuming: a solution built around
+indexing (<code>text[0]</code> to look at the first character, say) has to
+add the empty-string guard back in by hand, where the <code>foreach</code>
+form never needed it in the first place.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(n)</strong> in the length of <code>text</code> -- one pass,
+one case-fold and up to five comparisons per character, no allocation.</p>
+
+<footer>
+  <p><a href="cs_count_vowels.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

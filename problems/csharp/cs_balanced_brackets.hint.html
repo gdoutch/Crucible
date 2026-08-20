@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Balanced Brackets, Three Kinds · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C# · medium</p>
+  <h1>Balanced Brackets, Three Kinds</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Push opens, pop-and-check closes</h2>
+
+<pre><code>var stack = new Stack&lt;char&gt;();
+foreach (char c in text) {
+    if (c is '(' or '[' or '{') {
+        stack.Push(c);
+    } else if (c is ')' or ']' or '}') {
+        // is the stack empty, or does Pop() not match c?
+        // either one means "unbalanced" -- return false right here
+    }
+    // anything else: ignore it entirely
+}
+return stack.Count == 0;</code></pre>
+
+<h2>Check before you pop</h2>
+
+<div class="trap">
+<p><code>stack.Peek()</code> and <code>stack.Pop()</code> both throw on an
+empty stack rather than returning something you can compare against --
+guard with <code>stack.Count == 0</code> *before* calling either one, on a
+closing bracket that has nothing open to match.</p>
+</div>
+
+<p>A small map from closing character to the opening character it expects
+-- <code>')' → '(', ']' → '[', '}' → '{'</code> -- turns "does this closing
+bracket match what I just popped" into one dictionary lookup and one
+comparison, rather than a chain of <code>if</code>s for each of the three
+pairs.</p>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cs_balanced_brackets.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>
