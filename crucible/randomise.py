@@ -42,6 +42,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from . import runner
+from .i18n import t
 from .languages.base import run_process
 from .problem import MAX_GENERATED_CASES, Problem, TestCase
 
@@ -125,10 +126,10 @@ def generate(problem: Problem, seed: int) -> GeneratedSuite:
         return GeneratedSuite(seed=seed, toolchain_missing=True)
     if not captured.build.ok:
         first = (captured.build.output or "").strip().splitlines()
-        return GeneratedSuite(
-            seed=seed,
-            error="cannot generate data: the reference solution did not build"
-                  + (f" ({first[0]})" if first else ""))
+        error = t("randomise.build_failed")
+        if first:
+            error += t("randomise.build_failed_detail_suffix", detail=first[0])
+        return GeneratedSuite(seed=seed, error=error)
 
     tests: list[TestCase] = []
     taken = {test.name for test in problem.fixed_tests}
@@ -136,7 +137,8 @@ def generate(problem: Problem, seed: int) -> GeneratedSuite:
 
     for case, capture in zip(cases, captured.captures):
         if not capture.ok:
-            rejected.append(f"{case['name']}: {capture.reason}")
+            rejected.append(t("randomise.rejected_case_line",
+                              name=case['name'], reason=capture.reason))
             continue
         name = _unique(case["name"], taken)
         taken.add(name)
@@ -151,9 +153,8 @@ def generate(problem: Problem, seed: int) -> GeneratedSuite:
 
     error = ""
     if rejected:
-        error = (f"{len(rejected)} generated case(s) were dropped -- the "
-                 f"reference solution could not run them: "
-                 + "; ".join(rejected[:3]))
+        error = t("randomise.rejected_cases", count=len(rejected),
+                  examples="; ".join(rejected[:3]))
     return GeneratedSuite(seed=seed, tests=tuple(tests), error=error)
 
 
@@ -191,19 +192,19 @@ def _run_generator(problem: Problem, seed: int) -> tuple[list[dict], str]:
         shutil.rmtree(workdir, ignore_errors=True)
 
     if result.launch_error:
-        return [], f"could not start the generator: {result.launch_error}"
+        return [], t("randomise.generator_launch_error", error=result.launch_error)
     if result.timed_out:
-        return [], (f"the generator did not finish in {GENERATOR_TIMEOUT:g}s "
-                    f"-- check it for an endless loop")
+        return [], t("randomise.generator_timeout", timeout=f"{GENERATOR_TIMEOUT:g}")
     if result.exit_code != 0:
         detail = result.stderr.strip().splitlines()
-        return [], ("the generator failed: "
-                    + (detail[-1] if detail else f"exit status {result.exit_code}"))
+        fallback = t("randomise.generator_exit_status_fallback", code=result.exit_code)
+        return [], t("randomise.generator_failed",
+                     detail=detail[-1] if detail else fallback)
 
     try:
         raw = json.loads(result.stdout)
     except json.JSONDecodeError:
-        return [], "the generator did not return cases that could be encoded as JSON"
+        return [], t("randomise.generator_bad_json")
 
     return _validate(raw)
 
@@ -211,28 +212,26 @@ def _run_generator(problem: Problem, seed: int) -> tuple[list[dict], str]:
 def _validate(raw: object) -> tuple[list[dict], str]:
     """Check the generator's output before any of it reaches a test case."""
     if not isinstance(raw, list):
-        return [], "generate(rng, count) must return a list of cases"
+        return [], t("randomise.validate.not_a_list")
     if not raw:
-        return [], "generate(rng, count) returned no cases"
+        return [], t("randomise.validate.empty")
     if len(raw) > MAX_GENERATED_CASES:
-        return [], (f"generate(rng, count) returned {len(raw)} cases; "
-                    f"the limit is {MAX_GENERATED_CASES}")
+        return [], t("randomise.validate.too_many", count=len(raw),
+                     max=MAX_GENERATED_CASES)
 
     cases: list[dict] = []
     for index, item in enumerate(raw, start=1):
-        where = f"generated case {index}"
+        where = t("randomise.validate.case_label", index=index)
         if not isinstance(item, dict):
-            return [], f"{where} is not an object"
+            return [], t("randomise.validate.not_an_object", where=where)
         if "expected_stdout" in item:
-            return [], (f"{where} sets 'expected_stdout'. Generators supply "
-                        f"inputs only -- the expected output is taken from the "
-                        f"reference solution")
+            return [], t("randomise.validate.sets_expected_stdout", where=where)
         stdin = item.get("stdin")
         if not isinstance(stdin, str):
-            return [], f"{where} has no 'stdin' string"
-        name = item.get("name") or f"randomised case {index}"
+            return [], t("randomise.validate.no_stdin", where=where)
+        name = item.get("name") or t("randomise.default_case_name", index=index)
         if not isinstance(name, str):
-            return [], f"{where} has a 'name' that is not a string"
+            return [], t("randomise.validate.name_not_string", where=where)
         cases.append({
             # Harnesses read lines or scan tokens, so an input that stops
             # mid-line is a trap the generator's author did not mean to set.

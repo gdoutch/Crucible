@@ -30,6 +30,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Iterable
 
+from .i18n import t
 from .languages import BuildResult, Language
 from .problem import Problem, TestCase
 
@@ -59,8 +60,10 @@ class TestOutcome:
 
     @property
     def symbol(self) -> str:
-        return {PASS: "PASS", FAIL: "FAIL", ERROR: "ERROR",
-                TIMEOUT: "TIMEOUT", SKIPPED: "--"}.get(self.status, "?")
+        key = {PASS: "runner.symbol.pass", FAIL: "runner.symbol.fail",
+               ERROR: "runner.symbol.error", TIMEOUT: "runner.symbol.timeout",
+               SKIPPED: "runner.symbol.skipped"}.get(self.status)
+        return t(key) if key else "?"
 
 
 @dataclass
@@ -87,10 +90,10 @@ class SubmissionResult:
 
     def summary(self) -> str:
         if not self.build.ok:
-            return "Build failed"
+            return t("runner.summary.build_failed")
         if self.cancelled:
-            return f"Cancelled -- {self.passed}/{self.total} passed so far"
-        return f"{self.passed}/{self.total} tests passed"
+            return t("runner.summary.cancelled", passed=self.passed, total=self.total)
+        return t("runner.summary.passed", passed=self.passed, total=self.total)
 
     def failures(self) -> list[TestOutcome]:
         return [o for o in self.outcomes if o.status in (FAIL, ERROR, TIMEOUT)]
@@ -126,18 +129,19 @@ def diff_note(expected: str, actual: str) -> str:
     if exp == act:
         return ""
     if not act:
-        return "produced no output"
+        return t("runner.diff.no_output")
     if exp.strip() == act.strip():
-        return "output differs only in leading/trailing whitespace"
+        return t("runner.diff.whitespace_only")
     if exp.lower() == act.lower():
-        return "output differs only in letter case"
+        return t("runner.diff.case_only")
     exp_lines, act_lines = exp.split("\n"), act.split("\n")
     if len(exp_lines) != len(act_lines):
-        return f"expected {len(exp_lines)} line(s), got {len(act_lines)}"
+        return t("runner.diff.line_count_mismatch", expected=len(exp_lines),
+                 actual=len(act_lines))
     for i, (e, a) in enumerate(zip(exp_lines, act_lines), start=1):
         if e != a:
-            return f"first difference on line {i}"
-    return "output differs"
+            return t("runner.diff.first_difference", line=i)
+    return t("runner.diff.generic")
 
 
 # ---------------------------------------------------------------------------
@@ -161,7 +165,7 @@ def _run_cases(
     for index, test in enumerate(tests, start=1):
         if cancel is not None and cancel.is_set():
             cancelled = True
-            outcomes.append(TestOutcome(test, SKIPPED, message="cancelled"))
+            outcomes.append(TestOutcome(test, SKIPPED, message=t("runner.outcome.cancelled")))
             if progress:
                 progress(outcomes[-1], index, total)
             continue
@@ -199,15 +203,15 @@ def _judge(language: Language, test: TestCase, exec_result, timeout: float) -> T
 
     if exec_result.timed_out:
         outcome.status = TIMEOUT
-        outcome.message = (f"No result after {timeout:g}s -- "
-                           f"likely an infinite loop or a blocking read")
+        outcome.message = t("runner.outcome.timeout", timeout=f"{timeout:g}")
         return outcome
 
     if exec_result.exit_code != 0:
         outcome.status = ERROR
         describe = getattr(language, "describe_exit", None)
         outcome.message = (describe(exec_result.exit_code) if describe
-                           else f"exited with status {exec_result.exit_code}")
+                           else t("languages.common.exited_with_status",
+                                 code=exec_result.exit_code))
         return outcome
 
     if outputs_match(test.expected_stdout, exec_result.stdout):
@@ -346,11 +350,11 @@ def _capture_one(exec_result, timeout: float) -> Capture:
     if exec_result.launch_error:
         return Capture(False, reason=exec_result.launch_error)
     if exec_result.timed_out:
-        return Capture(False,
-                       reason=f"the reference did not finish in {timeout:g}s")
+        return Capture(False, reason=t("runner.capture.timeout", timeout=f"{timeout:g}"))
     if exec_result.exit_code != 0:
         detail = exec_result.stderr.strip().splitlines()
-        return Capture(False, reason=f"the reference exited with status "
-                                     f"{exec_result.exit_code}"
-                                     + (f": {detail[-1]}" if detail else ""))
+        reason = t("runner.capture.exit_status", code=exec_result.exit_code)
+        if detail:
+            reason += t("runner.capture.exit_status_detail_suffix", detail=detail[-1])
+        return Capture(False, reason=reason)
     return Capture(True, output=normalise(exec_result.stdout))

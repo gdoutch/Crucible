@@ -35,6 +35,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from . import workspace
+from .i18n import t
 
 #: Kept short so a profile directory name is never the reason a path is too
 #: long for the filesystem, and so the picker list stays readable.
@@ -76,7 +77,7 @@ def _validate_username(username: str) -> str:
     # silently become two profiles.
     username = " ".join(username.split())
     if not username:
-        raise ValueError("Enter a username.")
+        raise ValueError(t("profiles.error.empty_username"))
     return username[:MAX_USERNAME_LENGTH]
 
 

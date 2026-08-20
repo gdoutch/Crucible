@@ -22,7 +22,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from crucible import guides, languages, profiles, randomise, runner, workspace
+from crucible import guides, i18n, languages, profiles, randomise, runner, workspace
 from crucible.languages.c_lang import CLanguage
 from crucible.problem import ProblemError, load_library, load_problem
 
@@ -1000,6 +1000,133 @@ class TestCDiagnostics(unittest.TestCase):
             self.skipTest("a C compiler is installed")
         self.assertTrue(status.remedy)
         self.assertIn("compiler", status.remedy.lower())
+
+
+# ---------------------------------------------------------------------------
+# i18n
+# ---------------------------------------------------------------------------
+
+class TestI18n(unittest.TestCase):
+    """`crucible.i18n`: lookup, fallback, formatting -- and that the shipped
+    `en_GB` locale is actually complete and well formed, since that file is
+    hand-edited prose, not generated."""
+
+    def setUp(self):
+        # Every test restores the locale it found active, so a test that
+        # switches locales (or fails while one is switched) cannot leak into
+        # whichever test happens to run next.
+        self._original_locale = i18n.get_locale()
+        self.addCleanup(i18n.set_locale, self._original_locale)
+
+    def test_default_locale_is_en_gb(self):
+        self.assertEqual(i18n.DEFAULT_LOCALE, "en_GB")
+
+    def test_en_gb_is_available(self):
+        self.assertIn("en_GB", i18n.available_locales())
+
+    def test_default_locale_is_listed_first(self):
+        self.assertEqual(i18n.available_locales()[0], i18n.DEFAULT_LOCALE)
+
+    def test_plain_lookup(self):
+        self.assertEqual(i18n.t("app.menu.file.title"), "File")
+
+    def test_nested_lookup(self):
+        self.assertEqual(i18n.t("app.menu.edit.title"), "Edit")
+
+    def test_formatting_interpolates_kwargs(self):
+        self.assertEqual(
+            i18n.t("app.tree.group_row", name="Easy", count=3), "Easy  (3)")
+
+    def test_missing_key_raises(self):
+        with self.assertRaises(i18n.TranslationError):
+            i18n.t("this.key.does.not.exist")
+
+    def test_key_resolving_to_a_dict_raises(self):
+        # "app.menu.file" is a real key, but it names a subtree, not a string.
+        with self.assertRaises(i18n.TranslationError):
+            i18n.t("app.menu.file")
+
+    def test_unfilled_placeholder_raises_rather_than_showing_a_template(self):
+        with self.assertRaises(i18n.TranslationError):
+            i18n.t("app.tree.group_row", name="Easy")  # missing 'count'
+
+    def test_set_locale_rejects_unknown_code(self):
+        with self.assertRaises(i18n.TranslationError):
+            i18n.set_locale("xx_XX")
+        # A rejected switch must not have changed the active locale.
+        self.assertEqual(i18n.get_locale(), self._original_locale)
+
+    def test_set_locale_round_trips(self):
+        i18n.set_locale("en_GB")
+        self.assertEqual(i18n.get_locale(), "en_GB")
+
+    def test_every_difficulty_has_a_display_label(self):
+        from crucible.problem import DIFFICULTIES
+        for difficulty in DIFFICULTIES:
+            label = i18n.t(f"app.difficulty.{difficulty}")
+            self.assertTrue(label)
+
+    def test_en_gb_has_no_empty_or_non_string_leaves(self):
+        """Every leaf in the locale file is non-empty text. Catches a stray
+        empty template or a value that quietly became a number/list/null
+        during an edit -- `t()` would raise on the latter anyway, but a
+        forgotten `""` left behind by a find-and-replace passes that check
+        and would otherwise only be noticed by eye."""
+        data = i18n._load("en_GB")  # noqa: SLF001 -- whole-file structural check
+
+        def walk(node, path):
+            if isinstance(node, dict):
+                for key, child in node.items():
+                    walk(child, f"{path}.{key}")
+            else:
+                self.assertIsInstance(node, str, f"{path} is not a string")
+                self.assertTrue(node, f"{path} is an empty string")
+
+        for top_key, value in data.items():
+            walk(value, top_key)
+
+    def test_locale_file_is_valid_json(self):
+        path = i18n.LOCALES_DIR / "en_GB.json"
+        json.loads(path.read_text(encoding="utf-8"))  # raises on malformed JSON
+
+    def test_every_static_t_call_site_resolves(self):
+        """Walks every `t("...")` call in the package whose key is a plain
+        string literal (not built at runtime, like `f"guides.kind.{kind}"`)
+        and checks the key actually resolves in `en_GB`.
+
+        This is the one check in the suite that would have caught a typo'd
+        key at the point it was written rather than the first time a candidate
+        happened to click the one menu entry that used it -- the source of
+        truth here is the call sites themselves, not a hand-maintained list of
+        keys to check.
+        """
+        import ast
+
+        package_root = Path(i18n.__file__).resolve().parent
+        missing = []
+        checked = 0
+        for path in package_root.rglob("*.py"):
+            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Call) or not node.args:
+                    continue
+                func = node.func
+                name = (func.id if isinstance(func, ast.Name)
+                       else func.attr if isinstance(func, ast.Attribute) else None)
+                if name != "t":
+                    continue
+                key_arg = node.args[0]
+                if not (isinstance(key_arg, ast.Constant)
+                        and isinstance(key_arg.value, str)):
+                    continue  # a dynamically built key -- nothing static to check
+                checked += 1
+                if i18n._lookup("en_GB", key_arg.value) is i18n._MISSING:  # noqa: SLF001
+                    missing.append(f"{path.relative_to(package_root.parent)}:"
+                                   f"{node.lineno} -> {key_arg.value!r}")
+
+        self.assertGreater(checked, 0, "the scan itself found no t() call sites")
+        self.assertEqual(missing, [], "key(s) with no entry in en_GB.json:\n"
+                                      + "\n".join(missing))
 
 
 if __name__ == "__main__":

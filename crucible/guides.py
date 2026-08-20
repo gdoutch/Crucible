@@ -32,14 +32,18 @@ import webbrowser
 from dataclasses import dataclass
 from pathlib import Path
 
+from .i18n import t
 from .problem import Problem
 
 HINT = "hint"
 SOLUTION = "solution"
 DIAGRAM = "diagram"
 
-#: Menu labels and dialog wording, so the UI has no strings of its own to
-#: drift out of step with these. Order is menu order.
+#: The canonical English label for each kind, as it is written into every
+#: generated guide page (`<p class="kind">Hint</p>` and the like) -- guide
+#: pages are authored, per-problem content, deliberately outside the i18n
+#: system (see the README), so this stays fixed English rather than following
+#: the active locale. Order is menu order.
 KINDS = {
     DIAGRAM: "Diagram",
     HINT: "Hint",
@@ -53,6 +57,13 @@ KINDS = {
 REQUIRED = (HINT, SOLUTION)
 
 
+def kind_label(kind: str) -> str:
+    """The locale-aware label for `kind`, for the live app's own menus and
+    dialogs -- as opposed to `KINDS`, which names what a *generated guide
+    page* calls itself and never changes with the locale."""
+    return t(f"guides.kind.{kind}") if kind in KINDS else kind
+
+
 @dataclass(frozen=True)
 class Guide:
     kind: str
@@ -60,7 +71,7 @@ class Guide:
 
     @property
     def label(self) -> str:
-        return KINDS.get(self.kind, self.kind)
+        return kind_label(self.kind)
 
 
 def guide_path(problem: Problem, kind: str) -> Path | None:

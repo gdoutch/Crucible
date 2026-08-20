@@ -31,6 +31,7 @@ python -m crucible
 - [What is in the box](#what-is-in-the-box)
 - [Writing a problem](#writing-a-problem)
 - [Adding a language](#adding-a-language)
+- [Internationalisation](#internationalisation)
 - [Command line](#command-line)
 - [Tests](#tests)
 - [Layout](#layout)
@@ -841,6 +842,61 @@ has nothing to link, so it compiles the source instead — that way a syntax
 error is reported once as a build failure rather than n times as identical
 tracebacks.
 
+## Internationalisation
+
+Every string the app or the CLI shows -- window titles, menu labels, dialog
+text, status messages, validation errors, `--help` output -- is looked up by a
+stable key rather than written inline where it is displayed:
+
+```python
+from .i18n import t
+
+print(t("cli.toolchains.heading"))
+label = t("app.pane.problems.title")
+raise ProblemError(t("problem.error.unknown_difficulty",
+                      file=path.name, difficulty=difficulty, choices=choices))
+```
+
+`crucible/i18n.py` is the whole mechanism: `t(key, **kwargs)` walks the key's
+dotted path (`"app.menu.file.title"` → `data["app"]["menu"]["file"]["title"]`)
+through the active locale's JSON file under `crucible/locales/`, formats the
+result with `str.format(**kwargs)`, and hands back a string. There is exactly
+one locale today, British English (`en_GB`), which doubles as the fallback of
+last resort: a key missing from some future locale falls back to the `en_GB`
+text rather than showing a blank label, but a key missing from `en_GB` itself
+-- or a template whose placeholders do not match the keyword arguments it was
+called with -- raises `TranslationError`. That asymmetry is deliberate: a
+translation gap is recoverable by falling back to English, but a key that does
+not exist anywhere, or a call site that got a placeholder wrong, is a bug in
+the code that shipped it, and a shipped build should say so loudly rather than
+show a raw dotted key or half-formatted text.
+
+Keys are namespaced by where they are used -- `cli.*` for the command line,
+`app.menu.*`, `app.banner.*`, `app.dialog.*` and so on for the GUI,
+`problem.error.*` for schema-validation errors, `languages.c.*` for one
+language plugin's own messages -- so a locale file, read top to bottom, is
+roughly a map of the application, and two unrelated features are never
+tempted to share one short phrase that later needs to drift apart.
+
+**Adding a locale** is dropping `crucible/locales/<code>.json` with the same
+keys as `en_GB.json` and switching to it:
+
+```python
+from crucible import i18n
+i18n.set_locale("fr_FR")       # raises TranslationError if the file is missing
+```
+
+or by setting `CRUCIBLE_LOCALE=fr_FR` before launch. Nothing about the calling
+code changes -- every call site already asks for a key, not for English text
+-- and a locale that only translates *some* keys still works, falling back to
+`en_GB` key by key rather than needing to be complete before it can ship.
+
+**What is deliberately not in here**: problem statements, hints and worked
+solutions. Those are authored, per-problem teaching content -- see
+[Writing a problem](#writing-a-problem) -- not application chrome, and
+translating fifty programming exercises is a different job with a different
+owner than translating "Save draft" and "No compiler available".
+
 ## Command line
 
 | Command | Does |
@@ -859,7 +915,7 @@ tracebacks.
 python -m unittest discover -s tests -v
 ```
 
-113 tests covering output normalisation and diff hints, problem-schema
+128 tests covering output normalisation and diff hints, problem-schema
 validation (missing fields, bad base64, duplicate test names, unknown
 languages, malformed JSON), the run pipeline (correct, wrong, syntax error,
 runtime exception, timeout, progress callbacks), randomised data (determinism
@@ -883,6 +939,17 @@ than it did when the expected output was captured. Problems whose toolchain is
 missing are skipped *individually*, so one uninstalled compiler cannot silently
 skip the rest.
 
+`i18n` gets its own coverage: every key it resolves formats correctly, a key
+absent from `en_GB` raises rather than returning a placeholder, and a
+structural sweep of the locale file itself checks that every leaf is a
+non-empty string -- catching a value that quietly became `""`, a number, or a
+list in a hand edit, which passing JSON validation alone would not. One test
+statically walks every `t("...")` call site in the package whose key is a
+plain string literal and checks it actually resolves -- the source of truth
+for "does this key exist" is the calling code, not a hand-maintained list
+someone has to remember to update, so a typo'd key is caught here rather than
+the first time a candidate clicks the one dialog that used it.
+
 ## Layout
 
 ```text
@@ -896,6 +963,9 @@ crucible/
                        via a `root` argument, see profiles.py
   profiles.py          usernames, and per-profile solved-problem tracking
   guides.py            finds the hint / solution pages, opens them
+  i18n.py              string lookup: t(key, **kwargs), locale fallback
+  locales/
+    en_GB.json         every user-facing string, the base locale
   languages/
     __init__.py        registry
     base.py            Language ABC, process runner, result types

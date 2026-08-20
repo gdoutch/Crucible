@@ -12,6 +12,7 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 
 from .. import profiles
+from ..i18n import t
 from .theme import Palette
 
 
@@ -30,7 +31,7 @@ class _ProfileDialog(tk.Toplevel):
         self._allow_cancel = allow_cancel
         self._profiles = profiles.list_profiles()
 
-        self.title("Choose a profile")
+        self.title(t("profile_dialog.window_title"))
         self.configure(background=palette.window_bg)
         self.transient(master)
         self.resizable(False, False)
@@ -40,9 +41,9 @@ class _ProfileDialog(tk.Toplevel):
         body = ttk.Frame(self, padding=16)
         body.pack(fill="both", expand=True)
 
-        ttk.Label(body, text="Who is practising?",
+        ttk.Label(body, text=t("profile_dialog.heading"),
                  style="Heading.TLabel").pack(anchor="w")
-        ttk.Label(body, text="Only a username is stored here -- nothing else.",
+        ttk.Label(body, text=t("profile_dialog.subtitle"),
                  style="Muted.TLabel").pack(anchor="w", pady=(2, 10))
 
         self._build_list(body, palette)
@@ -75,7 +76,7 @@ class _ProfileDialog(tk.Toplevel):
         scroll.pack(side="right", fill="y")
 
         for profile in self._profiles:
-            self.listbox.insert("end", f"  {profile.username}")
+            self.listbox.insert("end", t("profile_dialog.list_row", username=profile.username))
         if self._profiles:
             self.listbox.selection_set(0)
         self.listbox.bind("<Double-Button-1>", lambda _e: self._open_selected())
@@ -84,7 +85,7 @@ class _ProfileDialog(tk.Toplevel):
     def _build_new_row(self, body) -> None:
         row = ttk.Frame(body)
         row.pack(fill="x", pady=(10, 0))
-        ttk.Label(row, text="New profile:").pack(side="left")
+        ttk.Label(row, text=t("profile_dialog.new_profile_label")).pack(side="left")
         self._new_name = tk.StringVar()
         self._new_entry = ttk.Entry(row, textvariable=self._new_name)
         self._new_entry.pack(side="left", fill="x", expand=True, padx=(8, 0))
@@ -93,13 +94,13 @@ class _ProfileDialog(tk.Toplevel):
     def _build_buttons(self, body, allow_cancel: bool) -> None:
         row = ttk.Frame(body)
         row.pack(fill="x", pady=(14, 0))
-        ttk.Button(row, text="Delete", command=self._delete).pack(side="left")
+        ttk.Button(row, text=t("profile_dialog.delete_button"), command=self._delete).pack(side="left")
         if allow_cancel:
-            ttk.Button(row, text="Cancel", command=self._cancel).pack(
+            ttk.Button(row, text=t("profile_dialog.cancel_button"), command=self._cancel).pack(
                 side="right", padx=(8, 0))
-        ttk.Button(row, text="Create && open", command=self._create).pack(
+        ttk.Button(row, text=t("profile_dialog.create_button"), command=self._create).pack(
             side="right", padx=(8, 0))
-        self._open_button = ttk.Button(row, text="Open", style="Run.TButton",
+        self._open_button = ttk.Button(row, text=t("profile_dialog.open_button"), style="Run.TButton",
                                        command=self._open_selected)
         self._open_button.pack(side="right")
         self._refresh_open_button()
@@ -128,7 +129,7 @@ class _ProfileDialog(tk.Toplevel):
         try:
             self.result = profiles.open_profile(self._new_name.get())
         except ValueError as exc:
-            messagebox.showwarning("Choose a username", str(exc), parent=self)
+            messagebox.showwarning(t("profile_dialog.invalid_username_title"), str(exc), parent=self)
             return
         self.destroy()
 
@@ -137,10 +138,9 @@ class _ProfileDialog(tk.Toplevel):
         if profile is None:
             return
         if not messagebox.askyesno(
-                "Delete profile",
-                f'Delete the profile "{profile.username}"?\n\n'
-                "This removes its saved drafts, data sets and solved "
-                "problems. This cannot be undone.", parent=self):
+                t("profile_dialog.delete_confirm_title"),
+                t("profile_dialog.delete_confirm_message", username=profile.username),
+                parent=self):
             return
         profiles.delete_profile(profile.id)
         index = self.listbox.curselection()[0]

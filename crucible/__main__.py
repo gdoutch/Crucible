@@ -15,6 +15,10 @@ On Windows, Crucible.cmd double-clicks straight into the GUI.
 before offering a problem, just without a window. For a problem with randomised
 data it builds a data set first, so the seed it used is printed -- pass it back
 with `--seed` to reproduce a failure exactly.
+
+Every string this module prints comes from `crucible.i18n` rather than a
+literal here -- see that module for why, and `crucible/locales/en_GB.json`
+for the text itself.
 """
 
 from __future__ import annotations
@@ -24,6 +28,7 @@ import sys
 from pathlib import Path
 
 from . import guides, languages, randomise, runner
+from .i18n import t
 from .problem import Problem, load_library
 
 #: Repository root -- the package lives one level below it.
@@ -35,43 +40,44 @@ def _default_problems_dir() -> Path:
 
 
 def cmd_toolchains() -> int:
-    print("Toolchains\n")
+    print(t("cli.toolchains.heading"))
     missing = False
     for language in languages.all_languages():
         status = language.toolchain()
-        mark = "OK " if status.available else "-- "
-        print(f"  {mark} {language.display_name:<10} {status.summary}")
+        mark = t("cli.toolchains.mark_ok") if status.available else t("cli.toolchains.mark_missing")
+        print(t("cli.toolchains.row", mark=mark, name=language.display_name,
+                summary=status.summary))
         if status.detail:
             for line in status.detail.splitlines():
-                print(f"         {line}")
+                print(t("cli.toolchains.detail_line", line=line))
         if not status.available:
             missing = True
     if missing:
-        print("\nOne or more toolchains are missing. Run with --verify for detail,")
-        print("or open the GUI and use Help -> Compiler status for install steps.")
+        print(t("cli.toolchains.some_missing"))
     return 0
 
 
 def cmd_list(root: Path) -> int:
     library = load_library(root)
     if library.errors:
-        print("Problems that failed to load:")
+        print(t("cli.list.load_errors_heading"))
         for error in library.errors:
-            print(f"  ! {error}")
+            print(t("cli.list.load_error_row", error=error))
         print()
     if not library.problems:
-        print(f"No problems found under {root}")
+        print(t("cli.list.none_found", root=root))
         return 1
-    print(f"{len(library.problems)} problem(s) under {root}\n")
+    print(t("cli.list.heading", count=len(library.problems), root=root))
     for problem in library.problems:
         visible = len(problem.visible_tests)
         hidden = len(problem.tests) - visible
-        extra = f" (+{hidden} hidden)" if hidden else ""
-        random_note = (f" + {problem.generator.count} randomised"
+        extra = t("cli.list.hidden_suffix", hidden=hidden) if hidden else ""
+        random_note = (t("cli.list.randomised_suffix", count=problem.generator.count)
                        if problem.generator else "")
-        print(f"  [{problem.language_id:<6}] {problem.title}")
-        print(f"           {problem.difficulty}, {visible} visible test(s)"
-              f"{extra}{random_note}  id={problem.id}")
+        print(t("cli.list.row_title", language=problem.language_id, title=problem.title))
+        print(t("cli.list.row_detail", difficulty=problem.difficulty,
+                visible=visible, extra=extra, random_note=random_note,
+                id=problem.id))
     return 0
 
 
@@ -85,31 +91,32 @@ def cmd_guides(root: Path) -> int:
     """
     library = load_library(root)
     for error in library.errors:
-        print(f"  ! {error}")
+        print(t("cli.list.load_error_row", error=error))
     if not library.problems:
-        print(f"No problems found under {root}")
+        print(t("cli.guides.none_found", root=root))
         return 1
 
     incomplete = 0
     for problem in library.problems:
         absent = guides.missing(problem)
         if not absent:
-            extra = ("  (+diagram)"
+            extra = (t("cli.guides.diagram_suffix")
                      if guides.find(problem, guides.DIAGRAM) else "")
-            print(f"  OK    {problem.title}{extra}")
+            print(t("cli.guides.ok_row", title=problem.title, extra=extra))
             continue
         incomplete += 1
-        print(f"  MISSING {problem.title}  -- no "
-              f"{', '.join(guides.KINDS[kind].lower() for kind in absent)}")
+        kinds = ", ".join(guides.kind_label(kind).lower() for kind in absent)
+        print(t("cli.guides.missing_row", title=problem.title, kinds=kinds))
         for kind in absent:
-            print(f"           expected {guides.guide_path(problem, kind)}")
+            print(t("cli.guides.missing_path_row",
+                    path=guides.guide_path(problem, kind)))
 
     print()
     if incomplete:
-        print(f"{incomplete} of {len(library.problems)} problem(s) are missing "
-              f"a guide.")
+        print(t("cli.guides.some_incomplete", incomplete=incomplete,
+                total=len(library.problems)))
         return 1
-    print(f"All {len(library.problems)} problems have both guides.")
+    print(t("cli.guides.all_complete", total=len(library.problems)))
     return 0
 
 
@@ -137,83 +144,81 @@ def cmd_verify(root: Path, seed: int | None) -> int:
     """
     library = load_library(root)
     for error in library.errors:
-        print(f"  ! {error}")
+        print(t("cli.list.load_error_row", error=error))
     if not library.problems:
-        print(f"No problems found under {root}")
+        print(t("cli.verify.none_found", root=root))
         return 1
 
     if seed is None:
         seed = randomise.new_seed()
 
-    print(f"Verifying {len(library.problems)} problem(s) against their "
-          f"reference solutions")
-    print(f"Randomised data sets use seed {seed}  (--seed {seed} to repeat)\n")
+    print(t("cli.verify.heading", count=len(library.problems)))
+    print(t("cli.verify.seed_note", seed=seed))
 
     broken = 0
     skipped = 0
     for problem in library.problems:
         status = problem.language.toolchain()
         if not status.available:
-            print(f"  SKIP  {problem.title}  ({status.summary})")
+            print(t("cli.verify.skip_row", title=problem.title, summary=status.summary))
             skipped += 1
             continue
 
         generator_error = _build_data_set(problem, seed)
         if generator_error:
             broken += 1
-            print(f"  BROKEN {problem.title}  -- {generator_error}")
+            print(t("cli.verify.broken_generator_row", title=problem.title,
+                    error=generator_error))
             continue
 
         result = runner.verify_reference(problem)
         if result.all_passed:
-            random_note = (f", {len(problem.generated_tests)} randomised"
+            random_note = (t("cli.verify.randomised_suffix", count=len(problem.generated_tests))
                            if problem.generated_tests else "")
-            print(f"  OK    {problem.title}  ({result.total} tests{random_note})")
+            print(t("cli.verify.ok_row", title=problem.title, total=result.total,
+                    random_note=random_note))
             continue
 
         broken += 1
         if not result.build.ok:
-            print(f"  BROKEN {problem.title}  -- reference did not build")
+            print(t("cli.verify.broken_build_row", title=problem.title))
             for line in result.build.output.splitlines()[:8]:
-                print(f"           {line}")
+                print(t("cli.verify.build_output_line", line=line))
             continue
-        print(f"  BROKEN {problem.title}  -- {result.summary()}")
+        print(t("cli.verify.broken_row", title=problem.title, summary=result.summary()))
         for outcome in result.failures():
-            print(f"           {outcome.symbol:<8} {outcome.test.name}"
-                  f"  {outcome.message}")
-            print(f"             expected: {outcome.test.expected_stdout!r}")
-            print(f"             actual:   {outcome.actual!r}")
+            print(t("cli.verify.failure_row", symbol=outcome.symbol,
+                    name=outcome.test.name, message=outcome.message))
+            print(t("cli.verify.failure_expected", expected=repr(outcome.test.expected_stdout)))
+            print(t("cli.verify.failure_actual", actual=repr(outcome.actual)))
 
     print()
     if broken:
-        print(f"{broken} problem(s) are broken -- fix these before use.")
+        print(t("cli.verify.broken_summary", count=broken))
     if skipped:
-        print(f"{skipped} problem(s) skipped: no toolchain installed.")
+        print(t("cli.verify.skipped_summary", count=skipped))
     if not broken and not skipped:
-        print("All problems verified.")
+        print(t("cli.verify.all_verified"))
     return 1 if broken else 0
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="crucible",
-        description="Crucible -- a Tkinter coding practice harness for C "
-                    "(and other languages).")
+        description=t("cli.description"))
     parser.add_argument("--problems", type=Path, default=_default_problems_dir(),
-                        metavar="DIR", help="problem directory (default: ./problems)")
+                        metavar="DIR", help=t("cli.arg_problems_help"))
     parser.add_argument("--seed", type=int, metavar="N",
-                        help="data set number for randomised cases "
-                             "(default: a new one each run)")
+                        help=t("cli.arg_seed_help"))
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--verify", action="store_true",
-                       help="verify every reference solution and exit")
+                       help=t("cli.arg_verify_help"))
     group.add_argument("--list", action="store_true",
-                       help="list available problems and exit")
+                       help=t("cli.arg_list_help"))
     group.add_argument("--toolchains", action="store_true",
-                       help="report detected compilers and exit")
+                       help=t("cli.arg_toolchains_help"))
     group.add_argument("--guides", action="store_true",
-                       help="report which problems are missing a hint or a "
-                            "worked solution; exit 1 if any are")
+                       help=t("cli.arg_guides_help"))
     args = parser.parse_args(argv)
 
     root = args.problems.expanduser().resolve()
@@ -230,10 +235,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         import tkinter  # noqa: F401
     except ImportError:
-        print("Tkinter is not available in this Python installation.\n"
-              "On Debian/Ubuntu:  sudo apt install python3-tk\n"
-              "On Windows/macOS:  reinstall Python with the Tcl/Tk option ticked.",
-              file=sys.stderr)
+        print(t("cli.no_tkinter"), file=sys.stderr)
         return 2
 
     from .ui import CrucibleApp

@@ -27,6 +27,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import languages
+from .i18n import t
 
 DIFFICULTIES = ("easy", "medium", "hard", "fiendish")
 DEFAULT_TIMEOUT = 5.0
@@ -60,7 +61,8 @@ class TestCase:
 
     @property
     def display_name(self) -> str:
-        return f"{self.name} (hidden)" if self.hidden else self.name
+        return (t("problem.test_case.hidden_suffix", name=self.name) if self.hidden
+                else self.name)
 
 
 @dataclass(frozen=True)
@@ -160,15 +162,13 @@ class Problem:
 
 def _require(data: dict, key: str, path: Path, kind: type = str) -> object:
     if key not in data:
-        raise ProblemError(f"{path.name}: missing required field '{key}'")
+        raise ProblemError(t("problem.error.missing_field", file=path.name, key=key))
     value = data[key]
     if not isinstance(value, kind):
-        raise ProblemError(
-            f"{path.name}: field '{key}' must be {kind.__name__}, "
-            f"got {type(value).__name__}"
-        )
+        raise ProblemError(t("problem.error.wrong_type", file=path.name, key=key,
+                             expected=kind.__name__, actual=type(value).__name__))
     if kind is str and not value.strip():
-        raise ProblemError(f"{path.name}: field '{key}' must not be empty")
+        raise ProblemError(t("problem.error.empty_field", file=path.name, key=key))
     return value
 
 
@@ -177,28 +177,20 @@ def _load_reference(data: dict, path: Path) -> ReferenceSolution:
     encoded = data.get("reference_solution_b64")
 
     if plain and encoded:
-        raise ProblemError(
-            f"{path.name}: set 'reference_solution' or "
-            f"'reference_solution_b64', not both"
-        )
+        raise ProblemError(t("problem.error.reference_both_set", file=path.name))
     if isinstance(plain, str) and plain.strip():
         return ReferenceSolution(plain, encoded=False)
     if isinstance(encoded, str) and encoded.strip():
         try:
             decoded = base64.b64decode(encoded, validate=True).decode("utf-8")
         except (binascii.Error, UnicodeDecodeError) as exc:
-            raise ProblemError(
-                f"{path.name}: 'reference_solution_b64' is not valid "
-                f"base64-encoded UTF-8 ({exc})"
-            ) from None
+            raise ProblemError(t("problem.error.reference_bad_base64",
+                                 file=path.name, error=exc)) from None
         if not decoded.strip():
-            raise ProblemError(f"{path.name}: decoded reference solution is empty")
+            raise ProblemError(t("problem.error.reference_decoded_empty", file=path.name))
         return ReferenceSolution(decoded, encoded=True)
 
-    raise ProblemError(
-        f"{path.name}: a reference solution is required -- the test suite "
-        f"cannot be pre-verified without one"
-    )
+    raise ProblemError(t("problem.error.reference_required", file=path.name))
 
 
 def _load_generator(data: dict, path: Path) -> Generator | None:
@@ -206,33 +198,25 @@ def _load_generator(data: dict, path: Path) -> Generator | None:
     if raw is None:
         return None
     if not isinstance(raw, dict):
-        raise ProblemError(
-            f"{path.name}: 'generator' must be an object with a 'source' field"
-        )
+        raise ProblemError(t("problem.error.generator_not_object", file=path.name))
 
     source = raw.get("source")
     if not isinstance(source, str) or not source.strip():
-        raise ProblemError(f"{path.name}: 'generator.source' must be Python source")
+        raise ProblemError(t("problem.error.generator_source_not_string", file=path.name))
     try:
         compile(source, f"{path.name}:generator", "exec")
     except SyntaxError as exc:
-        raise ProblemError(
-            f"{path.name}: 'generator.source' does not parse as Python "
-            f"(line {exc.lineno}: {exc.msg})"
-        ) from None
+        raise ProblemError(t("problem.error.generator_source_syntax_error",
+                             file=path.name, line=exc.lineno, message=exc.msg)) from None
     if "def generate" not in source:
-        raise ProblemError(
-            f"{path.name}: 'generator.source' must define generate(rng, count)"
-        )
+        raise ProblemError(t("problem.error.generator_missing_generate", file=path.name))
 
     count = raw.get("count", DEFAULT_GENERATED_CASES)
     if not isinstance(count, int) or isinstance(count, bool):
-        raise ProblemError(f"{path.name}: 'generator.count' must be an integer")
+        raise ProblemError(t("problem.error.generator_count_not_int", file=path.name))
     if not 1 <= count <= MAX_GENERATED_CASES:
-        raise ProblemError(
-            f"{path.name}: 'generator.count' must be between 1 and "
-            f"{MAX_GENERATED_CASES}"
-        )
+        raise ProblemError(t("problem.error.generator_count_out_of_range",
+                             file=path.name, max=MAX_GENERATED_CASES))
 
     return Generator(source=source, count=count)
 
@@ -241,27 +225,24 @@ def _load_tests(data: dict, path: Path,
                 generator: Generator | None) -> tuple[TestCase, ...]:
     raw = data.get("tests", [])
     if not isinstance(raw, list):
-        raise ProblemError(f"{path.name}: 'tests' must be a list")
+        raise ProblemError(t("problem.error.tests_not_list", file=path.name))
     if not raw and generator is None:
-        raise ProblemError(
-            f"{path.name}: 'tests' must be a non-empty list unless the problem "
-            f"has a 'generator' to supply cases"
-        )
+        raise ProblemError(t("problem.error.tests_empty_without_generator", file=path.name))
 
     tests: list[TestCase] = []
     seen: set[str] = set()
     for index, item in enumerate(raw):
-        where = f"{path.name}: tests[{index}]"
+        where = t("problem.error.test_where", file=path.name, index=index)
         if not isinstance(item, dict):
-            raise ProblemError(f"{where} must be an object")
-        name = item.get("name") or f"case {index + 1}"
+            raise ProblemError(t("problem.error.test_not_object", where=where))
+        name = item.get("name") or t("problem.test_case.default_name", index=index + 1)
         if not isinstance(name, str):
-            raise ProblemError(f"{where}.name must be a string")
+            raise ProblemError(t("problem.error.test_name_not_string", where=where))
         if name in seen:
-            raise ProblemError(f"{where}.name '{name}' is duplicated")
+            raise ProblemError(t("problem.error.test_name_duplicated", where=where, name=name))
         seen.add(name)
         if "expected_stdout" not in item:
-            raise ProblemError(f"{where} is missing 'expected_stdout'")
+            raise ProblemError(t("problem.error.test_missing_expected_stdout", where=where))
         tests.append(
             TestCase(
                 name=name,
@@ -279,37 +260,37 @@ def load_problem(path: Path) -> Problem:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
-        raise ProblemError(f"{path.name}: invalid JSON at line {exc.lineno}: {exc.msg}") from None
+        raise ProblemError(t("problem.error.invalid_json", file=path.name,
+                             line=exc.lineno, message=exc.msg)) from None
     except OSError as exc:
-        raise ProblemError(f"{path.name}: cannot read file ({exc})") from None
+        raise ProblemError(t("problem.error.cannot_read_file", file=path.name,
+                             error=exc)) from None
 
     if not isinstance(data, dict):
-        raise ProblemError(f"{path.name}: top level must be a JSON object")
+        raise ProblemError(t("problem.error.top_level_not_object", file=path.name))
 
     language_id = str(_require(data, "language", path))
     if language_id not in languages.known_ids():
-        raise ProblemError(
-            f"{path.name}: unknown language '{language_id}'. "
-            f"Registered languages: {', '.join(languages.known_ids())}"
-        )
+        raise ProblemError(t("problem.error.unknown_language", file=path.name,
+                             language=language_id,
+                             known=", ".join(languages.known_ids())))
 
     difficulty = str(data.get("difficulty", "easy")).lower()
     if difficulty not in DIFFICULTIES:
-        raise ProblemError(
-            f"{path.name}: difficulty '{difficulty}' must be one of "
-            f"{', '.join(DIFFICULTIES)}"
-        )
+        raise ProblemError(t("problem.error.unknown_difficulty", file=path.name,
+                             difficulty=difficulty,
+                             choices=", ".join(DIFFICULTIES)))
 
     try:
         timeout = float(data.get("timeout_seconds", DEFAULT_TIMEOUT))
     except (TypeError, ValueError):
-        raise ProblemError(f"{path.name}: 'timeout_seconds' must be a number") from None
+        raise ProblemError(t("problem.error.timeout_not_number", file=path.name)) from None
     if not 0 < timeout <= 120:
-        raise ProblemError(f"{path.name}: 'timeout_seconds' must be between 0 and 120")
+        raise ProblemError(t("problem.error.timeout_out_of_range", file=path.name))
 
     topics = data.get("topics", [])
     if not isinstance(topics, list):
-        raise ProblemError(f"{path.name}: 'topics' must be a list")
+        raise ProblemError(t("problem.error.topics_not_list", file=path.name))
 
     generator = _load_generator(data, path)
 
@@ -357,7 +338,7 @@ def load_library(root: Path) -> Library:
     """
     library = Library()
     if not root.is_dir():
-        library.errors.append(f"Problem directory not found: {root}")
+        library.errors.append(t("problem.error.directory_not_found", root=root))
         return library
 
     for path in sorted(root.rglob("*.json")):
@@ -368,7 +349,7 @@ def load_library(root: Path) -> Library:
 
     duplicates = _duplicate_ids(library.problems)
     for dupe in duplicates:
-        library.errors.append(f"Duplicate problem id '{dupe}' -- ids must be unique")
+        library.errors.append(t("problem.error.duplicate_id", id=dupe))
 
     library.problems.sort(key=lambda p: (p.language_id,
                                          DIFFICULTIES.index(p.difficulty),

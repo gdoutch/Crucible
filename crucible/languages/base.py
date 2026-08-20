@@ -20,6 +20,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from ..i18n import t
+
 # Keep console windows from flashing up on every compile/run on Windows.
 _NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
@@ -89,7 +91,8 @@ def run_process(
         )
     except OSError as exc:
         return ExecResult("", "", None, time.perf_counter() - started,
-                          launch_error=f"Could not start process: {exc}")
+                          launch_error=t("languages.common.could_not_start_process",
+                                        error=exc))
 
     try:
         stdout, stderr = proc.communicate(stdin_data, timeout=timeout)

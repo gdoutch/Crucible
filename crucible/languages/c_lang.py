@@ -23,6 +23,7 @@ import time
 from pathlib import Path
 
 from .. import workspace
+from ..i18n import t
 from .base import BuildResult, Language, ToolchainStatus, run_process, _NO_WINDOW
 
 _IS_WINDOWS = platform.system() == "Windows"
@@ -50,28 +51,10 @@ _WINDOWS_HINTS = (
 
 _POSIX_HINTS = ("/usr/bin", "/usr/local/bin", "/opt/homebrew/bin", "/opt/local/bin")
 
-_INSTALL_HELP_WINDOWS = (
-    "No C compiler found.\n\n"
-    "Pick whichever is easiest for you:\n\n"
-    "  1. w64devkit  -- a single portable zip, no installer, ~80 MB.\n"
-    "     https://github.com/skeeto/w64devkit/releases\n"
-    "     Unzip it, then add its bin\\ folder to PATH (or just relaunch this\n"
-    "     app -- C:\\w64devkit\\bin is auto-detected).\n\n"
-    "  2. MSYS2      -- full package manager, best long term.\n"
-    "     https://www.msys2.org  then:  pacman -S mingw-w64-ucrt-x86_64-gcc\n\n"
-    "  3. Visual Studio -- you already have VS installed, but without the C++\n"
-    "     toolset. Open the Visual Studio Installer, click Modify, and tick\n"
-    "     'Desktop development with C++'.\n\n"
-    "Re-check from the Tools menu once installed -- no restart needed."
-)
 
-_INSTALL_HELP_POSIX = (
-    "No C compiler found.\n\n"
-    "  Debian/Ubuntu:  sudo apt install build-essential\n"
-    "  Fedora:         sudo dnf install gcc\n"
-    "  macOS:          xcode-select --install\n\n"
-    "Re-check from the Tools menu once installed."
-)
+def _install_help() -> str:
+    return t("languages.c.install_help_windows" if _IS_WINDOWS
+             else "languages.c.install_help_posix")
 
 
 def _which(name: str) -> str | None:
@@ -298,8 +281,8 @@ class CLanguage(Language):
                 version = _probe_version(path) or name
                 return ToolchainStatus(
                     available=True,
-                    summary=f"C: {version}",
-                    detail=f"Compiler: {path}\nMode: GCC-compatible command line",
+                    summary=t("languages.c.summary_gnu", version=version),
+                    detail=t("languages.c.detail_gnu", path=path),
                 )
 
         # MSVC, either already on PATH (dev prompt) or via vcvars.
@@ -311,23 +294,23 @@ class CLanguage(Language):
                 self._compiler, self._kind, self._env = cl, "msvc", env
                 return ToolchainStatus(
                     available=True,
-                    summary="C: Microsoft Visual C++ (MSVC)",
-                    detail=f"Compiler: {cl}\nEnvironment initialised from vcvars64.bat",
+                    summary=t("languages.c.summary_msvc"),
+                    detail=t("languages.c.detail_msvc", path=cl),
                 )
         elif cl_on_path:
             self._compiler, self._kind = cl_on_path, "msvc"
             return ToolchainStatus(
                 available=True,
-                summary="C: Microsoft Visual C++ (MSVC, from current environment)",
-                detail=f"Compiler: {cl_on_path}",
+                summary=t("languages.c.summary_msvc_current_env"),
+                detail=t("languages.c.detail_msvc_current_env", path=cl_on_path),
             )
 
         return ToolchainStatus(
             available=False,
-            summary="C: no compiler found",
-            detail="Searched PATH and the usual install locations for "
-                   + ", ".join(_GNU_LIKE) + " and cl.exe.",
-            remedy=_INSTALL_HELP_WINDOWS if _IS_WINDOWS else _INSTALL_HELP_POSIX,
+            summary=t("languages.c.summary_not_found"),
+            detail=t("languages.c.detail_not_found",
+                    compilers=", ".join(_GNU_LIKE)),
+            remedy=_install_help(),
         )
 
     # -- build -------------------------------------------------------------
@@ -391,7 +374,7 @@ class CLanguage(Language):
         output = self.clean_diagnostics(raw)
         ok = result.exit_code == 0 and exe.is_file()
         if result.timed_out:
-            ok, output = False, "Compilation timed out after 60s."
+            ok, output = False, t("languages.c.compile_timeout")
         return BuildResult(
             ok=ok,
             output=output.strip(),
@@ -470,19 +453,20 @@ class CLanguage(Language):
         # arrived signed would otherwise be read as a (nonsensical) signal.
         if _IS_WINDOWS:
             status = {
-                0xC0000005: "access violation (bad pointer / buffer overrun)",
-                0xC0000094: "integer division by zero",
-                0xC00000FD: "stack overflow (runaway recursion?)",
-                0xC000013A: "interrupted",
+                0xC0000005: t("languages.c.exit.access_violation"),
+                0xC0000094: t("languages.c.exit.divide_by_zero"),
+                0xC00000FD: t("languages.c.exit.stack_overflow"),
+                0xC000013A: t("languages.c.exit.interrupted"),
             }
             described = status.get(exit_code & 0xFFFFFFFF)
-            return (f"crashed: {described}" if described
-                    else f"exited with status {exit_code}")
+            return (t("languages.c.exit.crashed", description=described) if described
+                    else t("languages.common.exited_with_status", code=exit_code))
 
-        signals = {-11: "SIGSEGV (segmentation fault)", -6: "SIGABRT (abort)",
-                   -8: "SIGFPE (arithmetic error, e.g. divide by zero)"}
+        signals = {-11: t("languages.c.exit.sigsegv"),
+                   -6: t("languages.c.exit.sigabrt"),
+                   -8: t("languages.c.exit.sigfpe")}
         if exit_code in signals:
             return signals[exit_code]
         if exit_code < 0:
-            return f"killed by signal {-exit_code}"
-        return f"exited with status {exit_code}"
+            return t("languages.c.exit.killed_by_signal", signal=-exit_code)
+        return t("languages.common.exited_with_status", code=exit_code)

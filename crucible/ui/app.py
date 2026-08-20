@@ -14,6 +14,7 @@ from tkinter import font as tkfont
 from tkinter import messagebox, ttk
 
 from .. import guides, languages, profiles, randomise, runner, workspace
+from ..i18n import t
 from ..problem import DIFFICULTIES, Library, Problem, TestCase, load_library
 from ..randomise import GeneratedSuite
 from ..runner import ERROR, FAIL, PASS, SKIPPED, TIMEOUT, SubmissionResult, TestOutcome
@@ -36,10 +37,24 @@ PROGRESS_SOLVED = "★"  # this profile has passed every test at least once
 #: is a real problem id, so a click on one is not a selection.
 _GROUP_PREFIXES = ("lang:", "diff:")
 
-STATUS_LABEL = {
-    PASS: "PASS", FAIL: "FAIL", ERROR: "ERROR",
-    TIMEOUT: "TIMEOUT", SKIPPED: "skipped",
+#: Maps a runner status constant to its display text's locale key. A function
+#: rather than a dict built once at import time, so a locale switched after
+#: start-up is reflected the next time a status is shown, not frozen at
+#: whatever the active locale was when the module first loaded.
+_STATUS_LABEL_KEY = {
+    PASS: "app.status.pass", FAIL: "app.status.fail", ERROR: "app.status.error",
+    TIMEOUT: "app.status.timeout", SKIPPED: "app.status.skipped",
 }
+
+
+def _status_label(status: str) -> str:
+    key = _STATUS_LABEL_KEY.get(status)
+    return t(key) if key else status
+
+
+def _difficulty_label(difficulty: str) -> str:
+    key = f"app.difficulty.{difficulty}"
+    return t(key) if difficulty in DIFFICULTIES else difficulty
 
 
 class _ReadOnlyText(tk.Text):
@@ -185,65 +200,67 @@ class CrucibleApp(tk.Tk):
                     activeforeground="#ffffff", borderwidth=0)
 
         file_menu = tk.Menu(menubar, tearoff=0, **opts)
-        file_menu.add_command(label="Save draft\tCtrl+S",
+        file_menu.add_command(label=t("app.menu.file.save_draft"),
                               command=lambda: self._save_draft(force=True))
-        file_menu.add_command(label="Reset to starter code",
+        file_menu.add_command(label=t("app.menu.file.reset"),
                               command=self._reset_to_starter)
         file_menu.add_separator()
-        file_menu.add_command(label="Reload problems", command=self._load_library)
+        file_menu.add_command(label=t("app.menu.file.reload"), command=self._load_library)
         file_menu.add_separator()
-        file_menu.add_command(label="Quit", command=self._on_close)
-        menubar.add_cascade(label="File", menu=file_menu)
+        file_menu.add_command(label=t("app.menu.file.quit"), command=self._on_close)
+        menubar.add_cascade(label=t("app.menu.file.title"), menu=file_menu)
 
         # Editing commands live on the editor widget, not here -- this menu is
         # how anyone finds out they exist. Each entry drives the same method
         # the key binding does, so the two cannot drift apart.
         edit_menu = tk.Menu(menubar, tearoff=0, **opts)
-        edit_menu.add_command(label="Undo\tCtrl+Z",
+        edit_menu.add_command(label=t("app.menu.edit.undo"),
                               command=lambda: self.editor.text.event_generate("<<Undo>>"))
-        edit_menu.add_command(label="Redo\tCtrl+Y",
+        edit_menu.add_command(label=t("app.menu.edit.redo"),
                               command=lambda: self.editor.text.event_generate("<<Redo>>"))
         edit_menu.add_separator()
-        edit_menu.add_command(label="Cut line\tCtrl+X",
+        edit_menu.add_command(label=t("app.menu.edit.cut_line"),
                               command=self.editor.cut_line)
-        edit_menu.add_command(label="Duplicate line\tCtrl+D",
+        edit_menu.add_command(label=t("app.menu.edit.duplicate_line"),
                               command=self.editor.duplicate_lines)
-        edit_menu.add_command(label="Delete line\tCtrl+Shift+K",
+        edit_menu.add_command(label=t("app.menu.edit.delete_line"),
                               command=self.editor.delete_lines)
-        edit_menu.add_command(label="Move line up\tAlt+Up",
+        edit_menu.add_command(label=t("app.menu.edit.move_up"),
                               command=lambda: self.editor.move_lines(-1))
-        edit_menu.add_command(label="Move line down\tAlt+Down",
+        edit_menu.add_command(label=t("app.menu.edit.move_down"),
                               command=lambda: self.editor.move_lines(1))
         edit_menu.add_separator()
-        edit_menu.add_command(label="Comment/uncomment\tCtrl+/",
+        edit_menu.add_command(label=t("app.menu.edit.toggle_comment"),
                               command=self.editor.toggle_comment)
         edit_menu.add_separator()
-        edit_menu.add_command(label="Find…\tCtrl+F",
+        edit_menu.add_command(label=t("app.menu.edit.find"),
                               command=lambda: self.editor.open_find(replace=False))
-        edit_menu.add_command(label="Replace…\tCtrl+H",
+        edit_menu.add_command(label=t("app.menu.edit.replace"),
                               command=lambda: self.editor.open_find(replace=True))
-        edit_menu.add_command(label="Find next\tF3",
+        edit_menu.add_command(label=t("app.menu.edit.find_next"),
                               command=lambda: self.editor.step_match(1))
-        edit_menu.add_command(label="Find previous\tShift+F3",
+        edit_menu.add_command(label=t("app.menu.edit.find_previous"),
                               command=lambda: self.editor.step_match(-1))
-        menubar.add_cascade(label="Edit", menu=edit_menu)
+        menubar.add_cascade(label=t("app.menu.edit.title"), menu=edit_menu)
 
         run_menu = tk.Menu(menubar, tearoff=0, **opts)
-        run_menu.add_command(label="Go -- run all tests\tF5", command=self._on_go)
-        run_menu.add_command(label="Stop", command=self._on_stop)
+        run_menu.add_command(label=t("app.menu.run.go"), command=self._on_go)
+        run_menu.add_command(label=t("app.menu.run.stop"), command=self._on_stop)
         run_menu.add_separator()
-        run_menu.add_command(label="New data set\tCtrl+R", command=self._on_new_data)
-        menubar.add_cascade(label="Run", menu=run_menu)
+        run_menu.add_command(label=t("app.menu.run.new_data"), command=self._on_new_data)
+        menubar.add_cascade(label=t("app.menu.run.title"), menu=run_menu)
 
         # Who drafts, seeds and solved badges belong to. Just a label and one
         # action -- the picker dialog is where switching and creating happen,
         # so there is nothing to duplicate here.
         self.profile_menu = tk.Menu(menubar, tearoff=0, **opts)
-        self.profile_menu.add_command(label="Current: …", state="disabled")
+        self.profile_menu.add_command(
+            label=t("app.menu.profile.current", username=t("app.menu.profile.unknown")),
+            state="disabled")
         self.profile_menu.add_separator()
-        self.profile_menu.add_command(label="Switch profile…",
+        self.profile_menu.add_command(label=t("app.menu.profile.switch"),
                                       command=self._switch_profile)
-        menubar.add_cascade(label="Profile", menu=self.profile_menu)
+        menubar.add_cascade(label=t("app.menu.profile.title"), menu=self.profile_menu)
 
         # Guides open in the browser rather than in a pane: they are documents,
         # and the point of reading one is to have it beside the editor rather
@@ -253,18 +270,18 @@ class CrucibleApp(tk.Tk):
         #: entry's state -- one list so the two cannot drift apart.
         self._guide_order = (guides.DIAGRAM, guides.HINT, guides.SOLUTION)
         self.guides_menu.add_command(
-            label="Diagram for this problem\tF2",
+            label=t("app.menu.guides.diagram"),
             command=lambda: self._open_guide(guides.DIAGRAM))
         self.guides_menu.add_command(
-            label="Hint for this problem\tF1",
+            label=t("app.menu.guides.hint"),
             command=lambda: self._open_guide(guides.HINT))
         self.guides_menu.add_command(
-            label="Worked solution for this problem…",
+            label=t("app.menu.guides.solution"),
             command=lambda: self._open_guide(guides.SOLUTION))
         self.guides_menu.add_separator()
-        self.guides_menu.add_command(label="What are these?",
+        self.guides_menu.add_command(label=t("app.menu.guides.what_are_these"),
                                      command=self._show_guides_help)
-        menubar.add_cascade(label="Guides", menu=self.guides_menu)
+        menubar.add_cascade(label=t("app.menu.guides.title"), menu=self.guides_menu)
 
         view_menu = tk.Menu(menubar, tearoff=0, **opts)
         # Checkbuttons rather than commands, so the menu doubles as the answer
@@ -274,38 +291,38 @@ class CrucibleApp(tk.Tk):
             variable = tk.BooleanVar(value=not pane.collapsed)
             self._pane_vars[key] = variable
             view_menu.add_checkbutton(
-                label=f"{pane.label.title()}\tCtrl+{index}",
+                label=t("app.menu.view.pane_toggle", label=pane.label.title(), index=index),
                 variable=variable, selectcolor=self.palette.accent,
                 command=lambda k=key: self._toggle_pane(k))
-        view_menu.add_command(label="Reset panel layout\tCtrl+0",
+        view_menu.add_command(label=t("app.menu.view.reset_layout"),
                               command=self._reset_layout)
         view_menu.add_separator()
-        view_menu.add_command(label="Toggle light / dark theme",
+        view_menu.add_command(label=t("app.menu.view.toggle_theme"),
                               command=self._toggle_theme)
-        view_menu.add_command(label="Larger editor font",
+        view_menu.add_command(label=t("app.menu.view.larger_font"),
                               command=lambda: self._change_font(1))
-        view_menu.add_command(label="Smaller editor font",
+        view_menu.add_command(label=t("app.menu.view.smaller_font"),
                               command=lambda: self._change_font(-1))
-        menubar.add_cascade(label="View", menu=view_menu)
+        menubar.add_cascade(label=t("app.menu.view.title"), menu=view_menu)
 
         tools_menu = tk.Menu(menubar, tearoff=0, **opts)
-        tools_menu.add_command(label="Re-check compilers",
+        tools_menu.add_command(label=t("app.menu.tools.recheck_compilers"),
                                command=self._recheck_toolchains)
-        tools_menu.add_command(label="Verify every problem's reference solution",
+        tools_menu.add_command(label=t("app.menu.tools.verify_all"),
                                command=self._verify_all)
         tools_menu.add_separator()
-        tools_menu.add_command(label="Open problems folder",
+        tools_menu.add_command(label=t("app.menu.tools.open_problems_folder"),
                                command=lambda: self._open_folder(self.problems_root))
-        tools_menu.add_command(label="Open drafts folder",
+        tools_menu.add_command(label=t("app.menu.tools.open_drafts_folder"),
                                command=lambda: self._open_folder(self._profile_root()))
-        menubar.add_cascade(label="Tools", menu=tools_menu)
+        menubar.add_cascade(label=t("app.menu.tools.title"), menu=tools_menu)
 
         help_menu = tk.Menu(menubar, tearoff=0, **opts)
-        help_menu.add_command(label="Compiler status", command=self._show_toolchains)
-        help_menu.add_command(label="Writing your own problems",
+        help_menu.add_command(label=t("app.menu.help.compiler_status"), command=self._show_toolchains)
+        help_menu.add_command(label=t("app.menu.help.authoring"),
                               command=self._show_authoring_help)
-        help_menu.add_command(label="About", command=self._show_about)
-        menubar.add_cascade(label="Help", menu=help_menu)
+        help_menu.add_command(label=t("app.menu.help.about"), command=self._show_about)
+        menubar.add_cascade(label=t("app.menu.help.title"), menu=help_menu)
 
         self.configure(menu=menubar)
         self._refresh_guides_menu()
@@ -319,7 +336,7 @@ class CrucibleApp(tk.Tk):
         ttk.Separator(bar, orient="vertical").pack(side="left", fill="y",
                                                    padx=(0, 12), pady=2)
 
-        ttk.Label(bar, text="Language").pack(side="left")
+        ttk.Label(bar, text=t("app.toolbar.language_label")).pack(side="left")
         self.language_var = tk.StringVar()
         self.language_box = ttk.Combobox(bar, textvariable=self.language_var,
                                          state="readonly", width=12)
@@ -327,18 +344,18 @@ class CrucibleApp(tk.Tk):
         self.language_box.bind("<<ComboboxSelected>>",
                                lambda _e: self._populate_problem_tree())
 
-        self.problem_title = ttk.Label(bar, text="No problem selected",
+        self.problem_title = ttk.Label(bar, text=t("app.toolbar.no_problem_selected"),
                                        style="Heading.TLabel")
         self.problem_title.pack(side="left")
         self.problem_meta = ttk.Label(bar, text="", style="Muted.TLabel")
         self.problem_meta.pack(side="left", padx=(10, 0))
 
-        self.go_button = ttk.Button(bar, text="▶  Go", style="Run.TButton",
+        self.go_button = ttk.Button(bar, text=t("app.toolbar.go_button"), style="Run.TButton",
                                     command=self._on_go, state="disabled")
         self.go_button.pack(side="right")
-        ttk.Button(bar, text="Reset", command=self._reset_to_starter).pack(
+        ttk.Button(bar, text=t("app.toolbar.reset_button"), command=self._reset_to_starter).pack(
             side="right", padx=(0, 8))
-        self.new_data_button = ttk.Button(bar, text="New data",
+        self.new_data_button = ttk.Button(bar, text=t("app.toolbar.new_data_button"),
                                           command=self._on_new_data,
                                           state="disabled")
         self.new_data_button.pack(side="right", padx=(0, 8))
@@ -356,7 +373,7 @@ class CrucibleApp(tk.Tk):
                                 padx=12, pady=(0, 6))
 
         problems = CollapsiblePane(self.columns.paned, self.palette,
-                                   "problems", "PROBLEMS", orient="horizontal")
+                                   "problems", t("app.pane.problems"), orient="horizontal")
         self._build_problem_list(problems.body)
         self.columns.add(problems, weight=0)
 
@@ -373,9 +390,9 @@ class CrucibleApp(tk.Tk):
         # Reading and writing get equal billing. Which of the two you actually
         # want is a thing that changes minute by minute, and the maximise
         # button answers it far better than a default ever could.
-        row("statement", "THE PROBLEM", self._build_statement, 4)
-        row("editor", "YOUR SOLUTION", self._build_editor, 4)
-        row("results", "RESULTS", self._build_results, 3)
+        row("statement", t("app.pane.statement"), self._build_statement, 4)
+        row("editor", t("app.pane.editor"), self._build_editor, 4)
+        row("results", t("app.pane.results"), self._build_results, 3)
 
         #: Menu order and Ctrl+1..4 order, outermost pane first.
         self._pane_keys = ("problems", "statement", "editor", "results")
@@ -387,7 +404,7 @@ class CrucibleApp(tk.Tk):
 
         self.problem_tree = ttk.Treeview(frame, columns=("progress", "badge"),
                                          show="tree headings", selectmode="browse")
-        self.problem_tree.heading("#0", text="Problem")
+        self.problem_tree.heading("#0", text=t("app.tree.column_problem"))
         # The glyphs double as their own legend: a header showing the same
         # mark the column fills in with is a shorter explanation than any
         # tooltip -- "this column is about ✓/✗" needs no further words.
@@ -438,7 +455,7 @@ class CrucibleApp(tk.Tk):
         self.notebook.pack(fill="both", expand=True)
 
         self.tests_tab = ttk.Frame(self.notebook)
-        self.notebook.add(self.tests_tab, text="Unit Tests")
+        self.notebook.add(self.tests_tab, text=t("app.results.unit_tests_tab"))
 
         split = ttk.PanedWindow(self.tests_tab, orient="horizontal")
         split.pack(fill="both", expand=True)
@@ -448,9 +465,9 @@ class CrucibleApp(tk.Tk):
         self.test_tree = ttk.Treeview(
             left, columns=("status", "name", "time"), show="headings",
             selectmode="browse", height=5)
-        self.test_tree.heading("status", text="Result")
-        self.test_tree.heading("name", text="Test case")
-        self.test_tree.heading("time", text="Time")
+        self.test_tree.heading("status", text=t("app.results.column_result"))
+        self.test_tree.heading("name", text=t("app.results.column_test_case"))
+        self.test_tree.heading("time", text=t("app.results.column_time"))
         self.test_tree.column("status", width=86, anchor="w", stretch=False)
         self.test_tree.column("name", width=280, stretch=True)
         self.test_tree.column("time", width=70, anchor="e", stretch=False)
@@ -481,7 +498,7 @@ class CrucibleApp(tk.Tk):
         # build nobody has asked for yet has nothing to say, and an empty tab
         # sitting there is one more thing to wonder about before pressing Go.
         self.build_tab = ttk.Frame(self.notebook)
-        self.notebook.add(self.build_tab, text="Build Output")
+        self.notebook.add(self.build_tab, text=t("app.results.build_output_tab"))
         self.notebook.hide(self.build_tab)
         self._build_tab_shown = False
 
@@ -513,14 +530,14 @@ class CrucibleApp(tk.Tk):
                                background=self.palette.panel_bg,
                                foreground=self.palette.text_muted)
         self.banner.grid(row=0, column=0, sticky="ew")
-        self.banner_button = ttk.Button(holder, text="Run anyway",
+        self.banner_button = ttk.Button(holder, text=t("app.results.run_anyway_button"),
                                         command=self._override_reference_gate)
 
     def _build_statusbar(self) -> None:
         bar = ttk.Frame(self, style="Panel.TFrame", padding=(12, 6))
         bar.pack(side="bottom", fill="x")
 
-        self.toolchain_label = ttk.Label(bar, text="Checking compilers…",
+        self.toolchain_label = ttk.Label(bar, text=t("app.statusbar.checking_compilers"),
                                          style="Status.TLabel")
         self.toolchain_label.pack(side="left")
 
@@ -665,7 +682,8 @@ class CrucibleApp(tk.Tk):
         # draft and data set belong to whoever was using the app before.
         self._problem = None
         self._refresh_profile_label()
-        self.profile_menu.entryconfigure(0, label=f"Current: {profile.username}")
+        self.profile_menu.entryconfigure(
+            0, label=t("app.menu.profile.current", username=profile.username))
 
     def _refresh_profile_label(self) -> None:
         if self._profile is None:
@@ -674,8 +692,10 @@ class CrucibleApp(tk.Tk):
         solved = sum(1 for p in self._library.problems
                     if self._progress.get(p.id, {}).get("solved"))
         total = len(self._library.problems)
-        note = f"{solved}/{total} solved" if total else "no problems loaded"
-        self.profile_label.configure(text=f"{self._profile.username}  ·  {note}")
+        note = (t("app.statusbar.solved_note", solved=solved, total=total) if total
+                else t("app.statusbar.no_problems_loaded"))
+        self.profile_label.configure(
+            text=t("app.statusbar.profile_status", username=self._profile.username, note=note))
 
     def _record_progress(self, problem_id: str, result: SubmissionResult) -> None:
         """Log one Go against the active profile's record for this problem.
@@ -711,9 +731,10 @@ class CrucibleApp(tk.Tk):
 
         present = self._library.languages_present
         names = [languages.get(lid).display_name for lid in present]
-        self.language_box.configure(values=["All"] + names)
-        if not self.language_var.get() or self.language_var.get() not in ["All"] + names:
-            self.language_var.set(names[0] if len(names) == 1 else "All")
+        all_languages = t("app.toolbar.all_languages")
+        self.language_box.configure(values=[all_languages] + names)
+        if not self.language_var.get() or self.language_var.get() not in [all_languages] + names:
+            self.language_var.set(names[0] if len(names) == 1 else all_languages)
 
         self._refresh_toolchain_label()
         self._populate_problem_tree()
@@ -726,18 +747,18 @@ class CrucibleApp(tk.Tk):
             self._request_preparation(problem, priority=5, with_data=False)
 
         if self._library.errors:
+            errors = "\n".join(t("app.dialog.bullet_line", error=e)
+                               for e in self._library.errors[:12])
             messagebox.showwarning(
-                "Problem files skipped",
-                "These files could not be loaded:\n\n"
-                + "\n".join(f"• {e}" for e in self._library.errors[:12]),
+                t("app.dialog.problem_files_skipped_title"),
+                t("app.dialog.problem_files_skipped_message", errors=errors),
                 parent=self,
             )
 
         if not self._library.problems:
             messagebox.showinfo(
-                "No problems found",
-                f"No problem files were found under:\n{self.problems_root}\n\n"
-                "See Help → Writing your own problems.",
+                t("app.dialog.no_problems_found_title"),
+                t("app.dialog.no_problems_found_message", root=self.problems_root),
                 parent=self,
             )
 
@@ -772,14 +793,14 @@ class CrucibleApp(tk.Tk):
     def _populate_by_language(self, wanted: str) -> None:
         for language_id in self._library.languages_present:
             language = languages.get(language_id)
-            if wanted not in ("All", language.display_name):
+            if wanted not in (t("app.toolbar.all_languages"), language.display_name):
                 continue
             problems = self._library.by_language(language_id)
             if not problems:
                 continue
             group = self.problem_tree.insert(
                 "", "end", iid=f"lang:{language_id}",
-                text=f"{language.display_name}  ({len(problems)})",
+                text=t("app.tree.group_row", name=language.display_name, count=len(problems)),
                 open=True, tags=("group",))
             for problem in problems:
                 self._insert_problem_row(group, problem)
@@ -792,14 +813,14 @@ class CrucibleApp(tk.Tk):
                 continue
             group = self.problem_tree.insert(
                 "", "end", iid=f"diff:{difficulty}",
-                text=f"{difficulty.title()}  ({len(bucket)})",
+                text=t("app.tree.group_row", name=_difficulty_label(difficulty), count=len(bucket)),
                 open=True, tags=("group",))
             for problem in bucket:
                 self._insert_problem_row(group, problem)
 
     def _insert_problem_row(self, group: str, problem: Problem) -> None:
         self.problem_tree.insert(
-            group, "end", iid=problem.id, text=f"  {problem.title}",
+            group, "end", iid=problem.id, text=t("app.tree.problem_row", title=problem.title),
             values=(self._progress_badge_for(problem.id), self._badge_for(problem.id)))
 
     def _badge_for(self, problem_id: str) -> str:
@@ -856,11 +877,13 @@ class CrucibleApp(tk.Tk):
             profiles.set_last_problem(self._profile.id, problem.id)
 
         language = problem.language
-        self.title(f"{APP_NAME} — {problem.title}")
+        self.title(t("app.window_title_with_problem", app_name=APP_NAME, title=problem.title))
         self.problem_title.configure(text=problem.title)
         self.problem_meta.configure(
-            text=f"{language.display_name}  ·  {problem.difficulty}"
-                 + (f"  ·  {', '.join(problem.topics)}" if problem.topics else ""))
+            text=t("app.toolbar.problem_meta", language=language.display_name,
+                  difficulty=_difficulty_label(problem.difficulty).lower())
+                 + (t("app.toolbar.problem_meta_topics_suffix",
+                      topics=", ".join(problem.topics)) if problem.topics else ""))
         self.editor_filename.configure(text=language.solution_filename)
 
         self._render_statement(problem)
@@ -932,13 +955,13 @@ class CrucibleApp(tk.Tk):
             self._pending_tests[row] = test
             self.test_tree.insert(
                 "", "end", iid=row,
-                values=("not run", test.display_name, ""), tags=("pending",))
+                values=(t("app.results.not_run"), test.display_name, ""), tags=("pending",))
 
         if self._data_pending(problem):
             self.test_tree.insert(
                 "", "end", iid="generating",
-                values=("", f"building {problem.generator.count} randomised "
-                            f"case(s)…", ""), tags=("pending",))
+                values=("", t("app.results.randomised_building_row",
+                             count=problem.generator.count), ""), tags=("pending",))
 
         children = self.test_tree.get_children()
         if children and children[0] != "generating":
@@ -961,7 +984,7 @@ class CrucibleApp(tk.Tk):
     def _render_detail(self, test: TestCase, outcome: TestOutcome | None) -> None:
         def block(label: str, body: str, tag: str = "value") -> None:
             self.detail.insert("end", label + "\n", "label")
-            shown = body if body.strip() else "(empty)"
+            shown = body if body.strip() else t("app.detail.empty_value")
             for line in shown.splitlines() or [""]:
                 self.detail.insert("end", "    " + line + "\n", tag)
             self.detail.insert("end", "\n")
@@ -970,31 +993,30 @@ class CrucibleApp(tk.Tk):
             if test.description:
                 self.detail.insert("end", test.description + "\n\n", "hint")
             if test.generated:
-                self.detail.insert(
-                    "end", "Randomised input. The expected output below is what "
-                           "the reference solution prints for it.\n\n", "hint")
+                self.detail.insert("end", t("app.detail.randomised_note"), "hint")
 
             if outcome is not None:
                 tag = {PASS: "ok", FAIL: "bad", ERROR: "bad",
                        TIMEOUT: "warn"}.get(outcome.status, "value")
-                self.detail.insert("end", f"{STATUS_LABEL.get(outcome.status)}", tag)
+                self.detail.insert("end", _status_label(outcome.status), tag)
                 if outcome.message:
-                    self.detail.insert("end", f"  — {outcome.message}", "hint")
+                    self.detail.insert(
+                        "end", t("app.detail.status_message_suffix", message=outcome.message),
+                        "hint")
                 self.detail.insert("end", "\n\n")
 
-            block("INPUT (stdin)", test.stdin)
-            block("EXPECTED OUTPUT", test.expected_stdout)
+            block(t("app.detail.input_label"), test.stdin)
+            block(t("app.detail.expected_label"), test.expected_stdout)
 
             if outcome is None:
-                self.detail.insert(
-                    "end", "Press Go to run your solution against this case.\n", "hint")
+                self.detail.insert("end", t("app.detail.press_go_hint"), "hint")
                 return
 
             if outcome.status != SKIPPED:
-                block("YOUR OUTPUT", outcome.actual,
+                block(t("app.detail.your_output_label"), outcome.actual,
                       "ok" if outcome.passed else "bad")
             if outcome.stderr.strip():
-                block("STDERR", outcome.stderr, "warn")
+                block(t("app.detail.stderr_label"), outcome.stderr, "warn")
 
         self.detail.replace_all(write)
 
@@ -1011,12 +1033,12 @@ class CrucibleApp(tk.Tk):
             state="normal" if problem is not None and problem.randomised
                               and not self._running else "disabled")
         if self._running:
-            self.go_button.configure(text="■  Stop", state="normal")
+            self.go_button.configure(text=t("app.toolbar.stop_button"), state="normal")
             return
         blocked = problem is not None and (self._reference_blocks_run(problem)
                                            or self._data_pending(problem))
         state = "normal" if problem is not None and not blocked else "disabled"
-        self.go_button.configure(text="▶  Go", state=state)
+        self.go_button.configure(text=t("app.toolbar.go_button"), state=state)
 
     def _reference_blocks_run(self, problem: Problem) -> bool:
         """The gate from the spec: a problem whose own reference solution fails
@@ -1053,7 +1075,7 @@ class CrucibleApp(tk.Tk):
         if status is not None and not status.available:
             self._write_build_output(status.remedy or status.detail, failed=True)
             self._show_build_tab(select=True)
-            messagebox.showerror("No compiler available", status.remedy
+            messagebox.showerror(t("app.dialog.no_compiler_available_title"), status.remedy
                                  or status.summary, parent=self)
             return
 
@@ -1068,7 +1090,7 @@ class CrucibleApp(tk.Tk):
         self._refresh_go_button()
         self.progress.configure(value=0, maximum=max(len(problem.tests), 1))
         self.progress.pack(side="right", padx=(0, 12))
-        self.result_label.configure(text="Building…")
+        self.result_label.configure(text=t("app.statusbar.building"))
 
         def worker() -> None:
             def progress(outcome: TestOutcome, index: int, total: int) -> None:
@@ -1082,7 +1104,7 @@ class CrucibleApp(tk.Tk):
     def _on_stop(self) -> None:
         if self._running:
             self._cancel.set()
-            self.result_label.configure(text="Stopping…")
+            self.result_label.configure(text=t("app.statusbar.stopping"))
 
     def _on_run_finished(self, problem_id: str, result: SubmissionResult) -> None:
         self._running = False
@@ -1090,15 +1112,16 @@ class CrucibleApp(tk.Tk):
         self._refresh_go_button()
 
         if not result.build.ok:
-            self._write_build_output(result.build.output or "Build failed.", failed=True)
+            self._write_build_output(
+                result.build.output or t("app.build.build_failed_fallback"), failed=True)
             self._show_build_tab(select=True)
-            self.result_label.configure(text="Build failed")
-            self._mark_all_pending_as("not run")
+            self.result_label.configure(text=t("app.statusbar.build_failed"))
+            self._mark_all_pending_as(t("app.results.not_run"))
             self._record_progress(problem_id, result)
             return
 
         self._write_build_output(
-            result.build.output or "Compiled with no warnings.",
+            result.build.output or t("app.build.compiled_no_warnings"),
             failed=False, command=result.build.command)
         # The tab is there to be read if a warning needs chasing, but the
         # results are what was asked for, so they stay in front.
@@ -1107,11 +1130,12 @@ class CrucibleApp(tk.Tk):
         summary = result.summary()
         self.result_label.configure(text=summary)
         if result.all_passed:
-            self._flash_banner(f"All {result.total} tests passed — nice work.",
+            self._flash_banner(t("app.banner.all_passed", total=result.total),
                                self.palette.ok)
         else:
             failed = result.total - result.passed
-            self._flash_banner(f"{summary}  ({failed} to go)", self.palette.fail)
+            self._flash_banner(t("app.banner.summary_to_go", summary=summary, failed=failed),
+                               self.palette.fail)
 
         self._record_progress(problem_id, result)
 
@@ -1133,12 +1157,13 @@ class CrucibleApp(tk.Tk):
         self._outcome_rows[row] = outcome
         self.test_tree.item(
             row,
-            values=(STATUS_LABEL.get(outcome.status, outcome.status),
+            values=(_status_label(outcome.status),
                     outcome.test.display_name,
-                    f"{outcome.duration * 1000:.0f} ms" if outcome.duration else ""),
+                    t("app.results.duration_ms", ms=outcome.duration * 1000)
+                    if outcome.duration else ""),
             tags=(outcome.status,))
         self.progress.configure(value=index)
-        self.result_label.configure(text=f"Running test {index} of {total}…")
+        self.result_label.configure(text=t("app.statusbar.running_test", index=index, total=total))
         if self.test_tree.selection() and self.test_tree.selection()[0] == row:
             self._render_detail(outcome.test, outcome)
 
@@ -1286,17 +1311,14 @@ class CrucibleApp(tk.Tk):
 
         if self._data_pending(problem):
             self.banner.configure(
-                text=f"Building data set #{self._seed_for(problem.id)} — "
-                     f"generating fresh inputs and asking the reference "
-                     f"solution what each one should produce…",
+                text=t("app.banner.building_data_set", seed=self._seed_for(problem.id)),
                 background=self.palette.panel_bg,
                 foreground=self.palette.text_muted)
             return
 
         if result == "missing" or result is None:
             self.banner.configure(
-                text="Checking this problem's test suite against its reference "
-                     "solution…",
+                text=t("app.banner.checking_suite"),
                 background=self.palette.panel_bg,
                 foreground=self.palette.text_muted)
             return
@@ -1307,38 +1329,34 @@ class CrucibleApp(tk.Tk):
             # and it does not disable anything: the hand-written cases are
             # still perfectly good tests.
             self.banner.configure(
-                text=f"⚠  Randomised data unavailable — {suite.error}. "
-                     f"The {len(problem.fixed_tests)} hand-written case(s) "
-                     f"still run.",
+                text=t("app.banner.generator_unavailable", error=suite.error,
+                      count=len(problem.fixed_tests)),
                 background=self.palette.panel_bg,
                 foreground=self.palette.warn)
             return
 
-        suffix = f" ({hidden} hidden)" if hidden else ""
+        suffix = t("app.banner.hidden_suffix", count=hidden) if hidden else ""
         if result.toolchain_missing:
             # Nothing is wrong with the problem -- this machine just has no
             # compiler for it yet. Say so, and say where to fix it.
             self.banner.configure(
-                text=f"No {problem.language.display_name} compiler installed, so "
-                     f"the test suite could not be checked yet. "
-                     f"Press Go, or see Help → Compiler status, for install steps.",
+                text=t("app.banner.no_compiler_installed",
+                      language=problem.language.display_name),
                 background=self.palette.panel_bg,
                 foreground=self.palette.warn)
         elif result.all_passed:
             self.banner.configure(
-                text=f"{BADGE_OK}  Test suite verified — the reference solution "
-                     f"passes all {result.total} cases{suffix}. "
-                     f"All {visible} case(s) below are shown in full."
-                     + self._data_set_note(problem),
+                text=t("app.banner.verified", badge=BADGE_OK, total=result.total,
+                      suffix=suffix, visible=visible,
+                      note=self._data_set_note(problem)),
                 background=self.palette.panel_bg, foreground=self.palette.ok)
         else:
             detail = (result.build.output.splitlines()[0]
                       if not result.build.ok and result.build.output
-                      else f"{result.passed}/{result.total} passed")
+                      else t("app.banner.passed_fraction", passed=result.passed,
+                            total=result.total))
             self.banner.configure(
-                text=f"{BADGE_BAD}  This problem is disabled: its own reference "
-                     f"solution does not pass its tests ({detail}). "
-                     f"The problem file needs fixing.",
+                text=t("app.banner.disabled", badge=BADGE_BAD, detail=detail),
                 background=self.palette.panel_bg, foreground=self.palette.fail)
             self.banner_button.grid(row=0, column=1, padx=(8, 0))
 
@@ -1346,8 +1364,8 @@ class CrucibleApp(tk.Tk):
         """The tail of the verified banner for a problem with random data."""
         if not problem.generated_tests:
             return ""
-        return (f"  {len(problem.generated_tests)} of them are randomised "
-                f"(data set #{problem.seed} — press Ctrl+R for another).")
+        return t("app.banner.data_set_note", count=len(problem.generated_tests),
+                 seed=problem.seed)
 
     def _override_reference_gate(self) -> None:
         if self._problem is None:
@@ -1368,7 +1386,7 @@ class CrucibleApp(tk.Tk):
         for problem in self._library.problems:
             self._request_preparation(problem, priority=1, with_data=True)
         self.result_label.configure(
-            text=f"Verifying {len(self._library.problems)} problems…")
+            text=t("app.statusbar.verifying_problems", count=len(self._library.problems)))
 
     # ------------------------------------------------------------------
     # build output
@@ -1396,14 +1414,14 @@ class CrucibleApp(tk.Tk):
                             command: str = "") -> None:
         def write() -> None:
             if command:
-                self.build_output.insert("end", f"$ {command}\n\n", "muted")
+                self.build_output.insert("end", t("app.build.command_line", command=command), "muted")
             for line in text.splitlines():
                 lowered = line.lower()
                 tag = ("err" if "error" in lowered
                        else "warn" if "warning" in lowered else "")
                 self.build_output.insert("end", line + "\n", tag)
             if not failed and "warning" not in text.lower():
-                self.build_output.insert("end", "\nBuild succeeded.\n", "muted")
+                self.build_output.insert("end", t("app.build.succeeded"), "muted")
 
         self.build_output.replace_all(write)
 
@@ -1455,9 +1473,8 @@ class CrucibleApp(tk.Tk):
         if self._problem is None:
             return
         if not messagebox.askyesno(
-                "Reset code",
-                "Replace your code with the starter code for this problem?\n"
-                "Your current work will be discarded.", parent=self):
+                t("app.dialog.reset_code_title"),
+                t("app.dialog.reset_code_message"), parent=self):
             return
         suffix = Path(self._problem.language.solution_filename).suffix
         workspace.clear_draft(self._problem.id, suffix, root=self._profile_root())
@@ -1468,8 +1485,8 @@ class CrucibleApp(tk.Tk):
         self.settings["theme"] = "light" if self.palette.name == "dark" else "dark"
         workspace.save_settings(self.settings)
         messagebox.showinfo(
-            "Theme changed",
-            f"The new theme will be applied next time you start {APP_NAME}.",
+            t("app.dialog.theme_changed_title"),
+            t("app.dialog.theme_changed_message", app_name=APP_NAME),
             parent=self)
 
     def _change_font(self, delta: int) -> None:
@@ -1509,16 +1526,16 @@ class CrucibleApp(tk.Tk):
             status = language.detected_toolchain()
             if status is None:
                 if language_id in self._detect_failed:
-                    parts.append(f"{language.display_name}: detection failed")
+                    parts.append(t("app.statusbar.detection_failed", name=language.display_name))
                     missing = True
                     continue
                 pending.append(language_id)
-                parts.append(f"{language.display_name}: detecting…")
+                parts.append(t("app.statusbar.detecting", name=language.display_name))
                 continue
             parts.append(status.summary)
             missing = missing or not status.available
         self.toolchain_label.configure(
-            text="   |   ".join(parts) or "No languages registered",
+            text=t("app.statusbar.separator").join(parts) or t("app.statusbar.no_languages_registered"),
             foreground=self.palette.warn if missing else self.palette.text_muted)
         for language_id in pending:
             self._detect_toolchain_async(language_id)
@@ -1573,38 +1590,25 @@ class CrucibleApp(tk.Tk):
             if status is None:
                 # Still being looked up. Saying so beats blocking the window
                 # on it just to fill in one line of a dialog.
-                lines.append(f"{BADGE_BAD} {language.display_name}: "
-                             f"still detecting…")
+                lines.append(t("app.dialog.compiler_status_detecting_line",
+                              badge=BADGE_BAD, language=language.display_name))
                 lines.append("")
                 continue
             mark = BADGE_OK if status.available else BADGE_BAD
-            lines.append(f"{mark} {language.display_name}: {status.summary}")
+            lines.append(t("app.dialog.compiler_status_line", mark=mark,
+                          language=language.display_name, summary=status.summary))
             if status.detail:
                 lines.append("    " + status.detail.replace("\n", "\n    "))
             if not status.available and status.remedy:
                 lines.append("")
                 lines.append(status.remedy)
             lines.append("")
-        messagebox.showinfo("Compiler status", "\n".join(lines).strip(), parent=self)
+        messagebox.showinfo(t("app.menu.help.compiler_status"), "\n".join(lines).strip(), parent=self)
 
     def _show_authoring_help(self) -> None:
         messagebox.showinfo(
-            "Writing your own problems",
-            "A problem is one JSON file under:\n"
-            f"{self.problems_root}\n\n"
-            "Required fields:\n"
-            "  title, language, statement, harness, tests,\n"
-            "  and reference_solution (or reference_solution_b64)\n\n"
-            "The harness supplies main(); the candidate supplies the function.\n"
-            "Each test is {name, stdin, expected_stdout, description}.\n\n"
-            "Every reference solution is run against the full suite before the\n"
-            "problem is offered -- a problem whose reference fails is disabled.\n\n"
-            "Optional 'generator' adds randomised cases:\n"
-            "  {\"count\": 4, \"source\": \"def generate(rng, count): ...\"}\n"
-            "It returns inputs only -- {name, stdin, description} -- and the\n"
-            "expected output is captured from the reference solution, so the\n"
-            "two can never disagree. Ctrl+R draws a new data set.\n\n"
-            "See README.md for the full schema and a worked example.",
+            t("app.menu.help.authoring"),
+            t("app.dialog.authoring_help_message", root=self.problems_root),
             parent=self)
 
     # ------------------------------------------------------------------
@@ -1631,12 +1635,11 @@ class CrucibleApp(tk.Tk):
         guide = guides.find(problem, kind)
         if guide is None:
             path = guides.guide_path(problem, kind)
+            kind_lower = guides.kind_label(kind).lower()
             messagebox.showinfo(
-                f"No {guides.KINDS[kind].lower()} for this problem",
-                f"{problem.title} does not ship a "
-                f"{guides.KINDS[kind].lower()} page.\n\n"
-                f"One would live at:\n{path}\n\n"
-                "See Guides → What are these? for the convention.",
+                t("app.dialog.no_guide_title", kind=kind_lower),
+                t("app.dialog.no_guide_message", title=problem.title,
+                  kind=kind_lower, path=path),
                 parent=self)
             return
 
@@ -1645,9 +1648,8 @@ class CrucibleApp(tk.Tk):
 
         if not guides.open_in_browser(guide):
             messagebox.showerror(
-                "Could not open the guide",
-                f"No browser could be launched for:\n{guide.path}\n\n"
-                "The page is an ordinary HTML file -- open it by hand.",
+                t("app.dialog.could_not_open_guide_title"),
+                t("app.dialog.could_not_open_guide_message", path=guide.path),
                 parent=self)
 
     def _confirm_reveal(self, problem: Problem) -> bool:
@@ -1661,13 +1663,10 @@ class CrucibleApp(tk.Tk):
         if problem.id in self._revealed:
             return True
         has_hint = guides.find(problem, guides.HINT) is not None
-        nudge = ("\n\nThe hint (F1) gives you the idea without the code."
-                 if has_hint else "")
+        nudge = t("app.dialog.show_solution_hint_nudge") if has_hint else ""
         if not messagebox.askyesno(
-                "Show the worked solution?",
-                f"This opens the complete answer to {problem.title}, with the "
-                f"code and an explanation of every part of it.{nudge}\n\n"
-                "Open it?",
+                t("app.dialog.show_solution_title"),
+                t("app.dialog.show_solution_message", title=problem.title, nudge=nudge),
                 parent=self):
             return False
         self._revealed.add(problem.id)
@@ -1675,38 +1674,18 @@ class CrucibleApp(tk.Tk):
 
     def _show_guides_help(self) -> None:
         messagebox.showinfo(
-            "About the guides",
-            "Pages that open in your browser rather than in the app:\n\n"
-            "  Diagram          the problem's specification, drawn. Only the\n"
-            "                   problems whose spec IS a diagram have one\n"
-            "  Hint             the idea, the traps, and the cases to think\n"
-            "                   about -- no answer in it\n"
-            "  Worked solution  the whole answer, a trace of it running, and\n"
-            "                   the wrong turns worth recognising\n\n"
-            "They live beside the problem file and are found by name:\n\n"
-            "  c_sum_array.json\n"
-            "  c_sum_array.hint.html\n"
-            "  c_sum_array.solution.html\n\n"
-            "There is nothing to register -- drop the files next to the JSON\n"
-            "and this menu picks them up. They share problems/guides.css.\n\n"
-            "A diagram page renders its Mermaid source with a script fetched\n"
-            "from a CDN. With no network it shows the source instead, which\n"
-            "is the same specification in text -- and that text is in the\n"
-            "problem statement too, so the app never needs the network.\n\n"
-            "'python -m crucible --guides' lists which problems are missing\n"
-            "a hint or a worked solution.",
+            t("app.dialog.guides_help_title"),
+            t("app.dialog.guides_help_message"),
             parent=self)
 
     def _show_about(self) -> None:
-        username = self._profile.username if self._profile else "(none yet)"
+        username = self._profile.username if self._profile else t("app.dialog.about_no_profile")
         messagebox.showinfo(
-            f"About {APP_NAME}",
-            f"{APP_NAME}\n\n"
-            "A practice harness for compiled and interpreted languages.\n"
-            "Test cases are always shown in full; reference solutions never are.\n\n"
-            f"Problems: {self.problems_root}\n"
-            f"Profile:  {username}  ({self._profile_root()})\n"
-            f"Python:   {sys.version.split()[0]}",
+            t("app.dialog.about_title", app_name=APP_NAME),
+            t("app.dialog.about_message", app_name=APP_NAME,
+              problems_root=self.problems_root, username=username,
+              profile_root=self._profile_root(),
+              python_version=sys.version.split()[0]),
             parent=self)
 
     def _open_folder(self, path: Path) -> None:
@@ -1718,7 +1697,7 @@ class CrucibleApp(tk.Tk):
             else:
                 subprocess.Popen(["xdg-open", str(path)])
         except OSError as exc:
-            messagebox.showerror("Could not open folder", str(exc), parent=self)
+            messagebox.showerror(t("app.dialog.could_not_open_folder_title"), str(exc), parent=self)
 
     def _on_close(self) -> None:
         self._save_draft(force=True)

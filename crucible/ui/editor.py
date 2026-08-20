@@ -13,6 +13,7 @@ import tkinter as tk
 from tkinter import font as tkfont
 from tkinter import ttk
 
+from ..i18n import t
 from .theme import Palette
 
 TAB_WIDTH = 4
@@ -671,7 +672,7 @@ class CodeEditor(ttk.Frame):
         bar = ttk.Frame(self, padding=(6, 4))
         self._find_bar = bar
 
-        ttk.Label(bar, text="Find").grid(row=0, column=0, padx=(0, 6))
+        ttk.Label(bar, text=t("editor.find_bar.find_label")).grid(row=0, column=0, padx=(0, 6))
         self._find_entry = ttk.Entry(bar, textvariable=self._find_var, width=24)
         self._find_entry.grid(row=0, column=1, sticky="ew")
 
@@ -687,11 +688,11 @@ class CodeEditor(ttk.Frame):
         ttk.Button(bar, text="✕", width=3,
                    command=self._close_find).grid(row=0, column=6)
 
-        self._replace_label = ttk.Label(bar, text="Replace")
+        self._replace_label = ttk.Label(bar, text=t("editor.find_bar.replace_label"))
         self._replace_entry = ttk.Entry(bar, textvariable=self._replace_var, width=24)
-        self._replace_one = ttk.Button(bar, text="Replace",
+        self._replace_one = ttk.Button(bar, text=t("editor.find_bar.replace_button"),
                                        command=self._replace_current)
-        self._replace_all_btn = ttk.Button(bar, text="All",
+        self._replace_all_btn = ttk.Button(bar, text=t("editor.find_bar.replace_all_button"),
                                            command=self._replace_all)
         bar.columnconfigure(1, weight=1)
 
@@ -796,10 +797,11 @@ class CodeEditor(ttk.Frame):
         if not self._find_var.get():
             self._find_status.configure(text="")
         elif not self._matches:
-            self._find_status.configure(text="no matches")
+            self._find_status.configure(text=t("editor.find_bar.no_matches"))
         else:
             self._find_status.configure(
-                text=f"{self._match_index + 1} of {len(self._matches)}")
+                text=t("editor.find_bar.match_position",
+                      index=self._match_index + 1, total=len(self._matches)))
 
     def _replace_current(self) -> str:
         if not self._matches:
@@ -834,7 +836,7 @@ class CodeEditor(ttk.Frame):
                 index = self.text.index(f"{hit}+{max(len(replacement), 1)}c")
                 count += 1
         self._refresh_find()
-        self._find_status.configure(text=f"replaced {count}")
+        self._find_status.configure(text=t("editor.find_bar.replaced_count", count=count))
         return "break"
 
     def _yview(self, *args):

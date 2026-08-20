@@ -1,0 +1,406 @@
+{
+  "cli": {
+    "description": "Crucible -- a Tkinter coding practice harness for C (and other languages).",
+    "arg_problems_help": "problem directory (default: ./problems)",
+    "arg_seed_help": "data set number for randomised cases (default: a new one each run)",
+    "arg_verify_help": "verify every reference solution and exit",
+    "arg_list_help": "list available problems and exit",
+    "arg_toolchains_help": "report detected compilers and exit",
+    "arg_guides_help": "report which problems are missing a hint or a worked solution; exit 1 if any are",
+    "no_tkinter": "Tkinter is not available in this Python installation.\nOn Debian/Ubuntu:  sudo apt install python3-tk\nOn Windows/macOS:  reinstall Python with the Tcl/Tk option ticked.",
+    "toolchains": {
+      "heading": "Toolchains\n",
+      "row": "  {mark} {name:<10} {summary}",
+      "mark_ok": "OK ",
+      "mark_missing": "-- ",
+      "detail_line": "         {line}",
+      "some_missing": "\nOne or more toolchains are missing. Run with --verify for detail,\nor open the GUI and use Help -> Compiler status for install steps."
+    },
+    "list": {
+      "load_errors_heading": "Problems that failed to load:",
+      "load_error_row": "  ! {error}",
+      "none_found": "No problems found under {root}",
+      "heading": "{count} problem(s) under {root}\n",
+      "row_title": "  [{language:<6}] {title}",
+      "row_detail": "           {difficulty}, {visible} visible test(s){extra}{random_note}  id={id}",
+      "hidden_suffix": " (+{hidden} hidden)",
+      "randomised_suffix": " + {count} randomised"
+    },
+    "guides": {
+      "none_found": "No problems found under {root}",
+      "ok_row": "  OK    {title}{extra}",
+      "diagram_suffix": "  (+diagram)",
+      "missing_row": "  MISSING {title}  -- no {kinds}",
+      "missing_path_row": "           expected {path}",
+      "some_incomplete": "{incomplete} of {total} problem(s) are missing a guide.",
+      "all_complete": "All {total} problems have both guides."
+    },
+    "verify": {
+      "none_found": "No problems found under {root}",
+      "heading": "Verifying {count} problem(s) against their reference solutions",
+      "seed_note": "Randomised data sets use seed {seed}  (--seed {seed} to repeat)\n",
+      "skip_row": "  SKIP  {title}  ({summary})",
+      "broken_generator_row": "  BROKEN {title}  -- {error}",
+      "ok_row": "  OK    {title}  ({total} tests{random_note})",
+      "randomised_suffix": ", {count} randomised",
+      "broken_build_row": "  BROKEN {title}  -- reference did not build",
+      "build_output_line": "           {line}",
+      "broken_row": "  BROKEN {title}  -- {summary}",
+      "failure_row": "           {symbol:<8} {name}  {message}",
+      "failure_expected": "             expected: {expected}",
+      "failure_actual": "             actual:   {actual}",
+      "broken_summary": "{count} problem(s) are broken -- fix these before use.",
+      "skipped_summary": "{count} problem(s) skipped: no toolchain installed.",
+      "all_verified": "All problems verified."
+    }
+  },
+  "problem": {
+    "test_case": {
+      "hidden_suffix": "{name} (hidden)",
+      "default_name": "case {index}"
+    },
+    "error": {
+      "test_where": "{file}: tests[{index}]",
+      "missing_field": "{file}: missing required field '{key}'",
+      "wrong_type": "{file}: field '{key}' must be {expected}, got {actual}",
+      "empty_field": "{file}: field '{key}' must not be empty",
+      "reference_both_set": "{file}: set 'reference_solution' or 'reference_solution_b64', not both",
+      "reference_bad_base64": "{file}: 'reference_solution_b64' is not valid base64-encoded UTF-8 ({error})",
+      "reference_decoded_empty": "{file}: decoded reference solution is empty",
+      "reference_required": "{file}: a reference solution is required -- the test suite cannot be pre-verified without one",
+      "generator_not_object": "{file}: 'generator' must be an object with a 'source' field",
+      "generator_source_not_string": "{file}: 'generator.source' must be Python source",
+      "generator_source_syntax_error": "{file}: 'generator.source' does not parse as Python (line {line}: {message})",
+      "generator_missing_generate": "{file}: 'generator.source' must define generate(rng, count)",
+      "generator_count_not_int": "{file}: 'generator.count' must be an integer",
+      "generator_count_out_of_range": "{file}: 'generator.count' must be between 1 and {max}",
+      "tests_not_list": "{file}: 'tests' must be a list",
+      "tests_empty_without_generator": "{file}: 'tests' must be a non-empty list unless the problem has a 'generator' to supply cases",
+      "test_not_object": "{where} must be an object",
+      "test_name_not_string": "{where}.name must be a string",
+      "test_name_duplicated": "{where}.name '{name}' is duplicated",
+      "test_missing_expected_stdout": "{where} is missing 'expected_stdout'",
+      "invalid_json": "{file}: invalid JSON at line {line}: {message}",
+      "cannot_read_file": "{file}: cannot read file ({error})",
+      "top_level_not_object": "{file}: top level must be a JSON object",
+      "unknown_language": "{file}: unknown language '{language}'. Registered languages: {known}",
+      "unknown_difficulty": "{file}: difficulty '{difficulty}' must be one of {choices}",
+      "timeout_not_number": "{file}: 'timeout_seconds' must be a number",
+      "timeout_out_of_range": "{file}: 'timeout_seconds' must be between 0 and 120",
+      "topics_not_list": "{file}: 'topics' must be a list",
+      "directory_not_found": "Problem directory not found: {root}",
+      "duplicate_id": "Duplicate problem id '{id}' -- ids must be unique"
+    }
+  },
+  "editor": {
+    "find_bar": {
+      "find_label": "Find",
+      "replace_label": "Replace",
+      "replace_button": "Replace",
+      "replace_all_button": "All",
+      "no_matches": "no matches",
+      "match_position": "{index} of {total}",
+      "replaced_count": "replaced {count}"
+    }
+  },
+  "profiles": {
+    "error": {
+      "empty_username": "Enter a username."
+    }
+  },
+  "profile_dialog": {
+    "window_title": "Choose a profile",
+    "heading": "Who is practising?",
+    "subtitle": "Only a username is stored here -- nothing else.",
+    "list_row": "  {username}",
+    "new_profile_label": "New profile:",
+    "delete_button": "Delete",
+    "cancel_button": "Cancel",
+    "create_button": "Create && open",
+    "open_button": "Open",
+    "invalid_username_title": "Choose a username",
+    "delete_confirm_title": "Delete profile",
+    "delete_confirm_message": "Delete the profile \"{username}\"?\n\nThis removes its saved drafts, data sets and solved problems. This cannot be undone."
+  },
+  "guides": {
+    "kind": {
+      "diagram": "Diagram",
+      "hint": "Hint",
+      "solution": "Worked solution"
+    }
+  },
+  "languages": {
+    "common": {
+      "could_not_start_process": "Could not start process: {error}",
+      "exited_with_status": "exited with status {code}"
+    },
+    "python": {
+      "summary": "Python {version}",
+      "interpreter_detail": "Interpreter: {executable}",
+      "syntax_error_detail": "{file}:{line}: {message}",
+      "syntax_error_context": "\n    {text}\n    {caret}"
+    },
+    "c": {
+      "install_help_windows": "No C compiler found.\n\nPick whichever is easiest for you:\n\n  1. w64devkit  -- a single portable zip, no installer, ~80 MB.\n     https://github.com/skeeto/w64devkit/releases\n     Unzip it, then add its bin\\ folder to PATH (or just relaunch this\n     app -- C:\\w64devkit\\bin is auto-detected).\n\n  2. MSYS2      -- full package manager, best long term.\n     https://www.msys2.org  then:  pacman -S mingw-w64-ucrt-x86_64-gcc\n\n  3. Visual Studio -- you already have VS installed, but without the C++\n     toolset. Open the Visual Studio Installer, click Modify, and tick\n     'Desktop development with C++'.\n\nRe-check from the Tools menu once installed -- no restart needed.",
+      "install_help_posix": "No C compiler found.\n\n  Debian/Ubuntu:  sudo apt install build-essential\n  Fedora:         sudo dnf install gcc\n  macOS:          xcode-select --install\n\nRe-check from the Tools menu once installed.",
+      "summary_gnu": "C: {version}",
+      "detail_gnu": "Compiler: {path}\nMode: GCC-compatible command line",
+      "summary_msvc": "C: Microsoft Visual C++ (MSVC)",
+      "detail_msvc": "Compiler: {path}\nEnvironment initialised from vcvars64.bat",
+      "summary_msvc_current_env": "C: Microsoft Visual C++ (MSVC, from current environment)",
+      "detail_msvc_current_env": "Compiler: {path}",
+      "summary_not_found": "C: no compiler found",
+      "detail_not_found": "Searched PATH and the usual install locations for {compilers} and cl.exe.",
+      "compile_timeout": "Compilation timed out after 60s.",
+      "exit": {
+        "access_violation": "access violation (bad pointer / buffer overrun)",
+        "divide_by_zero": "integer division by zero",
+        "stack_overflow": "stack overflow (runaway recursion?)",
+        "interrupted": "interrupted",
+        "crashed": "crashed: {description}",
+        "sigsegv": "SIGSEGV (segmentation fault)",
+        "sigabrt": "SIGABRT (abort)",
+        "sigfpe": "SIGFPE (arithmetic error, e.g. divide by zero)",
+        "killed_by_signal": "killed by signal {signal}"
+      }
+    }
+  },
+  "app": {
+    "window_title_with_problem": "{app_name} — {title}",
+    "menu": {
+      "file": {
+        "title": "File",
+        "save_draft": "Save draft\tCtrl+S",
+        "reset": "Reset to starter code",
+        "reload": "Reload problems",
+        "quit": "Quit"
+      },
+      "edit": {
+        "title": "Edit",
+        "undo": "Undo\tCtrl+Z",
+        "redo": "Redo\tCtrl+Y",
+        "cut_line": "Cut line\tCtrl+X",
+        "duplicate_line": "Duplicate line\tCtrl+D",
+        "delete_line": "Delete line\tCtrl+Shift+K",
+        "move_up": "Move line up\tAlt+Up",
+        "move_down": "Move line down\tAlt+Down",
+        "toggle_comment": "Comment/uncomment\tCtrl+/",
+        "find": "Find…\tCtrl+F",
+        "replace": "Replace…\tCtrl+H",
+        "find_next": "Find next\tF3",
+        "find_previous": "Find previous\tShift+F3"
+      },
+      "run": {
+        "title": "Run",
+        "go": "Go -- run all tests\tF5",
+        "stop": "Stop",
+        "new_data": "New data set\tCtrl+R"
+      },
+      "profile": {
+        "title": "Profile",
+        "current": "Current: {username}",
+        "unknown": "…",
+        "switch": "Switch profile…"
+      },
+      "guides": {
+        "title": "Guides",
+        "diagram": "Diagram for this problem\tF2",
+        "hint": "Hint for this problem\tF1",
+        "solution": "Worked solution for this problem…",
+        "what_are_these": "What are these?"
+      },
+      "view": {
+        "title": "View",
+        "pane_toggle": "{label}\tCtrl+{index}",
+        "reset_layout": "Reset panel layout\tCtrl+0",
+        "toggle_theme": "Toggle light / dark theme",
+        "larger_font": "Larger editor font",
+        "smaller_font": "Smaller editor font"
+      },
+      "tools": {
+        "title": "Tools",
+        "recheck_compilers": "Re-check compilers",
+        "verify_all": "Verify every problem's reference solution",
+        "open_problems_folder": "Open problems folder",
+        "open_drafts_folder": "Open drafts folder"
+      },
+      "help": {
+        "title": "Help",
+        "compiler_status": "Compiler status",
+        "authoring": "Writing your own problems",
+        "about": "About"
+      }
+    },
+    "toolbar": {
+      "language_label": "Language",
+      "all_languages": "All",
+      "no_problem_selected": "No problem selected",
+      "go_button": "▶  Go",
+      "stop_button": "■  Stop",
+      "reset_button": "Reset",
+      "new_data_button": "New data",
+      "problem_meta": "{language}  ·  {difficulty}",
+      "problem_meta_topics_suffix": "  ·  {topics}"
+    },
+    "pane": {
+      "problems": "PROBLEMS",
+      "statement": "THE PROBLEM",
+      "editor": "YOUR SOLUTION",
+      "results": "RESULTS"
+    },
+    "tree": {
+      "column_problem": "Problem",
+      "group_row": "{name}  ({count})",
+      "problem_row": "  {title}"
+    },
+    "difficulty": {
+      "easy": "Easy",
+      "medium": "Medium",
+      "hard": "Hard",
+      "fiendish": "Fiendish"
+    },
+    "results": {
+      "unit_tests_tab": "Unit Tests",
+      "build_output_tab": "Build Output",
+      "column_result": "Result",
+      "column_test_case": "Test case",
+      "column_time": "Time",
+      "duration_ms": "{ms:.0f} ms",
+      "run_anyway_button": "Run anyway",
+      "randomised_building_row": "building {count} randomised case(s)…",
+      "not_run": "not run"
+    },
+    "detail": {
+      "input_label": "INPUT (stdin)",
+      "expected_label": "EXPECTED OUTPUT",
+      "your_output_label": "YOUR OUTPUT",
+      "stderr_label": "STDERR",
+      "empty_value": "(empty)",
+      "randomised_note": "Randomised input. The expected output below is what the reference solution prints for it.\n\n",
+      "press_go_hint": "Press Go to run your solution against this case.\n",
+      "status_message_suffix": "  — {message}"
+    },
+    "status": {
+      "pass": "PASS",
+      "fail": "FAIL",
+      "error": "ERROR",
+      "timeout": "TIMEOUT",
+      "skipped": "skipped"
+    },
+    "statusbar": {
+      "checking_compilers": "Checking compilers…",
+      "no_languages_registered": "No languages registered",
+      "detecting": "{name}: detecting…",
+      "detection_failed": "{name}: detection failed",
+      "separator": "   |   ",
+      "profile_status": "{username}  ·  {note}",
+      "solved_note": "{solved}/{total} solved",
+      "no_problems_loaded": "no problems loaded",
+      "building": "Building…",
+      "stopping": "Stopping…",
+      "running_test": "Running test {index} of {total}…",
+      "verifying_problems": "Verifying {count} problems…",
+      "build_failed": "Build failed"
+    },
+    "banner": {
+      "building_data_set": "Building data set #{seed} — generating fresh inputs and asking the reference solution what each one should produce…",
+      "checking_suite": "Checking this problem's test suite against its reference solution…",
+      "generator_unavailable": "⚠  Randomised data unavailable — {error}. The {count} hand-written case(s) still run.",
+      "no_compiler_installed": "No {language} compiler installed, so the test suite could not be checked yet. Press Go, or see Help → Compiler status, for install steps.",
+      "verified": "{badge}  Test suite verified — the reference solution passes all {total} cases{suffix}. All {visible} case(s) below are shown in full.{note}",
+      "disabled": "{badge}  This problem is disabled: its own reference solution does not pass its tests ({detail}). The problem file needs fixing.",
+      "hidden_suffix": " ({count} hidden)",
+      "data_set_note": "  {count} of them are randomised (data set #{seed} — press Ctrl+R for another).",
+      "all_passed": "All {total} tests passed — nice work.",
+      "summary_to_go": "{summary}  ({failed} to go)",
+      "passed_fraction": "{passed}/{total} passed"
+    },
+    "build": {
+      "command_line": "$ {command}\n\n",
+      "succeeded": "\nBuild succeeded.\n",
+      "build_failed_fallback": "Build failed.",
+      "compiled_no_warnings": "Compiled with no warnings."
+    },
+    "dialog": {
+      "problem_files_skipped_title": "Problem files skipped",
+      "problem_files_skipped_message": "These files could not be loaded:\n\n{errors}",
+      "bullet_line": "• {error}",
+      "no_problems_found_title": "No problems found",
+      "no_problems_found_message": "No problem files were found under:\n{root}\n\nSee Help → Writing your own problems.",
+      "no_compiler_available_title": "No compiler available",
+      "reset_code_title": "Reset code",
+      "reset_code_message": "Replace your code with the starter code for this problem?\nYour current work will be discarded.",
+      "theme_changed_title": "Theme changed",
+      "theme_changed_message": "The new theme will be applied next time you start {app_name}.",
+      "compiler_status_line": "{mark} {language}: {summary}",
+      "compiler_status_detecting_line": "{badge} {language}: still detecting…",
+      "authoring_help_message": "A problem is one JSON file under:\n{root}\n\nRequired fields:\n  title, language, statement, harness, tests,\n  and reference_solution (or reference_solution_b64)\n\nThe harness supplies main(); the candidate supplies the function.\nEach test is {{name, stdin, expected_stdout, description}}.\n\nEvery reference solution is run against the full suite before the\nproblem is offered -- a problem whose reference fails is disabled.\n\nOptional 'generator' adds randomised cases:\n  {{\"count\": 4, \"source\": \"def generate(rng, count): ...\"}}\nIt returns inputs only -- {{name, stdin, description}} -- and the\nexpected output is captured from the reference solution, so the\ntwo can never disagree. Ctrl+R draws a new data set.\n\nSee README.md for the full schema and a worked example.",
+      "no_guide_title": "No {kind} for this problem",
+      "no_guide_message": "{title} does not ship a {kind} page.\n\nOne would live at:\n{path}\n\nSee Guides → What are these? for the convention.",
+      "could_not_open_guide_title": "Could not open the guide",
+      "could_not_open_guide_message": "No browser could be launched for:\n{path}\n\nThe page is an ordinary HTML file -- open it by hand.",
+      "show_solution_title": "Show the worked solution?",
+      "show_solution_message": "This opens the complete answer to {title}, with the code and an explanation of every part of it.{nudge}\n\nOpen it?",
+      "show_solution_hint_nudge": "\n\nThe hint (F1) gives you the idea without the code.",
+      "guides_help_title": "About the guides",
+      "guides_help_message": "Pages that open in your browser rather than in the app:\n\n  Diagram          the problem's specification, drawn. Only the\n                   problems whose spec IS a diagram have one\n  Hint             the idea, the traps, and the cases to think\n                   about -- no answer in it\n  Worked solution  the whole answer, a trace of it running, and\n                   the wrong turns worth recognising\n\nThey live beside the problem file and are found by name:\n\n  c_sum_array.json\n  c_sum_array.hint.html\n  c_sum_array.solution.html\n\nThere is nothing to register -- drop the files next to the JSON\nand this menu picks them up. They share problems/guides.css.\n\nA diagram page renders its Mermaid source with a script fetched\nfrom a CDN. With no network it shows the source instead, which\nis the same specification in text -- and that text is in the\nproblem statement too, so the app never needs the network.\n\n'python -m crucible --guides' lists which problems are missing\na hint or a worked solution.",
+      "about_title": "About {app_name}",
+      "about_message": "{app_name}\n\nA practice harness for compiled and interpreted languages.\nTest cases are always shown in full; reference solutions never are.\n\nProblems: {problems_root}\nProfile:  {username}  ({profile_root})\nPython:   {python_version}",
+      "about_no_profile": "(none yet)",
+      "could_not_open_folder_title": "Could not open folder"
+    }
+  },
+  "runner": {
+    "symbol": {
+      "pass": "PASS",
+      "fail": "FAIL",
+      "error": "ERROR",
+      "timeout": "TIMEOUT",
+      "skipped": "--"
+    },
+    "diff": {
+      "no_output": "produced no output",
+      "whitespace_only": "output differs only in leading/trailing whitespace",
+      "case_only": "output differs only in letter case",
+      "line_count_mismatch": "expected {expected} line(s), got {actual}",
+      "first_difference": "first difference on line {line}",
+      "generic": "output differs"
+    },
+    "outcome": {
+      "cancelled": "cancelled",
+      "timeout": "No result after {timeout}s -- likely an infinite loop or a blocking read"
+    },
+    "summary": {
+      "build_failed": "Build failed",
+      "cancelled": "Cancelled -- {passed}/{total} passed so far",
+      "passed": "{passed}/{total} tests passed"
+    },
+    "capture": {
+      "timeout": "the reference did not finish in {timeout}s",
+      "exit_status": "the reference exited with status {code}",
+      "exit_status_detail_suffix": ": {detail}"
+    }
+  },
+  "randomise": {
+    "build_failed": "cannot generate data: the reference solution did not build",
+    "build_failed_detail_suffix": " ({detail})",
+    "rejected_cases": "{count} generated case(s) were dropped -- the reference solution could not run them: {examples}",
+    "rejected_case_line": "{name}: {reason}",
+    "generator_launch_error": "could not start the generator: {error}",
+    "generator_timeout": "the generator did not finish in {timeout}s -- check it for an endless loop",
+    "generator_failed": "the generator failed: {detail}",
+    "generator_exit_status_fallback": "exit status {code}",
+    "generator_bad_json": "the generator did not return cases that could be encoded as JSON",
+    "validate": {
+      "not_a_list": "generate(rng, count) must return a list of cases",
+      "empty": "generate(rng, count) returned no cases",
+      "too_many": "generate(rng, count) returned {count} cases; the limit is {max}",
+      "case_label": "generated case {index}",
+      "not_an_object": "{where} is not an object",
+      "sets_expected_stdout": "{where} sets 'expected_stdout'. Generators supply inputs only -- the expected output is taken from the reference solution",
+      "no_stdin": "{where} has no 'stdin' string",
+      "name_not_string": "{where} has a 'name' that is not a string"
+    },
+    "default_case_name": "randomised case {index}"
+  }
+}

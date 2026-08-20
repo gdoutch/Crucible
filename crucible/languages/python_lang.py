@@ -14,6 +14,7 @@ import sys
 import time
 from pathlib import Path
 
+from ..i18n import t
 from .base import BuildResult, Language, ToolchainStatus
 
 
@@ -34,8 +35,8 @@ class PythonLanguage(Language):
     def detect_toolchain(self) -> ToolchainStatus:
         return ToolchainStatus(
             available=True,
-            summary=f"Python {sys.version.split()[0]}",
-            detail=f"Interpreter: {sys.executable}",
+            summary=t("languages.python.summary", version=sys.version.split()[0]),
+            detail=t("languages.python.interpreter_detail", executable=sys.executable),
         )
 
     def build(self, workdir: Path, solution: str, harness: str) -> BuildResult:
@@ -50,9 +51,11 @@ class PythonLanguage(Language):
             compile(solution, self.solution_filename, "exec")
         except SyntaxError as exc:
             caret = " " * max((exc.offset or 1) - 1, 0) + "^"
-            detail = f"{self.solution_filename}:{exc.lineno}: {exc.msg}"
+            detail = t("languages.python.syntax_error_detail",
+                      file=self.solution_filename, line=exc.lineno, message=exc.msg)
             if exc.text:
-                detail += f"\n    {exc.text.rstrip()}\n    {caret}"
+                detail += t("languages.python.syntax_error_context",
+                            text=exc.text.rstrip(), caret=caret)
             return BuildResult(ok=False, output=detail,
                                duration=time.perf_counter() - started)
 
@@ -71,4 +74,5 @@ class PythonLanguage(Language):
     def describe_exit(self, exit_code: int | None) -> str:
         if exit_code is None:
             return ""
-        return "" if exit_code == 0 else f"exited with status {exit_code}"
+        return ("" if exit_code == 0
+                else t("languages.common.exited_with_status", code=exit_code))
