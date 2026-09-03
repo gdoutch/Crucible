@@ -37,6 +37,7 @@ python -m crucible
 - [Tests](#tests)
 - [Layout](#layout)
 - [Limitations](#limitations)
+- [License](#license)
 
 ---
 
@@ -1105,3 +1106,7 @@ what lets `--verify` and the unit tests run headless.
 - Comparison is on stdout. Problems that would need to assert on internal state
   or on memory behaviour need a harness that prints something checkable.
 - Theme changes apply on next launch.
+
+## License
+
+[MIT](LICENSE) — covers the application and everything under `problems/`.
