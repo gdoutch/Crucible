@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — A Modulo That Is Never Negative · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C++ · fiendish</p>
+  <h1>A Modulo That Is Never Negative</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>int TrueMod(int a, int b)
+{
+    if (b == -1)
+    {
+        return 0;
+    }
+    int magnitude = b &lt; 0 ? -b : b;
+    int r = a % b;
+    if (r &lt; 0)
+    {
+        r += magnitude;
+    }
+    return r;
+}</code></pre>
+
+<h2>Why `b == -1` is checked before anything else runs</h2>
+
+<div class="trap">
+<p>The C++ standard defines `%` by tying it to `/`: for any `a` and
+nonzero `b`, it requires `(a / b) * b + (a % b) == a`. `INT_MIN / -1`
+cannot satisfy that -- the mathematically correct quotient,
+`2147483648`, is one more than `INT_MAX` and does not fit in a 32-bit
+`int` -- which means `%` has exactly the same problem for exactly the
+same inputs, not a milder version of it. In practice this is not a
+theoretical footnote: on real x86 hardware the division instruction
+itself faults for this operand pair, and the process is killed before
+your function's own logic runs. There is no way to compute `a % b` first
+and check afterward whether it went wrong -- the fault happens during the
+computation, not after it. The only safe order is to recognise `b == -1`
+*before* attempting `a % b` at all, and answer directly: dividing (or
+taking the remainder) by 1 or -1 is always exact, so the true remainder
+for any `a` is `0`, computed without touching the operation that would
+have crashed.</p>
+</div>
+
+<h2>Why one conditional add, not a more elaborate fix-up</h2>
+
+<p>C++'s `%` guarantees `|a % b| &lt; |b|` for every input it does not
+crash on -- so the raw result `r` is already within one `magnitude` of
+being in range. When `r` is negative, it is short of `[0, magnitude)` by
+less than `magnitude`, so adding `magnitude` exactly once is always
+enough to land it there; when `r` is already non-negative, it is already
+correct and the `if` simply does nothing. There is never a case that needs
+a second addition, or a subtraction, so no loop or repeated adjustment is
+needed.</p>
+
+<h2>Why every other combination of `a` and `b` is ordinary</h2>
+
+<p>The overflow is specific to the pairing of `INT_MIN` as dividend and
+`-1` as divisor -- not to `INT_MIN` on its own. `INT_MIN % 2`, for
+instance, is completely well-defined C++ (`INT_MIN` is even, so the raw
+result is already `0`), and this function's `b == -1` check does not
+touch it: that branch is only ever taken for the one divisor value that
+needs it.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(1)</strong> -- a handful of comparisons, at most one
+subtraction and, on the ordinary path, one modulo operation.</p>
+
+<footer>
+  <p><a href="cpp_true_mod.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

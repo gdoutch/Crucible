@@ -1,0 +1,43 @@
+{
+  "id": "cpp_deep_copy_box",
+  "title": "Deep-Copying a Struct That Owns a Pointer",
+  "language": "cpp",
+  "difficulty": "fiendish",
+  "topics": [
+    "pointers",
+    "structs",
+    "ownership"
+  ],
+  "timeout_seconds": 5,
+  "statement": "`Box copy = original;` compiles, runs, and does not crash -- and for a\nstruct that merely *contains* a pointer, that default member-wise copy is\nexactly wrong: it copies the pointer's value, not what it points to, so\n`original` and `copy` end up looking at the very same block of memory\nrather than each having their own. Nothing about the type system stops\nthis; a raw pointer carries no notion of who owns what it points to.\n\n## The type\n\n```\nstruct Box\n{\n    int* data;\n    int size;\n};\n```\n\n`data` points to a heap array of `size` `int`s that `Box` owns.\n\n## Your function\n\n```\nBox CopyBox(const Box& original);\n```\n\nReturn a genuinely independent copy of `original`: a **new** heap array\nwith the same `size` and the same element values, not a `Box` that shares\n`original`'s array. `original.size` may be `0`.\n\n## Watch out\n\n- **`return original;` (or `Box copy = original;` inside the function)\n  copies the `data` pointer's *value* -- the address it holds -- not the\n  array it points to.** Both `Box`es then have a `data` field pointing at\n  the identical block of memory. Nothing about this fails to compile or\n  crashes on the spot; it just means a later write through *either* copy's\n  `data` is visible through the *other* one too, silently, which is\n  precisely the bug this exercise is built to catch.\n- **A correct copy allocates its own array with `new int[original.size]`\n  and copies every element's *value* across**, one at a time (or with\n  `std::copy`) -- never the pointer itself.\n- **`size` needs copying too, not just `data`.** A `Box` with the right\n  data pointer but a forgotten or wrong `size` will look right until\n  something iterates it using that field.\n- `original.size == 0` is legal: `new int[0]` is well-defined C++ and\n  produces a valid (if unused) pointer -- no special case is needed for\n  an empty `Box`.\n",
+  "starter_code": "struct Box\n{\n    int* data;\n    int size;\n};\n\n/// Return an independent copy of original: a new heap array with the\n/// same size and element values, not a Box sharing original's array.\nBox CopyBox(const Box& original)\n{\n    // your code here\n    return Box{nullptr, 0};\n}\n",
+  "harness": "#include <iostream>\n\nstruct Box\n{\n    int* data;\n    int size;\n};\n\nBox CopyBox(const Box& original);\n\nint main()\n{\n    int n;\n    while (std::cin >> n)\n    {\n        int* values = new int[n];\n        for (int i = 0; i < n; i++)\n        {\n            std::cin >> values[i];\n        }\n        Box original{values, n};\n\n        Box copy = CopyBox(original);\n\n        // Mutate every element reachable through the copy. If CopyBox\n        // aliased original's array instead of allocating its own, this\n        // mutates original too.\n        for (int i = 0; i < copy.size; i++)\n        {\n            copy.data[i] = copy.data[i] * 10 + 1;\n        }\n\n        for (int i = 0; i < original.size; i++)\n        {\n            std::cout << original.data[i] << (i + 1 < original.size ? \" \" : \"\");\n        }\n        std::cout << \"\\n\";\n        for (int i = 0; i < copy.size; i++)\n        {\n            std::cout << copy.data[i] << (i + 1 < copy.size ? \" \" : \"\");\n        }\n        std::cout << \"\\n\";\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random-length boxes of random values, including an empty one.\"\"\"\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    n = rng.randint(0, 10)\n    values = [rng.randint(-50, 50) for _ in range(n)]\n    lines = [str(n)] + [str(v) for v in values]\n    return {\"name\": \"a box of %d elements #%d\" % (n, index),\n            \"stdin\": \" \".join(lines) + \"\\n\"}\n"
+  },
+  "tests": [
+    {
+      "name": "an empty box copies to another empty box",
+      "stdin": "0\n",
+      "expected_stdout": ""
+    },
+    {
+      "name": "a single-element box",
+      "stdin": "1 5\n",
+      "expected_stdout": "5\n51"
+    },
+    {
+      "name": "mutating the copy must not change the original",
+      "stdin": "4 1 2 3 4\n",
+      "expected_stdout": "1 2 3 4\n11 21 31 41",
+      "description": "A shallow copy (aliasing original's array) would print the mutated values on both lines -- the original line has to stay untouched."
+    },
+    {
+      "name": "negative values copy and mutate the same way",
+      "stdin": "3 -5 0 7\n",
+      "expected_stdout": "-5 0 7\n-49 1 71"
+    }
+  ],
+  "reference_solution_b64": "c3RydWN0IEJveAp7CiAgICBpbnQqIGRhdGE7CiAgICBpbnQgc2l6ZTsKfTsKCkJveCBDb3B5Qm94KGNvbnN0IEJveCYgb3JpZ2luYWwpCnsKICAgIGludCogZGF0YSA9IG5ldyBpbnRbb3JpZ2luYWwuc2l6ZV07CiAgICBmb3IgKGludCBpID0gMDsgaSA8IG9yaWdpbmFsLnNpemU7IGkrKykKICAgIHsKICAgICAgICBkYXRhW2ldID0gb3JpZ2luYWwuZGF0YVtpXTsKICAgIH0KICAgIHJldHVybiBCb3h7ZGF0YSwgb3JpZ2luYWwuc2l6ZX07Cn0K"
+}

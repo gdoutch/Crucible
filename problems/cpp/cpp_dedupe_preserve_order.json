@@ -1,0 +1,48 @@
+{
+  "id": "cpp_dedupe_preserve_order",
+  "title": "Remove Duplicates, Keep First-Seen Order",
+  "language": "cpp",
+  "difficulty": "medium",
+  "topics": [
+    "vectors",
+    "unordered_set",
+    "loops"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Sorting a vector to group duplicates together is the tempting first idea\nfor removing them, and it is the wrong tool here: sorting also throws away\nthe original order, and this exercise needs that order kept. An\n`std::unordered_set<int>` gives you O(1) average \"have I seen this value\nbefore\" without touching the order of anything.\n\n## Your function\n\n```\nstd::vector<int> DedupePreserveOrder(const std::vector<int>& values);\n```\n\nReturn `values` with every element after its first occurrence removed, in\nthe same order the surviving elements appeared in `values`. `values` may\nbe empty.\n\n## Watch out\n\n- **`unordered_set<int>::insert` tells you whether the value was new, in\n  the same call that records it.** It returns a `std::pair<iterator,\n  bool>` whose `.second` is `true` exactly when the value was not already\n  in the set -- one call answers both \"have I seen this\" and \"remember\n  that I have now\", rather than needing a separate `.count()` check\n  followed by a separate `.insert()`.\n- **The output order is the order values first appeared in the input, not\n  numeric order and not the `unordered_set`'s own (unspecified) iteration\n  order.** Build the result by walking `values` once, appending an element\n  only the first time its value is seen -- never by iterating the set\n  itself, whose element order the standard does not define at all.\n- A value that never repeats still belongs in the result exactly once --\n  \"first occurrence\" includes an element with no duplicates to remove.\n",
+  "starter_code": "#include <vector>\n\n/// Return values with every element after its first occurrence removed,\n/// in first-seen order. values may be empty.\nstd::vector<int> DedupePreserveOrder(const std::vector<int>& values)\n{\n    // your code here\n    return {};\n}\n",
+  "harness": "#include <iostream>\n#include <vector>\n\nstd::vector<int> DedupePreserveOrder(const std::vector<int>& values);\n\nint main()\n{\n    int n;\n    while (std::cin >> n)\n    {\n        std::vector<int> values(n);\n        for (int i = 0; i < n; i++)\n        {\n            std::cin >> values[i];\n        }\n        std::vector<int> result = DedupePreserveOrder(values);\n        for (size_t i = 0; i < result.size(); i++)\n        {\n            std::cout << result[i] << (i + 1 < result.size() ? \" \" : \"\");\n        }\n        std::cout << \"\\n\";\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random arrays over a small alphabet of values, so repeats are frequent\nand the first-seen order is meaningfully tested.\"\"\"\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    n = rng.randint(0, 20)\n    values = [rng.randint(0, 6) for _ in range(n)]\n    lines = [str(n)] + [str(v) for v in values]\n    return {\"name\": \"%d values from a small pool, repeats likely #%d\"\n                    % (n, index),\n            \"stdin\": \" \".join(lines) + \"\\n\"}\n"
+  },
+  "tests": [
+    {
+      "name": "an empty vector stays empty",
+      "stdin": "0\n",
+      "expected_stdout": ""
+    },
+    {
+      "name": "no duplicates at all",
+      "stdin": "4 1 2 3 4\n",
+      "expected_stdout": "1 2 3 4"
+    },
+    {
+      "name": "every element is the same value",
+      "stdin": "5 7 7 7 7 7\n",
+      "expected_stdout": "7"
+    },
+    {
+      "name": "order follows first appearance, not numeric order",
+      "stdin": "6 3 1 3 2 1 3\n",
+      "expected_stdout": "3 1 2",
+      "description": "3 appears first even though 1 and 2 are smaller -- the result is not sorted."
+    },
+    {
+      "name": "duplicates scattered throughout",
+      "stdin": "8 5 1 5 2 1 5 3 2\n",
+      "expected_stdout": "5 1 2 3"
+    }
+  ],
+  "reference_solution_b64": "I2luY2x1ZGUgPHVub3JkZXJlZF9zZXQ+CiNpbmNsdWRlIDx2ZWN0b3I+CgpzdGQ6OnZlY3RvcjxpbnQ+IERlZHVwZVByZXNlcnZlT3JkZXIoY29uc3Qgc3RkOjp2ZWN0b3I8aW50PiYgdmFsdWVzKQp7CiAgICBzdGQ6OnZlY3RvcjxpbnQ+IHJlc3VsdDsKICAgIHN0ZDo6dW5vcmRlcmVkX3NldDxpbnQ+IHNlZW47CiAgICBmb3IgKGludCB2IDogdmFsdWVzKQogICAgewogICAgICAgIGlmIChzZWVuLmluc2VydCh2KS5zZWNvbmQpCiAgICAgICAgewogICAgICAgICAgICByZXN1bHQucHVzaF9iYWNrKHYpOwogICAgICAgIH0KICAgIH0KICAgIHJldHVybiByZXN1bHQ7Cn0K"
+}

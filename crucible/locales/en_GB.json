@@ -155,11 +155,37 @@
       "exit": {
         "access_violation": "access violation (bad pointer / buffer overrun)",
         "divide_by_zero": "integer division by zero",
+        "integer_overflow": "integer overflow (INT_MIN divided or modulo'd by -1)",
         "stack_overflow": "stack overflow (runaway recursion?)",
         "interrupted": "interrupted",
         "crashed": "crashed: {description}",
         "sigsegv": "SIGSEGV (segmentation fault)",
         "sigabrt": "SIGABRT (abort)",
+        "sigfpe": "SIGFPE (arithmetic error, e.g. divide by zero)",
+        "killed_by_signal": "killed by signal {signal}"
+      }
+    },
+    "cpp": {
+      "install_help_windows": "No C++ compiler found.\n\nPick whichever is easiest for you:\n\n  1. w64devkit  -- a single portable zip, no installer, ~80 MB.\n     https://github.com/skeeto/w64devkit/releases\n     Unzip it, then add its bin\\ folder to PATH (or just relaunch this\n     app -- C:\\w64devkit\\bin is auto-detected). It includes g++.\n\n  2. MSYS2      -- full package manager, best long term.\n     https://www.msys2.org  then:  pacman -S mingw-w64-ucrt-x86_64-gcc\n     (this package includes g++ as well as gcc)\n\n  3. Visual Studio -- you already have VS installed, but without the C++\n     toolset. Open the Visual Studio Installer, click Modify, and tick\n     'Desktop development with C++'.\n\nRe-check from the Tools menu once installed -- no restart needed.",
+      "install_help_posix": "No C++ compiler found.\n\n  Debian/Ubuntu:  sudo apt install build-essential   (includes g++)\n  Fedora:         sudo dnf install gcc-c++\n  macOS:          xcode-select --install\n\nRe-check from the Tools menu once installed.",
+      "summary_gnu": "C++: {version}",
+      "detail_gnu": "Compiler: {path}\nMode: GCC-compatible command line",
+      "summary_msvc": "C++: Microsoft Visual C++ (MSVC)",
+      "detail_msvc": "Compiler: {path}\nEnvironment initialised from vcvars64.bat",
+      "summary_msvc_current_env": "C++: Microsoft Visual C++ (MSVC, from current environment)",
+      "detail_msvc_current_env": "Compiler: {path}",
+      "summary_not_found": "C++: no compiler found",
+      "detail_not_found": "Searched PATH and the usual install locations for {compilers} and cl.exe.",
+      "compile_timeout": "Compilation timed out after 60s.",
+      "exit": {
+        "access_violation": "access violation (bad pointer / buffer overrun)",
+        "divide_by_zero": "integer division by zero",
+        "integer_overflow": "integer overflow (INT_MIN divided or modulo'd by -1)",
+        "stack_overflow": "stack overflow (runaway recursion?)",
+        "interrupted": "interrupted",
+        "crashed": "crashed: {description}",
+        "sigsegv": "SIGSEGV (segmentation fault)",
+        "sigabrt": "SIGABRT (abort) -- often an uncaught exception or a failed assertion",
         "sigfpe": "SIGFPE (arithmetic error, e.g. divide by zero)",
         "killed_by_signal": "killed by signal {signal}"
       }

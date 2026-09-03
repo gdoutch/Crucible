@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Deep-Copying a Struct That Owns a Pointer · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C++ · fiendish</p>
+  <h1>Deep-Copying a Struct That Owns a Pointer</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>struct Box
+{
+    int* data;
+    int size;
+};
+
+Box CopyBox(const Box&amp; original)
+{
+    int* data = new int[original.size];
+    for (int i = 0; i &lt; original.size; i++)
+    {
+        data[i] = original.data[i];
+    }
+    return Box{data, original.size};
+}</code></pre>
+
+<h2>Why `return original;` is the trap, not a typo</h2>
+
+<div class="trap">
+<p>`Box` has no user-defined copy constructor, so copying one -- whether
+via `return original;`, `Box copy = original;`, or passing one by value --
+uses the compiler-generated default: copy every member, field by field.
+For `size`, an `int`, that is exactly right; there is only one sensible
+way to copy an `int`. For `data`, an `int*`, "copy the member" means copy
+the *pointer's value* -- the memory address it holds -- because that
+address is all a raw pointer actually *is*, as far as the type system is
+concerned. The compiler has no way to know that this particular pointer
+is meant to represent ownership of the array it points to, so it treats
+it exactly like it would treat a pointer that was never meant to be
+"owned" by anything -- because nothing in `Box`'s definition says
+otherwise. Two `Box`es sharing one array compiles, links, and runs without
+any diagnostic, because nothing about it is actually illegal C++; it is
+only wrong relative to what this specific function is asked to guarantee.</p>
+</div>
+
+<h2>Why the loop copies values, not the pointer</h2>
+
+<p><code>new int[original.size]</code> allocates a second, independent
+array on the heap, and the loop copies each `int` *value* from
+`original.data[i]` into the new array's own storage at `data[i]`. After
+this runs, `data` and `original.data` are two different addresses,
+pointing at two different blocks of memory that happen to currently hold
+equal values -- which is the actual definition of "an independent copy",
+as opposed to "two names for the same thing".</p>
+
+<h2>Why `size` is copied too</h2>
+
+<p>`Box{data, original.size}` copies `size` directly rather than, say,
+leaving it default-initialised or recomputing it some other way -- a copy
+with the right array but a stale or zero `size` would look correct until
+something (like the harness printing every element) actually reads that
+field to decide how far to iterate.</p>
+
+<h2>Why `original.size == 0` needs no special case</h2>
+
+<p><code>new int[0]</code> is well-defined C++: it returns a valid, unique
+pointer that owns zero elements. The copy loop's condition,
+<code>i &lt; original.size</code>, is false immediately when
+`original.size` is `0`, so the loop body never runs -- the function
+returns a `Box` with its own (empty) allocation, exactly as it would for
+any other size, with no `if` needed to detect the empty case specially.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(n)</strong> in `original.size` -- one allocation and one pass
+copying each element's value.</p>
+
+<footer>
+  <p><a href="cpp_deep_copy_box.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

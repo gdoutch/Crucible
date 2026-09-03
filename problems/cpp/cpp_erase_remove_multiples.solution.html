@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Erase-While-Iterating, Correctly · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C++ · fiendish</p>
+  <h1>Erase-While-Iterating, Correctly</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>#include &lt;algorithm&gt;
+#include &lt;vector&gt;
+
+void RemoveMultiplesOf(std::vector&lt;int&gt;&amp; values, int n)
+{
+    values.erase(
+        std::remove_if(values.begin(), values.end(),
+                       [n](int v) { return v % n == 0; }),
+        values.end());
+}</code></pre>
+
+<h2>Why the naive erase-in-a-loop version loses an element after every removal</h2>
+
+<div class="trap">
+<p><code>std::vector&lt;T&gt;::erase(it)</code> shifts every element after
+<code>it</code> one slot to the left to fill the gap, and returns an
+iterator to whatever now occupies <code>it</code>'s old position -- the
+element that used to be immediately after the one removed. A hand-written
+<code>for</code> loop that calls <code>erase(it)</code> and then relies on
+its own <code>++it</code> to advance is, in the branch that erases,
+advancing *twice*: once implicitly, because <code>erase</code> already
+left the vector's storage positioned so the next element sits where
+<code>it</code> used to point, and once explicitly, via the loop's own
+increment. The element that landed in the gap is never examined. On a
+vector like <code>[2, 4, 6, 3, 8, 5]</code> removing multiples of 2, this
+concretely means 4 survives despite being a multiple, because it was the
+element sitting right after 2 the moment 2 was erased.</p>
+</div>
+
+<h2>Why `std::remove_if` + `erase` avoids this entirely</h2>
+
+<p><code>std::remove_if</code> does not shrink the vector or shift memory
+around per element the way repeated calls to <code>erase</code> do -- it
+performs a single linear pass, copying (or move-assigning) each surviving
+element into its correct compacted position as it goes, and never removes
+anything from the container itself. Only the final `values.erase(...)`
+call actually shrinks the vector, once, dropping everything from the
+returned iterator onward -- the leftover, now-duplicated tail elements
+that `remove_if` did not overwrite. There is exactly one point where
+elements are actually removed, so there is no iterator to keep
+synchronised against a container that is changing size out from under it.</p>
+
+<h2>Why zero needs no special case</h2>
+
+<p><code>0 % n</code> is <code>0</code> for any nonzero <code>n</code>, so
+the same predicate that flags <code>4</code> or <code>6</code> as
+multiples of <code>2</code> flags every <code>0</code> in `values` too,
+without the predicate needing to name `0` at all.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(n)</strong> in the length of `values` -- `remove_if` visits
+each element exactly once, and the trailing `erase` call destroys the
+leftover elements and adjusts the vector's size in one pass over just the
+removed tail, not the whole vector again.</p>
+
+<footer>
+  <p><a href="cpp_erase_remove_multiples.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Sum a Vector Without Overflowing · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C++ · easy</p>
+  <h1>Sum a Vector Without Overflowing</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>#include &lt;vector&gt;
+
+long long SumVector(const std::vector&lt;int&gt;&amp; values)
+{
+    long long total = 0;
+    for (int v : values)
+    {
+        total += v;
+    }
+    return total;
+}</code></pre>
+
+<h2>Why <code>total</code> is <code>long long</code> from its first line</h2>
+
+<div class="trap">
+<p><code>total += v</code> runs once per element, and every one of those
+additions happens in whatever type <code>total</code> was declared as. If
+that type is <code>int</code>, each addition is 32-bit, unchecked by
+default in C++ -- it wraps rather than raising any kind of error -- and by
+the time a later <code>static_cast&lt;long long&gt;(total)</code> would try
+to widen the result, the wrong answer has already been computed and
+stored. Declaring <code>long long total = 0;</code> up front means every
+one of those additions is a 64-bit addition from the start, with roughly
+nine quintillion of headroom rather than about two billion -- comfortably
+enough for any sum this function could realistically be asked to produce.</p>
+</div>
+
+<h2>Why `const std::vector&lt;int&gt;&amp;`, not `std::vector&lt;int&gt;`</h2>
+
+<p>Taking <code>values</code> by value would copy every element into a new
+vector just to read them once each and throw the copy away -- for a large
+vector, real, wasted work on every single call. <code>const&amp;</code>
+gives the function direct read-only access to the caller's own vector: no
+copy, and the compiler enforces the "read-only" part by refusing to
+compile any attempt to modify <code>values</code> through it.</p>
+
+<h2>Why an empty vector needs no special case</h2>
+
+<p><code>total</code> starts at <code>0</code>, and a range-for over an
+empty vector simply never executes its body -- the function returns
+<code>0</code> without an explicit check, which is exactly what the sum of
+nothing should be.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(n)</strong> in the length of `values` -- one pass, one
+addition per element, no allocation.</p>
+
+<footer>
+  <p><a href="cpp_vector_sum.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Deep-Copying a Struct That Owns a Pointer · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C++ · fiendish</p>
+  <h1>Deep-Copying a Struct That Owns a Pointer</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Allocate, copy the values across, return</h2>
+
+<pre><code>int* data = new int[original.size];
+for (int i = 0; i &lt; original.size; i++) {
+    data[i] = original.data[i];
+}
+return Box{data, original.size};</code></pre>
+
+<h2>What compiles cleanly and is still wrong</h2>
+
+<div class="trap">
+<p><code>return original;</code> compiles. It runs without crashing. And it
+is exactly the bug this exercise is built around: `Box`'s default copy
+copies the `data` field's *value* -- the address it holds -- not the array
+that address points to. Both the original `Box` and the one this function
+returns end up with a `data` pointer that names the identical block of
+memory. A caller that mutates one and then reads the other sees the
+mutation, because as far as the heap is concerned there was only ever one
+array the whole time. Nothing about the type system flags this: a raw
+`int*` carries no information about who owns what it points to, or how
+many `Box`es currently think they own it.</p>
+</div>
+
+<p>Both fields need copying -- `size` as well as `data` -- and `data`
+specifically needs a *new* allocation, not a copy of the pointer's bit
+pattern.</p>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cpp_deep_copy_box.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

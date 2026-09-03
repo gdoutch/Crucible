@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Lower Bound: the Leftmost Insertion Point · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C++ · hard</p>
+  <h1>Lower Bound: the Leftmost Insertion Point</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Narrow toward the answer -- never toward a match</h2>
+
+<pre><code>int low = 0;
+int high = static_cast&lt;int&gt;(sortedValues.size());
+while (low &lt; high) {
+    int mid = low + (high - low) / 2;
+    if (sortedValues[mid] &lt; target) low = mid + 1;
+    else                             high = mid;
+}
+return low;</code></pre>
+
+<p>There is no branch here that says "found it, return". That absence is
+the whole trick.</p>
+
+<h2>Why "found it" would break duplicates</h2>
+
+<div class="trap">
+<p>A binary search shaped around "if <code>sortedValues[mid] ==
+target</code>, return <code>mid</code> immediately" answers a different
+question than this one asks: it tells you *an* index where the target
+sits, not the *first* one. With three equal elements in the array, that
+kind of search can stop on any of the three depending on where the
+midpoint calculations happen to land -- correct for "is it present", wrong
+for "where does the leftmost one live". The loop above never has a "found
+it" branch to short-circuit into; it only ever asks "is
+<code>sortedValues[mid]</code> too small", and narrows one bound or the
+other based on the answer, which is what makes it converge on the leftmost
+position regardless of how many duplicates there are.</p>
+</div>
+
+<p>Trace what <code>low</code> and <code>high</code> mean throughout:
+everything before <code>low</code> is known <code>&lt; target</code>, and
+everything from <code>high</code> onward is known <code>&gt;=
+target</code>. The loop ends when they meet, and that meeting point is the
+answer.</p>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cpp_lower_bound.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

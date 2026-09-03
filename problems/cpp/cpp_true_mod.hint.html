@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — A Modulo That Is Never Negative · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C++ · fiendish</p>
+  <h1>A Modulo That Is Never Negative</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Fix up the sign, once</h2>
+
+<pre><code>int magnitude = b &lt; 0 ? -b : b;
+int r = a % b;
+if (r &lt; 0) {
+    r += magnitude;
+}
+return r;</code></pre>
+
+<p>`r`'s magnitude is already guaranteed less than `magnitude` by `%`'s own
+definition -- one addition, only when `r` came back negative, is always
+enough to land it in `[0, magnitude)`.</p>
+
+<h2>The one input that has to be caught before this code even runs</h2>
+
+<div class="trap">
+<p>`INT_MIN / -1` is the textbook case of signed integer overflow -- the
+mathematically correct answer, `2147483648`, does not fit in a 32-bit
+`int`. What is easy to miss is that C++ defines `%` in terms of `/`
+(`a % b` is specified so that `(a / b) * b + (a % b) == a`), which means
+`a % b` inherits the same undefined behaviour for the same inputs.
+`INT_MIN % -1` is not a special case the standard carves out an exception
+for -- on real hardware it triggers the identical fault plain division
+does, before your fix-up code, or anything else in the function, gets a
+chance to run.</p>
+</div>
+
+<p>The fix is to never let `a % b` execute for that one pair at all:
+check <code>b == -1</code> first, and return the answer directly --
+everything is evenly divisible by 1 (or -1), so the true remainder is
+always <code>0</code> regardless of what <code>a</code> is.</p>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cpp_true_mod.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

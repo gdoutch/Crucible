@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Reverse a String in Place · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C++ · easy</p>
+  <h1>Reverse a String in Place</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>#include &lt;string&gt;
+#include &lt;utility&gt;
+
+void ReverseInPlace(std::string&amp; text)
+{
+    int left = 0;
+    int right = static_cast&lt;int&gt;(text.size()) - 1;
+    while (left &lt; right)
+    {
+        std::swap(text[left], text[right]);
+        left++;
+        right--;
+    }
+}</code></pre>
+
+<h2>Why the parameter has to be a reference</h2>
+
+<div class="trap">
+<p>C++ copies function arguments by default. A parameter declared
+<code>std::string text</code> (no <code>&amp;</code>) would give the
+function its own private copy to reverse -- and that copy is destroyed the
+instant the function returns, taking the work with it. Nothing about that
+version is illegal or even warned about: it compiles cleanly, and inside
+the function <code>text</code> genuinely does end up reversed. The bug only
+shows up one level up, in the caller, whose own string was never the thing
+being modified. <code>std::string&amp;</code> makes <code>text</code>
+another name for the caller's actual variable, so there is only ever one
+string in play.</p>
+</div>
+
+<h2>Why <code>left &lt; right</code>, not <code>left &lt;= right</code></h2>
+
+<p>For an odd-length string, the two indices meet at the middle character,
+which needs no swap -- it is being compared and exchanged with itself,
+which is harmless but pointless. <code>&lt;</code> stops the loop the
+moment that would happen, one iteration earlier than
+<code>&lt;=</code> would. For an even-length string, <code>left</code> and
+<code>right</code> cross by one without ever being equal, and
+<code>&lt;</code> stops that case correctly too -- one condition handles
+both parities without a separate check for either.</p>
+
+<h2>The empty and single-character cases</h2>
+
+<p>An empty string has <code>right == -1</code>, so <code>left &lt;
+right</code> (<code>0 &lt; -1</code>) is false immediately and the loop
+body never runs. A one-character string has <code>left == right ==
+0</code>, also false immediately. Neither needs a guard written by hand --
+the same loop condition that ends an even- or odd-length reversal also
+covers both of these correctly, because "nothing to swap" and "stop
+immediately" are the same outcome.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(n)</strong> in the length of `text` -- each character is
+touched exactly once, by exactly one swap, and no copy of the string is
+ever made.</p>
+
+<footer>
+  <p><a href="cpp_reverse_string.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

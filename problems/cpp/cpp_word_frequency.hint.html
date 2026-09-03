@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Word Frequency With operator[] · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C++ · medium</p>
+  <h1>Word Frequency With operator[]</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>One line, no branch</h2>
+
+<pre><code>std::map&lt;std::string, int&gt; counts;
+std::istringstream stream(text);
+std::string word;
+while (stream &gt;&gt; word) {
+    counts[word]++;
+}
+return counts;</code></pre>
+
+<h2>This is not the trap it would be in some other languages</h2>
+
+<div class="trap">
+<p>If you have used a dictionary/map type elsewhere that throws when you
+read a missing key, the instinct to reach for a "get-or-default" helper
+here is understandable -- but `std::map`'s `operator[]` does not throw on
+a missing key at all. It inserts one, value-initialised (`0` for `int`),
+and hands back a reference to it. `counts[word]++` on a word's first
+appearance reads that freshly-inserted `0`, increments it to `1`, and
+writes it back -- all in the one line, with nothing special about the
+first occurrence versus the hundredth.</p>
+</div>
+
+<p>Keep the comparison case-sensitive -- do not lower-case
+<code>word</code> before counting it.</p>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cpp_word_frequency.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

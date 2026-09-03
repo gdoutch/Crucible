@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from .base import BuildResult, ExecResult, Language, ToolchainStatus, run_process
 from .c_lang import CLanguage
+from .cpp_lang import CppLanguage
 from .csharp_lang import CSharpLanguage
 from .python_lang import PythonLanguage
 
@@ -19,7 +20,7 @@ def register(language: Language) -> None:
     _LANGUAGES[language.id] = language
 
 
-for _cls in (CLanguage, PythonLanguage, CSharpLanguage):
+for _cls in (CLanguage, CppLanguage, PythonLanguage, CSharpLanguage):
     register(_cls())
 
 
@@ -43,6 +44,6 @@ def known_ids() -> list[str]:
 
 __all__ = [
     "BuildResult", "ExecResult", "Language", "ToolchainStatus", "run_process",
-    "CLanguage", "PythonLanguage", "CSharpLanguage",
+    "CLanguage", "CppLanguage", "PythonLanguage", "CSharpLanguage",
     "register", "get", "all_languages", "known_ids",
 ]

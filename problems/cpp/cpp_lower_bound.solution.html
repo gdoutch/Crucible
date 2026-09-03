@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Lower Bound: the Leftmost Insertion Point · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C++ · hard</p>
+  <h1>Lower Bound: the Leftmost Insertion Point</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>#include &lt;vector&gt;
+
+int LowerBound(const std::vector&lt;int&gt;&amp; sortedValues, int target)
+{
+    int low = 0;
+    int high = static_cast&lt;int&gt;(sortedValues.size());
+    while (low &lt; high)
+    {
+        int mid = low + (high - low) / 2;
+        if (sortedValues[mid] &lt; target)
+        {
+            low = mid + 1;
+        }
+        else
+        {
+            high = mid;
+        }
+    }
+    return low;
+}</code></pre>
+
+<h2>Why there is no "found it" branch</h2>
+
+<div class="trap">
+<p>Two invariants hold throughout the loop, maintained by which bound
+moves on each comparison: every index strictly less than <code>low</code>
+holds a value known to be <code>&lt; target</code>, and every index from
+<code>high</code> onward holds a value known to be <code>&gt;=
+target</code>. When <code>sortedValues[mid] &lt; target</code>, that mid
+element belongs in the "known smaller" region, so <code>low</code> moves
+past it; otherwise -- whether <code>sortedValues[mid]</code> is greater
+than <em>or equal to</em> <code>target</code> -- it belongs in the "known
+not smaller" region, so <code>high</code> moves down to it. Crucially, an
+equal element is treated exactly the same as a greater one: it narrows
+<code>high</code>, it never triggers an early return. That is what forces
+the search to keep looking leftward through a whole run of equal values
+instead of stopping on whichever one it happens to land on first.</p>
+</div>
+
+<h2>Why the loop ends exactly on the leftmost index</h2>
+
+<p>The loop keeps narrowing the gap between <code>low</code> and
+<code>high</code> until they meet -- <code>low == high</code> -- at which
+point <code>low</code> is the first index the "known not smaller" region
+begins at. That holds whether the answer lands in the middle of the array,
+at <code>0</code> (target belongs before everything), or at
+<code>sortedValues.size()</code> (target belongs after everything, or is
+larger than every element): the same invariant produces the right answer
+at both ends and through any run of duplicates in between, with no
+separate case for any of them.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(log n)</strong> in the length of `sortedValues` -- each
+comparison discards half of what remains to be searched, the same as an
+ordinary binary search; finding the leftmost of a run of duplicates costs
+nothing extra because the search was never going to stop early in the
+first place.</p>
+
+<footer>
+  <p><a href="cpp_lower_bound.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

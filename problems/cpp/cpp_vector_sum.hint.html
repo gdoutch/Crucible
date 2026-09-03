@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Sum a Vector Without Overflowing · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C++ · easy</p>
+  <h1>Sum a Vector Without Overflowing</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>One accumulator, one loop</h2>
+
+<pre><code>long long total = 0;
+for (int v : values) {
+    total += v;
+}
+return total;</code></pre>
+
+<p>That is the whole function -- the interesting part is not the loop, it
+is what type <code>total</code> is declared as.</p>
+
+<h2>Declare the accumulator's real type from the start</h2>
+
+<div class="trap">
+<p>If <code>total</code> starts life as an <code>int</code> and only gets
+converted to <code>long long</code> in the <code>return</code> statement,
+every individual <code>+=</code> along the way is still ordinary 32-bit
+addition -- the overflow has already happened, silently wrapped to a
+nonsense value, long before the conversion at the end ever runs. The fix
+is not the conversion; it is declaring <code>long long total = 0;</code>
+so every addition from the very first one is already 64-bit.</p>
+</div>
+
+<p>A <code>range-for</code> (<code>for (int v : values)</code>) reads each
+element without needing an explicit index -- and since the loop body only
+ever reads <code>v</code>, there is nothing here that needs
+<code>values</code> to be mutable.</p>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cpp_vector_sum.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

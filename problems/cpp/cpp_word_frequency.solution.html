@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Word Frequency With operator[] · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C++ · medium</p>
+  <h1>Word Frequency With operator[]</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>#include &lt;map&gt;
+#include &lt;sstream&gt;
+#include &lt;string&gt;
+
+std::map&lt;std::string, int&gt; WordFrequency(const std::string&amp; text)
+{
+    std::map&lt;std::string, int&gt; counts;
+    std::istringstream stream(text);
+    std::string word;
+    while (stream &gt;&gt; word)
+    {
+        counts[word]++;
+    }
+    return counts;
+}</code></pre>
+
+<h2>Why <code>operator[]</code> needs no branch at all</h2>
+
+<div class="trap">
+<p><code>std::map&lt;K, V&gt;::operator[]</code> is specified to insert a
+default-constructed <code>V</code> (value-initialised, so <code>0</code>
+for <code>int</code>) the moment it is asked for a key that is not
+present, and return a reference to that entry either way -- present or
+freshly created. That is a deliberately different contract from a plain
+lookup that fails on a missing key: it exists precisely so
+<code>counts[word]++</code> is correct on every occurrence of every word,
+first or hundredth, without the code needing to tell those cases apart
+itself. The "trap" candidates coming from a language whose map type throws
+on <code>[]</code> sometimes fall into is over-engineering a
+get-or-insert helper that <code>std::map</code> already gives you for
+free.</p>
+</div>
+
+<h2>Why the words come out sorted</h2>
+
+<p><code>std::map</code> keeps its keys in ascending order internally
+(unlike <code>std::unordered_map</code>, which makes no ordering promise
+at all) -- iterating it, the way the harness that calls this function
+does to print the result, visits keys lexicographically without this
+function needing to sort anything itself. That ordering is a property of
+the container choice, not something <code>WordFrequency</code> has to
+implement.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(n log k)</strong> where n is the number of words in `text`
+and k the number of distinct ones -- each `operator[]` access is an
+O(log k) tree lookup on `std::map`. Using `std::unordered_map` instead
+would trade that for O(1) average per access at the cost of losing the
+sorted iteration order this function's own contract does not need.</p>
+
+<footer>
+  <p><a href="cpp_word_frequency.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

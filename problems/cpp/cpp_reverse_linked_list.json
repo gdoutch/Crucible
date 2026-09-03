@@ -1,0 +1,47 @@
+{
+  "id": "cpp_reverse_linked_list",
+  "title": "Reverse a Singly Linked List",
+  "language": "cpp",
+  "difficulty": "hard",
+  "topics": [
+    "linked lists",
+    "pointers"
+  ],
+  "timeout_seconds": 5,
+  "statement": "A singly linked list only ever points forward: each `Node` knows its own\n`next`, and nothing knows its previous node unless something keeps track.\nReversing the list means every node's `next` has to end up pointing the\nother way -- and the moment you overwrite a node's `next`, its old\ndownstream neighbour is gone forever unless you saved a pointer to it\nfirst.\n\n## The type\n\n```\nstruct Node\n{\n    int value;\n    Node* next;\n};\n```\n\n## Your function\n\n```\nNode* ReverseList(Node* head);\n```\n\nReverse the list starting at `head` **iteratively, in place, using O(1)\nextra space** -- no recursion, no new nodes, no container copying the\nvalues out and back in. Return a pointer to the new head (the old tail).\n`head` may be `nullptr`, meaning an empty list.\n\n## Watch out\n\n- **Save `current->next` before you overwrite it.** The instant\n  `current->next` is pointed backwards, the only remaining way to reach\n  the rest of the original list -- everything that used to come after\n  `current` -- is a pointer you saved *before* that assignment ran. Do it\n  after, and the rest of the list is unreachable: not corrupted, not\n  crashed, just permanently lost, which is the kind of bug that only shows\n  up on a list with more than two or three nodes.\n- **Three pointers, not two, are enough: `prev`, `current`, and a\n  temporary for `current`'s original `next`.** `prev` starts at `nullptr`\n  (there is nothing before the first node); by the time the loop ends,\n  `current` is `nullptr` and `prev` is sitting on the last node visited --\n  the new head -- which is what the function returns, not `current`.\n- **`head == nullptr` needs no special case.** The loop condition is\n  simply \"while there is a current node\", which is false immediately for\n  an empty list, and the function correctly returns `prev`, still\n  `nullptr`, without ever having entered the loop body.\n",
+  "starter_code": "struct Node\n{\n    int value;\n    Node* next;\n};\n\n/// Reverse the singly linked list starting at head, iteratively, in place,\n/// with O(1) extra space, and return the new head. head may be nullptr.\nNode* ReverseList(Node* head)\n{\n    // your code here\n    return head;\n}\n",
+  "harness": "#include <iostream>\n\nstruct Node\n{\n    int value;\n    Node* next;\n};\n\nNode* ReverseList(Node* head);\n\nint main()\n{\n    int n;\n    while (std::cin >> n)\n    {\n        Node* head = nullptr;\n        Node* tail = nullptr;\n        for (int i = 0; i < n; i++)\n        {\n            int v;\n            std::cin >> v;\n            Node* node = new Node{v, nullptr};\n            if (tail == nullptr)\n            {\n                head = tail = node;\n            }\n            else\n            {\n                tail->next = node;\n                tail = node;\n            }\n        }\n\n        Node* reversed = ReverseList(head);\n        bool first = true;\n        for (Node* cur = reversed; cur != nullptr; cur = cur->next)\n        {\n            if (!first) { std::cout << \" \"; }\n            std::cout << cur->value;\n            first = false;\n        }\n        std::cout << \"\\n\";\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random-length lists of random values, including empty and single-node\nones.\"\"\"\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    n = rng.randint(0, 12)\n    values = [rng.randint(-50, 50) for _ in range(n)]\n    lines = [str(n)] + [str(v) for v in values]\n    return {\"name\": \"a %d-node list #%d\" % (n, index),\n            \"stdin\": \" \".join(lines) + \"\\n\"}\n"
+  },
+  "tests": [
+    {
+      "name": "an empty list reverses to itself",
+      "stdin": "0\n",
+      "expected_stdout": ""
+    },
+    {
+      "name": "a single-node list is unchanged",
+      "stdin": "1 42\n",
+      "expected_stdout": "42"
+    },
+    {
+      "name": "two nodes swap",
+      "stdin": "2 1 2\n",
+      "expected_stdout": "2 1"
+    },
+    {
+      "name": "several nodes reverse completely, not just the first link",
+      "stdin": "5 1 2 3 4 5\n",
+      "expected_stdout": "5 4 3 2 1",
+      "description": "A solution that forgets to save next before overwriting it typically loses everything after the first one or two nodes -- check the whole sequence, not just the front."
+    },
+    {
+      "name": "negative and repeated values reverse like any others",
+      "stdin": "6 -1 3 3 -7 0 3\n",
+      "expected_stdout": "3 0 -7 3 3 -1"
+    }
+  ],
+  "reference_solution_b64": "c3RydWN0IE5vZGUKewogICAgaW50IHZhbHVlOwogICAgTm9kZSogbmV4dDsKfTsKCk5vZGUqIFJldmVyc2VMaXN0KE5vZGUqIGhlYWQpCnsKICAgIE5vZGUqIHByZXYgPSBudWxscHRyOwogICAgTm9kZSogY3VycmVudCA9IGhlYWQ7CiAgICB3aGlsZSAoY3VycmVudCAhPSBudWxscHRyKQogICAgewogICAgICAgIE5vZGUqIG5leHQgPSBjdXJyZW50LT5uZXh0OwogICAgICAgIGN1cnJlbnQtPm5leHQgPSBwcmV2OwogICAgICAgIHByZXYgPSBjdXJyZW50OwogICAgICAgIGN1cnJlbnQgPSBuZXh0OwogICAgfQogICAgcmV0dXJuIHByZXY7Cn0K"
+}

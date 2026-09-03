@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Balanced Brackets With std::stack · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C++ · medium</p>
+  <h1>Balanced Brackets With std::stack</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Push opens, check-then-pop closes</h2>
+
+<pre><code>std::stack&lt;char&gt; open_brackets;
+for (char c : text) {
+    if (c is an opening bracket) {
+        open_brackets.push(c);
+    } else if (c is a closing bracket) {
+        // is open_brackets empty, or does .top() not match c?
+        // either one means "unbalanced" -- return false right here
+        // otherwise: read .top(), then .pop()
+    }
+    // anything else: ignore it entirely
+}
+return open_brackets.empty();</code></pre>
+
+<h2>Two calls, not one</h2>
+
+<div class="trap">
+<p><code>std::stack&lt;char&gt;::pop()</code> returns <code>void</code> -- it
+removes the top element but does not hand it back to you. If you want to
+know what was on top *and* remove it, that is <code>.top()</code>
+(read, without removing) followed by <code>.pop()</code> (remove, without
+reading) as two separate statements. Calling <code>.pop()</code> and
+trying to use its result will not compile.</p>
+</div>
+
+<p><code>.top()</code> and <code>.pop()</code> on an empty stack are
+undefined behaviour, not an exception -- check <code>.empty()</code>
+*before* calling either one, for a closing bracket that arrives with
+nothing open to match it.</p>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cpp_balanced_brackets.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,59 @@
+{
+  "id": "cpp_true_mod",
+  "title": "A Modulo That Is Never Negative",
+  "language": "cpp",
+  "difficulty": "fiendish",
+  "topics": [
+    "arithmetic",
+    "overflow"
+  ],
+  "timeout_seconds": 5,
+  "statement": "C++'s `%` truncates the same way `/` does, which means it can hand back a\n**negative** result for a negative dividend: `-7 % 3` is `-1` in C++, not\nthe `2` a mathematician (or a candidate expecting Python's `%`) would\nexpect. Fixing that up looks like a one-line adjustment -- until the exact\nsame pair of values that makes plain division crash turns out to poison\nthe fix-up too.\n\n## Your function\n\n```\nint TrueMod(int a, int b);\n```\n\n`b` is never `0`. Return the value `r` such that `0 <= r < |b|` and\n`a - r` is evenly divisible by `b` -- the \"always non-negative\" remainder,\nregardless of `a`'s or `b`'s own sign.\n\n## Watch out\n\n- **A negative result from `a % b` needs `|b|` added back, not `b`\n  itself.** `%`'s result already has magnitude less than `|b|`, so one\n  addition of `|b|` is always enough to land it in `[0, |b|)` -- the sign\n  of `b` is irrelevant to how much to add, only to whether adding is\n  needed at all (it is needed exactly when the raw result came back\n  negative).\n- **`a == INT_MIN` and `b == -1` is the one input where computing `a % b`\n  at all is already too late.** The C++ standard defines `%` in terms of\n  `/`, and `INT_MIN / -1` does not fit in a 32-bit `int` -- the same\n  overflow that makes plain division crash on this pair makes `%` crash\n  on it too, on real hardware, not just in principle. The only way to\n  compute `TrueMod(INT_MIN, -1)` safely is to never evaluate `a % b` for\n  it: recognise `b == -1` up front and return `0` directly, since\n  everything is evenly divisible by `1` (or `-1`) and the true remainder\n  is always `0` regardless of `a`.\n- **Every other combination of `a` and `b` is completely ordinary.**\n  `INT_MIN % 2`, for instance, is perfectly well-defined C++ (`INT_MIN` is\n  even) -- the crash is specific to a divisor of exactly `-1`, not to\n  `INT_MIN` on its own.\n",
+  "starter_code": "/// Return the value r with 0 <= r < |b| such that a - r is divisible by\n/// b. b is never 0.\nint TrueMod(int a, int b)\n{\n    // your code here\n    return 0;\n}\n",
+  "harness": "#include <iostream>\n\nint TrueMod(int a, int b);\n\nint main()\n{\n    int a, b;\n    while (std::cin >> a >> b)\n    {\n        std::cout << TrueMod(a, b) << \"\\n\";\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random (a, b) pairs, weighted towards negative a, negative b, and\nvalues right around the INT_MIN/-1 special case -- but never landing\nexactly on it, since that combination is exercised by the fixed tests.\"\"\"\n\nINT_MIN = -2147483648\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    rows = []\n    for _ in range(4):\n        b = rng.choice([-7, -5, -3, -2, 2, 3, 5, 7])\n        a = rng.randint(-1000, 1000)\n        rows.append(\"%d %d\" % (a, b))\n    return {\"name\": \"a mix of signs for a and b #%d\" % index,\n            \"stdin\": \"\\n\".join(rows) + \"\\n\"}\n"
+  },
+  "tests": [
+    {
+      "name": "positive a, positive b -- already non-negative",
+      "stdin": "7 3\n",
+      "expected_stdout": "1"
+    },
+    {
+      "name": "negative a, positive b -- C++'s raw % would be negative",
+      "stdin": "-7 3\n",
+      "expected_stdout": "2",
+      "description": "C++'s -7 % 3 is -1; the true remainder is 2."
+    },
+    {
+      "name": "positive a, negative b",
+      "stdin": "7 -3\n",
+      "expected_stdout": "1"
+    },
+    {
+      "name": "negative a, negative b",
+      "stdin": "-7 -3\n",
+      "expected_stdout": "2"
+    },
+    {
+      "name": "zero is its own remainder",
+      "stdin": "0 5\n",
+      "expected_stdout": "0"
+    },
+    {
+      "name": "INT_MIN with a divisor of -1 -- the crash case for a naive %",
+      "stdin": "-2147483648 -1\n-2147483647 -1\n",
+      "expected_stdout": "0\n0",
+      "description": "Everything is divisible by 1 (or -1), so the true remainder is always 0 -- but computing INT_MIN % -1 directly overflows and crashes before that answer can come out the normal way."
+    },
+    {
+      "name": "INT_MIN with an ordinary divisor is not special",
+      "stdin": "-2147483648 2\n",
+      "expected_stdout": "0",
+      "description": "The crash is specific to a divisor of exactly -1 -- INT_MIN itself is not the problem."
+    }
+  ],
+  "reference_solution_b64": "aW50IFRydWVNb2QoaW50IGEsIGludCBiKQp7CiAgICBpZiAoYiA9PSAtMSkKICAgIHsKICAgICAgICByZXR1cm4gMDsKICAgIH0KICAgIGludCBtYWduaXR1ZGUgPSBiIDwgMCA/IC1iIDogYjsKICAgIGludCByID0gYSAlIGI7CiAgICBpZiAociA8IDApCiAgICB7CiAgICAgICAgciArPSBtYWduaXR1ZGU7CiAgICB9CiAgICByZXR1cm4gcjsKfQo="
+}

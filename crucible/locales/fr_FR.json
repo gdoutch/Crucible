@@ -155,11 +155,37 @@
       "exit": {
         "access_violation": "violation d'accès (pointeur invalide / débordement de tampon)",
         "divide_by_zero": "division entière par zéro",
+        "integer_overflow": "débordement d'entier (INT_MIN divisé ou modulé par -1)",
         "stack_overflow": "débordement de pile (récursion incontrôlée ?)",
         "interrupted": "interrompu",
         "crashed": "plantage : {description}",
         "sigsegv": "SIGSEGV (erreur de segmentation)",
         "sigabrt": "SIGABRT (abandon)",
+        "sigfpe": "SIGFPE (erreur arithmétique, ex. : division par zéro)",
+        "killed_by_signal": "tué par le signal {signal}"
+      }
+    },
+    "cpp": {
+      "install_help_windows": "Aucun compilateur C++ trouvé.\n\nChoisissez l'option la plus simple pour vous :\n\n  1. w64devkit  -- une simple archive zip portable, sans installeur, ~80 Mo.\n     https://github.com/skeeto/w64devkit/releases\n     Décompressez-la, puis ajoutez son dossier bin\\ au PATH (ou relancez\n     simplement cette application -- C:\\w64devkit\\bin est détecté automatiquement).\n     Il inclut g++.\n\n  2. MSYS2      -- gestionnaire de paquets complet, la meilleure option à long terme.\n     https://www.msys2.org  puis :  pacman -S mingw-w64-ucrt-x86_64-gcc\n     (ce paquet inclut g++ en plus de gcc)\n\n  3. Visual Studio -- vous avez déjà VS installé, mais sans les outils C++.\n     Ouvrez le Visual Studio Installer, cliquez sur Modifier, et cochez\n     « Développement Desktop en C++ ».\n\nRevérifiez depuis le menu Outils une fois installé -- aucun redémarrage nécessaire.",
+      "install_help_posix": "Aucun compilateur C++ trouvé.\n\n  Debian/Ubuntu :  sudo apt install build-essential   (inclut g++)\n  Fedora :         sudo dnf install gcc-c++\n  macOS :          xcode-select --install\n\nRevérifiez depuis le menu Outils une fois installé.",
+      "summary_gnu": "C++ : {version}",
+      "detail_gnu": "Compilateur : {path}\nMode : ligne de commande compatible GCC",
+      "summary_msvc": "C++ : Microsoft Visual C++ (MSVC)",
+      "detail_msvc": "Compilateur : {path}\nEnvironnement initialisé à partir de vcvars64.bat",
+      "summary_msvc_current_env": "C++ : Microsoft Visual C++ (MSVC, depuis l'environnement courant)",
+      "detail_msvc_current_env": "Compilateur : {path}",
+      "summary_not_found": "C++ : aucun compilateur trouvé",
+      "detail_not_found": "Recherche effectuée dans le PATH et les emplacements d'installation habituels pour {compilers} et cl.exe.",
+      "compile_timeout": "Délai de compilation dépassé après 60 s.",
+      "exit": {
+        "access_violation": "violation d'accès (pointeur invalide / débordement de tampon)",
+        "divide_by_zero": "division entière par zéro",
+        "integer_overflow": "débordement d'entier (INT_MIN divisé ou modulé par -1)",
+        "stack_overflow": "débordement de pile (récursion incontrôlée ?)",
+        "interrupted": "interrompu",
+        "crashed": "plantage : {description}",
+        "sigsegv": "SIGSEGV (erreur de segmentation)",
+        "sigabrt": "SIGABRT (abandon) -- souvent une exception non capturée ou une assertion échouée",
         "sigfpe": "SIGFPE (erreur arithmétique, ex. : division par zéro)",
         "killed_by_signal": "tué par le signal {signal}"
       }

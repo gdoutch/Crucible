@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Reverse a Singly Linked List · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C++ · hard</p>
+  <h1>Reverse a Singly Linked List</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>struct Node
+{
+    int value;
+    Node* next;
+};
+
+Node* ReverseList(Node* head)
+{
+    Node* prev = nullptr;
+    Node* current = head;
+    while (current != nullptr)
+    {
+        Node* next = current-&gt;next;
+        current-&gt;next = prev;
+        prev = current;
+        current = next;
+    }
+    return prev;
+}</code></pre>
+
+<h2>Why <code>next</code> is saved before anything is reassigned</h2>
+
+<div class="trap">
+<p><code>Node* next = current-&gt;next;</code> is the line that makes the rest
+of the function safe: it captures a pointer to what comes after
+<code>current</code> in the *original* list, before the very next line
+overwrites <code>current-&gt;next</code> to point backwards instead. Swap
+the order -- rewire <code>current-&gt;next</code> to <code>prev</code>
+first, then try to read "what came next" -- and there is nothing left to
+read: <code>current-&gt;next</code> now holds <code>prev</code>, not the
+rest of the original list, and everything downstream of <code>current</code>
+becomes unreachable memory the moment that happens. This is easy to miss
+on a short list, because reversing two nodes only ever touches the one
+link between them -- there is nothing further downstream to lose. A list
+of four or five nodes makes the bug obvious: everything after the first
+one or two nodes is gone.</p>
+</div>
+
+<h2>Why <code>prev</code>, not <code>current</code>, is the return value</h2>
+
+<p>The loop's own condition, <code>current != nullptr</code>, is what ends
+it -- so by construction, <code>current</code> is always <code>nullptr</code>
+once the loop exits. <code>prev</code>, meanwhile, was advanced to
+<code>current</code>'s value on the *previous* iteration, which means it is
+sitting on the last real node the loop touched: the original list's tail,
+now the new head. Returning <code>current</code> instead would always
+return <code>nullptr</code>, regardless of how many nodes were actually
+reversed.</p>
+
+<h2>Why an empty list needs no special case</h2>
+
+<p><code>head == nullptr</code> means <code>current</code> starts as
+<code>nullptr</code>, so <code>while (current != nullptr)</code> is false
+immediately and the loop body never runs. The function falls straight
+through to <code>return prev;</code>, which is still <code>nullptr</code>
+-- the correct answer for reversing nothing.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(n)</strong> in the number of nodes -- each node's <code>next</code>
+pointer is rewritten exactly once, and no new nodes are allocated: the
+existing nodes are relinked in place, which is what "O(1) extra space"
+means here.</p>
+
+<footer>
+  <p><a href="cpp_reverse_linked_list.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

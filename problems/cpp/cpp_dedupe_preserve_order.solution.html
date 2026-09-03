@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Remove Duplicates, Keep First-Seen Order · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C++ · medium</p>
+  <h1>Remove Duplicates, Keep First-Seen Order</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>#include &lt;unordered_set&gt;
+#include &lt;vector&gt;
+
+std::vector&lt;int&gt; DedupePreserveOrder(const std::vector&lt;int&gt;&amp; values)
+{
+    std::vector&lt;int&gt; result;
+    std::unordered_set&lt;int&gt; seen;
+    for (int v : values)
+    {
+        if (seen.insert(v).second)
+        {
+            result.push_back(v);
+        }
+    }
+    return result;
+}</code></pre>
+
+<h2>Why `insert(v).second` replaces a separate membership check</h2>
+
+<div class="trap">
+<p><code>std::unordered_set::insert</code> already has to determine whether
+<code>v</code> is a new element in order to decide whether to actually add
+it -- that determination is exactly "have I seen this value before", so
+the return value hands it straight back rather than making the caller ask
+a second, redundant question with <code>.count(v)</code> or
+<code>.find(v)</code> first. Reading <code>.second</code> from the pair it
+returns costs nothing extra: the set has already done the lookup as part of
+doing the insert.</p>
+</div>
+
+<h2>Why the result is built from `values`, not from `seen`</h2>
+
+<p><code>std::unordered_set</code> makes no promises at all about what
+order it iterates its elements in -- that order is an implementation
+detail of its hash table, not something tied to when elements were
+inserted. The only place "the order values first appeared" is actually
+recorded is <code>values</code> itself, so the result vector has to be
+built by walking it directly, appending a value the one time
+<code>seen.insert</code> reports it as new and skipping it every later
+time it recurs.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(n)</strong> average in the length of `values` -- each element
+does one hash-set insert (O(1) average) and, for a first occurrence, one
+`push_back` (amortised O(1)).</p>
+
+<footer>
+  <p><a href="cpp_dedupe_preserve_order.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

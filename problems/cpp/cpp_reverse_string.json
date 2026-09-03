@@ -1,0 +1,52 @@
+{
+  "id": "cpp_reverse_string",
+  "title": "Reverse a String in Place",
+  "language": "cpp",
+  "difficulty": "easy",
+  "topics": [
+    "strings",
+    "references"
+  ],
+  "timeout_seconds": 5,
+  "statement": "C++ passes function arguments by value unless you say otherwise: a\n`std::string` parameter taken by value is a full copy, and anything the\nfunction does to its own copy is invisible to the caller the moment the\nfunction returns. A `std::string&` parameter -- a reference -- is the\nopposite: there is only ever one string, and the parameter is simply\nanother name for it, so a change made through the parameter *is* a change\nto the caller's own variable.\n\n## Your function\n\n```\nvoid ReverseInPlace(std::string& text);\n```\n\nReverse `text` in place, so that the caller's own string reads backwards\nafterwards. `text` may be empty. Return nothing -- the whole point is that\nthe caller sees the change through the reference, not through a return\nvalue.\n\n## Watch out\n\n- **A `std::string` parameter (no `&`) would compile and run without ever\n  changing anything the caller can see.** Reversing a *copy* is legal C++\n  and produces exactly the wrong observable result: the function appears\n  to do nothing at all, because \"nothing at all\" and \"reversed a copy that\n  was thrown away at the end of the function\" look identical from the\n  caller's side.\n- **An empty string, and a one-character string, need no swaps at all.** A\n  loop that walks two indices toward each other from both ends has to stop\n  before they cross or meet, or it will read (and swap) past the string's\n  own bounds.\n- `text[i]` gives you a `char&` -- a reference to the character itself, not\n  a copy of it -- so `std::swap(text[i], text[j])` really does exchange\n  the two characters in the caller's string, the same reference idea one\n  level down.\n",
+  "starter_code": "#include <string>\n\n/// Reverse text in place. text may be empty.\nvoid ReverseInPlace(std::string& text)\n{\n    // your code here\n}\n",
+  "harness": "#include <iostream>\n#include <string>\n\nvoid ReverseInPlace(std::string& text);\n\nint main()\n{\n    std::string line;\n    while (std::getline(std::cin, line))\n    {\n        ReverseInPlace(line);\n        std::cout << line << \"\\n\";\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random strings of varying length, including empty and single-character\nones.\"\"\"\n\nimport string\n\nALPHABET = string.ascii_letters + string.digits + \" .,!?-'\\\"\"\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    n = rng.randint(0, 40)\n    text = \"\".join(rng.choice(ALPHABET) for _ in range(n))\n    return {\"name\": \"a random %d-character string #%d\" % (n, index),\n            \"stdin\": text + \"\\n\"}\n"
+  },
+  "tests": [
+    {
+      "name": "an empty string reverses to itself",
+      "stdin": "\n",
+      "expected_stdout": ""
+    },
+    {
+      "name": "a single character is unchanged",
+      "stdin": "x\n",
+      "expected_stdout": "x"
+    },
+    {
+      "name": "an even-length string",
+      "stdin": "abcd\n",
+      "expected_stdout": "dcba"
+    },
+    {
+      "name": "an odd-length string",
+      "stdin": "abcde\n",
+      "expected_stdout": "edcba"
+    },
+    {
+      "name": "a palindrome reverses to itself",
+      "stdin": "level\n",
+      "expected_stdout": "level",
+      "description": "Checks the characters were actually moved, not just left alone -- a no-op function passes this by accident."
+    },
+    {
+      "name": "spaces and punctuation are ordinary characters",
+      "stdin": "ab cd!\n",
+      "expected_stdout": "!dc ba"
+    }
+  ],
+  "reference_solution_b64": "I2luY2x1ZGUgPHN0cmluZz4KI2luY2x1ZGUgPHV0aWxpdHk+Cgp2b2lkIFJldmVyc2VJblBsYWNlKHN0ZDo6c3RyaW5nJiB0ZXh0KQp7CiAgICBpbnQgbGVmdCA9IDA7CiAgICBpbnQgcmlnaHQgPSBzdGF0aWNfY2FzdDxpbnQ+KHRleHQuc2l6ZSgpKSAtIDE7CiAgICB3aGlsZSAobGVmdCA8IHJpZ2h0KQogICAgewogICAgICAgIHN0ZDo6c3dhcCh0ZXh0W2xlZnRdLCB0ZXh0W3JpZ2h0XSk7CiAgICAgICAgbGVmdCsrOwogICAgICAgIHJpZ2h0LS07CiAgICB9Cn0K"
+}

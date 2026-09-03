@@ -1,0 +1,53 @@
+{
+  "id": "cpp_lower_bound",
+  "title": "Lower Bound: the Leftmost Insertion Point",
+  "language": "cpp",
+  "difficulty": "hard",
+  "topics": [
+    "algorithms",
+    "binary search"
+  ],
+  "timeout_seconds": 5,
+  "statement": "The standard library's `std::lower_bound` finds the first position in a\nsorted range where a value could be inserted without breaking the\nordering -- the first index whose element is not less than the target.\nWhen the target appears more than once, that is specifically the\n**leftmost** occurrence, not just any occurrence: a binary search that\nstops the instant it sees a match can land anywhere inside a run of\nduplicates, and \"anywhere\" is not the same answer every time.\n\n## Your function\n\n```\nint LowerBound(const std::vector<int>& sortedValues, int target);\n```\n\n`sortedValues` is sorted ascending and **may contain duplicate values**.\nReturn the index of the first element that is `>= target`. If every\nelement is `< target`, return `sortedValues.size()` -- one past the end,\nthe position `target` would be inserted at to stay after everything\nsmaller.\n\n## Watch out\n\n- **A search that stops as soon as it finds an equal element does not\n  necessarily find the *leftmost* one.** With three `3`s in the array,\n  landing on the middle or the last `3` and returning immediately is\n  wrong -- the answer has to be the index of the *first* `3`, every time,\n  regardless of which one the search happens to compare against first.\n- **Narrow toward the answer by comparing `<`, never `==`.** The\n  standard technique keeps two bounds, `low` and `high`, where everything\n  before `low` is known `< target` and everything from `high` onward is\n  known `>= target`; each step either grows the first region or shrinks\n  the second, and the loop ends when they meet -- there is no separate\n  \"found it\" branch to short-circuit into, which is exactly what makes it\n  converge on the leftmost position instead of the first one it happens\n  to touch.\n- `low + (high - low) / 2` rather than `(low + high) / 2` for the\n  midpoint avoids a latent overflow on a large array -- costs nothing on\n  a small one, so there is no reason to write the version that has it.\n",
+  "starter_code": "#include <vector>\n\n/// sortedValues is ascending and may contain duplicates. Return the index\n/// of the first element >= target, or sortedValues.size() if none is.\nint LowerBound(const std::vector<int>& sortedValues, int target)\n{\n    // your code here\n    return 0;\n}\n",
+  "harness": "#include <iostream>\n#include <vector>\n\nint LowerBound(const std::vector<int>& sortedValues, int target);\n\nint main()\n{\n    int n, target;\n    while (std::cin >> n >> target)\n    {\n        std::vector<int> values(n);\n        for (int i = 0; i < n; i++)\n        {\n            std::cin >> values[i];\n        }\n        std::cout << LowerBound(values, target) << \"\\n\";\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random sorted arrays with duplicates allowed, and targets chosen both\nfrom inside the array (sometimes duplicated) and strictly outside it.\"\"\"\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    n = rng.randint(1, 20)\n    values = sorted(rng.randint(-20, 20) for _ in range(n))\n    lines = []\n    for _ in range(4):\n        if rng.random() < 0.6 and values:\n            target = rng.choice(values)\n        else:\n            target = rng.randint(-25, 25)\n        lines.append(\"%d %d\" % (n, target))\n        lines.append(\" \".join(map(str, values)))\n    return {\"name\": \"an array of %d elements with duplicates, mixed targets #%d\"\n                    % (n, index),\n            \"stdin\": \"\\n\".join(lines) + \"\\n\"}\n"
+  },
+  "tests": [
+    {
+      "name": "target present exactly once, in the middle",
+      "stdin": "6 7\n1 3 5 7 9 11\n",
+      "expected_stdout": "3"
+    },
+    {
+      "name": "target present three times -- must return the leftmost index",
+      "stdin": "7 3\n1 3 3 3 5 7 9\n",
+      "expected_stdout": "1",
+      "description": "3 occupies indices 1, 2 and 3 -- the answer is 1, not 2 or 3."
+    },
+    {
+      "name": "target absent, belongs strictly between two elements",
+      "stdin": "6 4\n1 3 5 7 9 11\n",
+      "expected_stdout": "2"
+    },
+    {
+      "name": "target smaller than every element",
+      "stdin": "3 -5\n1 3 5\n",
+      "expected_stdout": "0"
+    },
+    {
+      "name": "target larger than every element",
+      "stdin": "3 100\n1 3 5\n",
+      "expected_stdout": "3",
+      "description": "3 == sortedValues.size() -- one past the last valid index."
+    },
+    {
+      "name": "a single-element array, both a hit and a miss",
+      "stdin": "1 5\n5\n1 9\n5\n",
+      "expected_stdout": "0\n1"
+    }
+  ],
+  "reference_solution_b64": "I2luY2x1ZGUgPHZlY3Rvcj4KCmludCBMb3dlckJvdW5kKGNvbnN0IHN0ZDo6dmVjdG9yPGludD4mIHNvcnRlZFZhbHVlcywgaW50IHRhcmdldCkKewogICAgaW50IGxvdyA9IDA7CiAgICBpbnQgaGlnaCA9IHN0YXRpY19jYXN0PGludD4oc29ydGVkVmFsdWVzLnNpemUoKSk7CiAgICB3aGlsZSAobG93IDwgaGlnaCkKICAgIHsKICAgICAgICBpbnQgbWlkID0gbG93ICsgKGhpZ2ggLSBsb3cpIC8gMjsKICAgICAgICBpZiAoc29ydGVkVmFsdWVzW21pZF0gPCB0YXJnZXQpCiAgICAgICAgewogICAgICAgICAgICBsb3cgPSBtaWQgKyAxOwogICAgICAgIH0KICAgICAgICBlbHNlCiAgICAgICAgewogICAgICAgICAgICBoaWdoID0gbWlkOwogICAgICAgIH0KICAgIH0KICAgIHJldHVybiBsb3c7Cn0K"
+}

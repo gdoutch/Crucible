@@ -198,6 +198,28 @@ and `Generating Code...` are filtered out. Both exist so that a correct
 submission produces genuinely empty build output, rather than warnings about
 `scanf` that the candidate did not cause and cannot fix.
 
+## Installing a C++ compiler
+
+The app searches for `g++`, `clang++`, `c++` and `cl.exe` the same way it
+searches for a C compiler — and on most machines there is nothing to
+install: `g++`/`clang++` ship in the same package as `gcc`/`clang` (MSYS2,
+w64devkit, Debian/Ubuntu's `build-essential`, Xcode's command line tools),
+and MSVC's `cl.exe` already compiles both from the one install. Locating
+`cl.exe` and capturing its environment via `vcvars64.bat` is shared with the
+C toolchain entirely — there is one MSVC install and one captured
+environment per machine, not one per language.
+
+| Option | How |
+| --- | --- |
+| **w64devkit** | Same zip as the C compiler — it includes `g++`. |
+| **MSYS2** | `pacman -S mingw-w64-ucrt-x86_64-gcc` (this package includes `g++` too) |
+| **Visual Studio** | Same *Desktop development with C++* workload as the C compiler. |
+| **Linux** | `sudo apt install build-essential` (includes `g++`) — Fedora is the one common exception: `sudo dnf install gcc-c++` separately. |
+| **macOS** | `xcode-select --install` |
+
+Then *Tools → Re-check compilers*. Builds default to `-std=c++17` (or
+`/std:c++17` under MSVC, with `/EHsc` for standard exception handling).
+
 ## Installing the .NET SDK
 
 The app searches `PATH` and the usual install locations for `dotnet`. If it
@@ -434,9 +456,9 @@ the stylesheet does not load the pages are still ordinary readable HTML.
 
 ## What is in the box
 
-65 problems — 46 in C, 4 in Python, 15 in C#. Every one of them mixes
-hand-written edge cases with four randomised ones, and ships a hint and a
-worked solution.
+78 problems — 47 in C, 12 in C++, 4 in Python, 15 in C#. Every one of them
+mixes hand-written edge cases with four randomised ones, and ships a hint
+and a worked solution.
 
 The C set is deliberately weighted towards the things C makes you think about
 and other languages do not: what the pointer points at, who owns the memory,
@@ -446,7 +468,12 @@ where does trusting that abstraction stop being safe? A `struct` inside a
 `List<T>`, integer division that overflow-checks when nothing else does, an
 interface call that costs nothing to get right and everything to fake with a
 type switch -- see [C#: what the compiler will not catch for
-you](#c-what-the-compiler-will-not-catch-for-you) below.
+you](#c-what-the-compiler-will-not-catch-for-you) below. The C++ set sits
+between the two: reference parameters and `const&` where C uses raw
+pointers, but the same manual-memory-ownership questions C never lets you
+forget, plus a few entirely new to it (`operator+` has to be the exact
+overload a caller expects, `std::vector::erase` invalidates the iterator
+that produced it).
 
 Most problems start from an empty function. A few start from a *full* one that
 is already wrong — the editor opens on plausible code carrying one planted
@@ -467,6 +494,9 @@ with the `debugging` topic.
 | | C | Compute the Parity Bit | bitwise, embedded, error-detection |
 | | C | Slew-Rate Limit a Demand Signal | embedded, control, signal-processing |
 | | C | Check Whether a Sensor Reading Is In Range (MISRA Essential Types) | embedded, calibration, essential-types, misra |
+| | C++ | Reverse a String in Place | strings, references |
+| | C++ | Sum a Vector Without Overflowing | vectors, loops, overflow |
+| | C++ | Count Words With a String Stream | strings, streams |
 | | Python | Two Sum | dictionaries, arrays |
 | | C# | Count the Vowels | strings, loops |
 | | C# | Palindrome Check | strings, two pointers |
@@ -492,6 +522,9 @@ with the `debugging` topic.
 | | C | Classify a Diagnostic Fault Code (MISRA Switch Rules) | embedded, diagnostics, state, misra |
 | | C | Elapsed Ticks Since a Free-Running Counter (MISRA Unsigned Arithmetic) | embedded, timers, unsigned-arithmetic, misra |
 | | C | Fix the Sample Averager | debugging, code-review, pointers, arrays |
+| | C++ | Remove Duplicates, Keep First-Seen Order | vectors, unordered_set, loops |
+| | C++ | Word Frequency With operator[] | maps, strings, streams |
+| | C++ | Balanced Brackets With std::stack | stacks, strings |
 | | Python | Balanced Brackets | stacks, strings, parsing |
 | | Python | Run-Length Encoding | strings, iteration |
 | | C# | Group Anagrams | dictionaries, strings, linq |
@@ -505,6 +538,9 @@ with the `debugging` topic.
 | | C | Extract a Signed Sensor Reading | bitwise, embedded, sign-extension, twos-complement |
 | | C | Unpack a CAN Signal (Intel Byte Order) | embedded, can-bus, bitwise, sign-extension |
 | | C | Validate a CAN Message's Rolling Counter and Checksum | embedded, can-bus, functional-safety, state |
+| | C++ | Lower Bound: the Leftmost Insertion Point | algorithms, binary search |
+| | C++ | Reverse a Singly Linked List | linked lists, pointers |
+| | C++ | Sum Vectors With operator+ | operator overloading, structs |
 | | C# | Sliding Window Maximum | algorithms, linked lists, arrays |
 | | C# | Binary Search With an Insertion-Point Convention | algorithms, search, bitwise |
 | | C# | Interleave Two Sequences, Lazily | iterators, yield, linq |
@@ -513,6 +549,9 @@ with the `debugging` topic.
 | | C | Fixed-Capacity LRU Cache (No Dynamic Allocation) | data-structures, embedded, pointers, linked lists |
 | | C | Match a Simplified Regular Expression ('.' and '*') | algorithms, dynamic programming, strings, recursion |
 | | C | Decode a Multiplexed CAN Signal Group | embedded, can-bus, bitwise, sign-extension |
+| | C++ | Erase-While-Iterating, Correctly | vectors, iterators, algorithms |
+| | C++ | A Modulo That Is Never Negative | arithmetic, overflow |
+| | C++ | Deep-Copying a Struct That Owns a Pointer | pointers, structs, ownership |
 | | C# | Division With Two Distinct Failure Modes | arithmetic, enums, tuples, overflow |
 | | C# | Mutating Structs Inside a List | structs, value semantics, lists |
 
@@ -946,6 +985,17 @@ Python, `detect_toolchain` is a single well-known executable search with no
 environment-capture step, because the .NET SDK — unlike MSVC — needs nothing
 beyond its own install directory to run.
 
+`crucible/languages/cpp_lang.py` is C's near-twin: same GCC/Clang/MSVC
+family, same two-translation-units split, same `/D_CRT_SECURE_NO_WARNINGS`
+noise-filtering under MSVC — different enough only in which compiler names
+it searches for and which flags it passes (`-std=c++17`, `/EHsc` for MSVC's
+exception model) that the two do not just share code, they share a whole
+module: `crucible/languages/native_compiler.py` holds every piece of
+compiler-discovery and MSVC-environment-capture logic once, imported by
+both `c_lang.py` and `cpp_lang.py`, because there is exactly one MSVC
+toolchain and one captured environment per machine, not one per language
+that happens to use it.
+
 ## Internationalisation
 
 Every string the app or the CLI shows -- window titles, menu labels, dialog
@@ -1111,7 +1161,9 @@ crucible/
   languages/
     __init__.py        registry
     base.py            Language ABC, process runner, result types
+    native_compiler.py compiler discovery + MSVC capture, shared by c/cpp
     c_lang.py          gcc / clang / cc / MSVC, toolchain discovery
+    cpp_lang.py        g++ / clang++ / c++ / MSVC, C's near-twin
     python_lang.py     worked example of a second language
     csharp_lang.py     dotnet build, generated .csproj, native apphost
   ui/
@@ -1123,6 +1175,7 @@ crucible/
 problems/
   guides.css           shared by every guide page
   c/                   42 problems, each with .json + .hint.html
+  cpp/                 12 problems,            + .solution.html
   python/              3 problems,             + .solution.html
   csharp/              15 problems,            + .solution.html (+ fr_FR)
   uml/                 2 problems,             + .diagram.html

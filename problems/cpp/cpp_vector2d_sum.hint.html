@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Sum Vectors With operator+ · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C++ · hard</p>
+  <h1>Sum Vectors With operator+</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>It reads like an ordinary function, because it is one</h2>
+
+<pre><code>Vector2D operator+(const Vector2D&amp; a, const Vector2D&amp; b) {
+    return Vector2D{a.x + b.x, a.y + b.y};
+}</code></pre>
+
+<p>An operator overload is a function with an unusual name
+(<code>operator+</code>) and an unusual calling convention (<code>a +
+b</code> instead of <code>operator+(a, b)</code>, though both actually
+work) -- everything else about writing one is exactly like writing any
+other function that takes two <code>const Vector2D&amp;</code> and returns
+a new <code>Vector2D</code>.</p>
+
+<h2>The signature has to match exactly</h2>
+
+<div class="trap">
+<p>The problem asks for this specifically as a free function, matching the
+declaration <code>Vector2D operator+(const Vector2D&amp; a, const
+Vector2D&amp; b);</code> that the harness forward-declares and calls. A
+member-function overload (<code>Vector2D Vector2D::operator+(const
+Vector2D&amp; other) const</code>) also makes ordinary <code>a + b</code>
+expressions compile in code that has access to both the definition and
+the call site together -- but it is a *different* overload from the free
+function the harness expects to link against, and a build that produces
+one without the other fails at the link step, with no line of your own
+code to point at.</p>
+</div>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cpp_vector2d_sum.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

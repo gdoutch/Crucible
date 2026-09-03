@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Erase-While-Iterating, Correctly · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C++ · fiendish</p>
+  <h1>Erase-While-Iterating, Correctly</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>One call does the whole job</h2>
+
+<pre><code>values.erase(
+    std::remove_if(values.begin(), values.end(),
+                   [n](int v) { return v % n == 0; }),
+    values.end());</code></pre>
+
+<p><code>std::remove_if</code> walks the vector once, shuffles every
+element that should *survive* toward the front, in order, and returns an
+iterator marking where the leftovers begin. <code>erase</code> then drops
+everything from that iterator to the real end, in one operation.</p>
+
+<h2>The loop this is here to replace</h2>
+
+<div class="trap">
+<p>The version that looks natural to write by hand --</p>
+<pre><code>for (auto it = values.begin(); it != values.end(); ++it) {
+    if (*it % n == 0) {
+        values.erase(it);
+    }
+}</code></pre>
+<p>-- has a bug that does not announce itself: <code>values.erase(it)</code>
+already returns (and effectively leaves <code>it</code> sitting on) the
+element that slid into the removed one's old slot. The <code>for</code>
+loop's own <code>++it</code> then advances *again*, past that element,
+without ever checking it. Two multiples of <code>n</code> standing next to
+each other is exactly the shape that exposes this: the first is removed
+correctly, and the one immediately after it is skipped and survives.</p>
+</div>
+
+<p>If you want to fix the hand-written loop instead of reaching for
+<code>remove_if</code>, the trick is to only advance the iterator in the
+branch that does *not* erase, and to assign <code>erase</code>'s own
+return value back into <code>it</code> in the branch that does.</p>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cpp_erase_remove_multiples.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

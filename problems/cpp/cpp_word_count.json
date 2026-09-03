@@ -1,0 +1,52 @@
+{
+  "id": "cpp_word_count",
+  "title": "Count Words With a String Stream",
+  "language": "cpp",
+  "difficulty": "easy",
+  "topics": [
+    "strings",
+    "streams"
+  ],
+  "timeout_seconds": 5,
+  "statement": "`std::cin >> someString` already knows how to skip whitespace and stop at\nthe next run of it -- that is exactly what \"split on whitespace\" means,\nand `std::istringstream` gives you the same operator over a string you\nalready have in memory instead of over actual standard input.\n\n## Your function\n\n```\nint CountWords(const std::string& text);\n```\n\nReturn how many whitespace-separated words `text` contains. Words may be\nseparated by any run of spaces or tabs, of any length; leading and\ntrailing whitespace do not count as words. `text` may be empty.\n\n## Watch out\n\n- **Runs of whitespace, not single spaces, separate words.** `\"a   b\"`\n  (three spaces) has exactly two words, the same as `\"a b\"` -- counting\n  every space character, or every gap between characters, overcounts runs\n  of more than one.\n- **Leading and trailing whitespace contribute no extra words.**\n  `\"  hello  \"` has one word, not three; splitting naively on a single\n  space character and counting the resulting pieces (including empty ones\n  at the ends) gets this wrong.\n- **An `std::istringstream` fed by `>>` in a `while` loop does the whole\n  job correctly on its own** -- it already treats a run of whitespace as\n  one separator and produces nothing for leading or trailing whitespace,\n  which is exactly the specification above, not a coincidence.\n",
+  "starter_code": "#include <string>\n\n/// Count whitespace-separated words in text. text may be empty.\nint CountWords(const std::string& text)\n{\n    // your code here\n    return 0;\n}\n",
+  "harness": "#include <iostream>\n#include <string>\n\nint CountWords(const std::string& text);\n\nint main()\n{\n    std::string line;\n    while (std::getline(std::cin, line))\n    {\n        std::cout << CountWords(line) << \"\\n\";\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random word counts, with runs of whitespace of varying length between\nwords and sometimes around the edges.\"\"\"\n\n\nWORDS = [\"red\", \"blue\", \"north\", \"south\", \"up\", \"down\", \"cat\", \"dog\"]\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    n = rng.randint(0, 8)\n    words = [rng.choice(WORDS) for _ in range(n)]\n    gap = lambda: \" \" * rng.randint(1, 4)\n    text = gap() if rng.random() < 0.3 and words else \"\"\n    text += gap().join(words)\n    if words and rng.random() < 0.3:\n        text += gap()\n    return {\"name\": \"%d words, irregular spacing #%d\" % (n, index),\n            \"stdin\": text + \"\\n\"}\n"
+  },
+  "tests": [
+    {
+      "name": "an empty line has no words",
+      "stdin": "\n",
+      "expected_stdout": "0"
+    },
+    {
+      "name": "a single word",
+      "stdin": "hello\n",
+      "expected_stdout": "1"
+    },
+    {
+      "name": "words separated by single spaces",
+      "stdin": "the quick brown fox\n",
+      "expected_stdout": "4"
+    },
+    {
+      "name": "runs of multiple spaces between words",
+      "stdin": "a    b     c\n",
+      "expected_stdout": "3",
+      "description": "Three separators, each more than one space wide -- still three words, not more."
+    },
+    {
+      "name": "leading and trailing whitespace do not add words",
+      "stdin": "   padded on both sides   \n",
+      "expected_stdout": "4"
+    },
+    {
+      "name": "a line that is whitespace only has no words",
+      "stdin": "      \n",
+      "expected_stdout": "0"
+    }
+  ],
+  "reference_solution_b64": "I2luY2x1ZGUgPHNzdHJlYW0+CiNpbmNsdWRlIDxzdHJpbmc+CgppbnQgQ291bnRXb3Jkcyhjb25zdCBzdGQ6OnN0cmluZyYgdGV4dCkKewogICAgc3RkOjppc3RyaW5nc3RyZWFtIHN0cmVhbSh0ZXh0KTsKICAgIHN0ZDo6c3RyaW5nIHdvcmQ7CiAgICBpbnQgY291bnQgPSAwOwogICAgd2hpbGUgKHN0cmVhbSA+PiB3b3JkKQogICAgewogICAgICAgIGNvdW50Kys7CiAgICB9CiAgICByZXR1cm4gY291bnQ7Cn0K"
+}

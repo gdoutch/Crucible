@@ -1,20 +1,22 @@
-"""C language support.
+"""C++ language support.
 
 Submissions are compiled as a *separate translation unit* from the problem's
-harness:
+harness, the same split `c_lang` uses and for the same reason:
 
-    solution.c   <- exactly what the candidate typed, byte for byte
-    harness.c    <- problem-supplied main(); declares the prototype it needs
+    solution.cpp   <- exactly what the candidate typed, byte for byte
+    harness.cpp    <- problem-supplied main(); declares the prototype it needs
 
-Both are compiled and linked into one executable. Keeping them separate means
-compiler errors point at real line numbers in the editor, with no prelude
-offset to correct for, and it stops a candidate from accidentally (or
-deliberately) redefining the harness.
+Both are compiled and linked into one executable, so compiler diagnostics
+carry the real filename and line number the editor shows, and a candidate
+cannot accidentally (or deliberately) redefine the harness.
 
-Locating a compiler and, on Windows, capturing MSVC's environment is shared
-with `cpp_lang` -- see `native_compiler` -- since both languages are driven by
-the same GCC/Clang/MSVC family and there is exactly one such toolchain per
-machine, not one per language.
+Locating a compiler is shared with `c_lang` -- see `native_compiler` -- since
+both languages are driven by the same GCC/Clang/MSVC family, and a machine
+that can already build C can, in the overwhelming majority of cases, already
+build C++ too: `g++`/`clang++` ship alongside `gcc`/`clang` in every mainstream
+install (MSYS2, w64devkit, Debian/Ubuntu's `build-essential`, Xcode's command
+line tools), and MSVC's `cl.exe` compiles both from the one install. Fedora is
+the one common exception, where `gcc-c++` is a separate package from `gcc`.
 """
 
 from __future__ import annotations
@@ -35,27 +37,32 @@ _EXE = nc.EXE
 
 #: Compilers we know how to drive, in order of preference. GCC and Clang share
 #: a command line; MSVC gets its own.
-_GNU_LIKE = ("gcc", "clang", "cc")
+_GNU_LIKE = ("g++", "clang++", "c++")
 
 
 def _install_help() -> str:
-    return t("languages.c.install_help_windows" if _IS_WINDOWS
-             else "languages.c.install_help_posix")
+    return t("languages.cpp.install_help_windows" if _IS_WINDOWS
+             else "languages.cpp.install_help_posix")
 
 
-class CLanguage(Language):
-    id = "c"
-    display_name = "C"
-    solution_filename = "solution.c"
-    harness_filename = "harness.c"
+class CppLanguage(Language):
+    id = "cpp"
+    display_name = "C++"
+    solution_filename = "solution.cpp"
+    harness_filename = "harness.cpp"
     line_comment = "//"
     keywords = (
-        "auto", "break", "case", "char", "const", "continue", "default", "do",
-        "double", "else", "enum", "extern", "float", "for", "goto", "if",
-        "inline", "int", "long", "register", "restrict", "return", "short",
-        "signed", "sizeof", "static", "struct", "switch", "typedef", "union",
-        "unsigned", "void", "volatile", "while", "bool", "size_t", "NULL",
-        "true", "false",
+        "alignas", "alignof", "auto", "bool", "break", "case", "catch",
+        "char", "class", "const", "constexpr", "continue", "decltype",
+        "default", "delete", "do", "double", "else", "enum", "explicit",
+        "export", "extern", "false", "final", "float", "for", "friend",
+        "goto", "if", "inline", "int", "long", "mutable", "namespace",
+        "new", "noexcept", "nullptr", "operator", "override", "private",
+        "protected", "public", "register", "return", "short", "signed",
+        "sizeof", "static", "static_assert", "static_cast", "struct",
+        "switch", "template", "this", "throw", "true", "try", "typedef",
+        "typename", "union", "unsigned", "using", "virtual", "void",
+        "volatile", "while",
     )
 
     def __init__(self) -> None:
@@ -78,11 +85,12 @@ class CLanguage(Language):
                 version = nc.probe_version(path) or name
                 return ToolchainStatus(
                     available=True,
-                    summary=t("languages.c.summary_gnu", version=version),
-                    detail=t("languages.c.detail_gnu", path=path),
+                    summary=t("languages.cpp.summary_gnu", version=version),
+                    detail=t("languages.cpp.detail_gnu", path=path),
                 )
 
-        # MSVC, either already on PATH (dev prompt) or via vcvars.
+        # MSVC, either already on PATH (dev prompt) or via vcvars. The same
+        # cl.exe -- and the same captured environment -- that c_lang uses.
         cl_on_path = shutil.which("cl")
         env = nc.msvc_environment()
         if env:
@@ -91,21 +99,21 @@ class CLanguage(Language):
                 self._compiler, self._kind, self._env = cl, "msvc", env
                 return ToolchainStatus(
                     available=True,
-                    summary=t("languages.c.summary_msvc"),
-                    detail=t("languages.c.detail_msvc", path=cl),
+                    summary=t("languages.cpp.summary_msvc"),
+                    detail=t("languages.cpp.detail_msvc", path=cl),
                 )
         elif cl_on_path:
             self._compiler, self._kind = cl_on_path, "msvc"
             return ToolchainStatus(
                 available=True,
-                summary=t("languages.c.summary_msvc_current_env"),
-                detail=t("languages.c.detail_msvc_current_env", path=cl_on_path),
+                summary=t("languages.cpp.summary_msvc_current_env"),
+                detail=t("languages.cpp.detail_msvc_current_env", path=cl_on_path),
             )
 
         return ToolchainStatus(
             available=False,
-            summary=t("languages.c.summary_not_found"),
-            detail=t("languages.c.detail_not_found",
+            summary=t("languages.cpp.summary_not_found"),
+            detail=t("languages.cpp.detail_not_found",
                     compilers=", ".join(_GNU_LIKE)),
             remedy=_install_help(),
         )
@@ -122,26 +130,27 @@ class CLanguage(Language):
         exe = workdir / ("prog" + _EXE)
 
         if self._kind == "msvc":
-            # /Z7 rather than /Zi: debug info goes into the .obj files, so no
-            # PDB is written and the two translation units cannot contend over
-            # one. Object files default to the cwd, which is already workdir --
-            # passing /Fo with a relative name would point at a subdirectory
-            # that does not exist.
+            # /TP forces C++ mode -- unlike gcc/clang, cl.exe picks C vs C++ by
+            # file extension, and picking it explicitly means a `.cpp` file
+            # named oddly (there is none here, but the flag costs nothing)
+            # could never be silently compiled as C. /EHsc turns on standard
+            # C++ exception handling; without it, a `try`/`catch` -- or even
+            # just a `std::vector` that might throw `bad_alloc` -- compiles
+            # with a warning and unwinds incorrectly. /Z7 rather than /Zi:
+            # debug info goes into the .obj files, so no PDB is written and
+            # the two translation units cannot contend over one.
             command = [
-                self._compiler, "/nologo", "/W3", "/TC", "/Od", "/Z7",
-                # The harness uses scanf/fgets, which MSVC flags as "unsafe" in
-                # favour of its non-portable _s variants. Without this every
-                # correct submission would come back with warnings the
-                # candidate did not cause and cannot fix.
+                self._compiler, "/nologo", "/W3", "/TP", "/EHsc",
+                "/std:c++17", "/Od", "/Z7",
                 "/D_CRT_SECURE_NO_WARNINGS",
                 f"/Fe:{exe.name}",
                 self.solution_filename, self.harness_filename,
             ]
         else:
             command = [
-                self._compiler, "-std=c11", "-O0", "-g", "-Wall", "-Wextra",
+                self._compiler, "-std=c++17", "-O0", "-g", "-Wall", "-Wextra",
                 self.solution_filename, self.harness_filename,
-                "-o", exe.name, "-lm",
+                "-o", exe.name,
             ]
 
         started = time.perf_counter()
@@ -171,7 +180,7 @@ class CLanguage(Language):
         output = self.clean_diagnostics(raw)
         ok = result.exit_code == 0 and exe.is_file()
         if result.timed_out:
-            ok, output = False, t("languages.c.compile_timeout")
+            ok, output = False, t("languages.cpp.compile_timeout")
         return BuildResult(
             ok=ok,
             output=output.strip(),
@@ -197,8 +206,8 @@ class CLanguage(Language):
     # -- diagnostics -------------------------------------------------------
 
     def clean_diagnostics(self, text: str) -> str:
-        """Collapse `C:\\...\\temp\\crucible_x\\solution.c:4:9: error:` down to
-        `solution.c:4:9: error:`.
+        """Collapse `C:\\...\\temp\\crucible_x\\solution.cpp:4:9: error:` down
+        to `solution.cpp:4:9: error:`.
 
         Only the directory part of a path token is removed, so leading prose
         such as "In file included from " survives untouched.
@@ -219,7 +228,7 @@ class CLanguage(Language):
                          if line.strip() not in noise)
 
     def describe_exit(self, exit_code: int | None) -> str:
-        """Turn a raw exit status into something a C learner can act on."""
+        """Turn a raw exit status into something a C++ learner can act on."""
         if exit_code is None:
             return ""
 
@@ -228,25 +237,25 @@ class CLanguage(Language):
         # arrived signed would otherwise be read as a (nonsensical) signal.
         if _IS_WINDOWS:
             status = {
-                0xC0000005: t("languages.c.exit.access_violation"),
-                0xC0000094: t("languages.c.exit.divide_by_zero"),
+                0xC0000005: t("languages.cpp.exit.access_violation"),
+                0xC0000094: t("languages.cpp.exit.divide_by_zero"),
                 # INT_MIN / -1 (or INT_MIN % -1): the mathematically correct
                 # result does not fit in a 32-bit int, and unlike +, - and *
                 # this is not silently wrapped -- the division instruction
                 # itself faults.
-                0xC0000095: t("languages.c.exit.integer_overflow"),
-                0xC00000FD: t("languages.c.exit.stack_overflow"),
-                0xC000013A: t("languages.c.exit.interrupted"),
+                0xC0000095: t("languages.cpp.exit.integer_overflow"),
+                0xC00000FD: t("languages.cpp.exit.stack_overflow"),
+                0xC000013A: t("languages.cpp.exit.interrupted"),
             }
             described = status.get(exit_code & 0xFFFFFFFF)
-            return (t("languages.c.exit.crashed", description=described) if described
+            return (t("languages.cpp.exit.crashed", description=described) if described
                     else t("languages.common.exited_with_status", code=exit_code))
 
-        signals = {-11: t("languages.c.exit.sigsegv"),
-                   -6: t("languages.c.exit.sigabrt"),
-                   -8: t("languages.c.exit.sigfpe")}
+        signals = {-11: t("languages.cpp.exit.sigsegv"),
+                   -6: t("languages.cpp.exit.sigabrt"),
+                   -8: t("languages.cpp.exit.sigfpe")}
         if exit_code in signals:
             return signals[exit_code]
         if exit_code < 0:
-            return t("languages.c.exit.killed_by_signal", signal=-exit_code)
+            return t("languages.cpp.exit.killed_by_signal", signal=-exit_code)
         return t("languages.common.exited_with_status", code=exit_code)

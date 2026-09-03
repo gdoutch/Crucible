@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Count Words With a String Stream · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C++ · easy</p>
+  <h1>Count Words With a String Stream</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Let the stream do the splitting</h2>
+
+<pre><code>std::istringstream stream(text);
+std::string word;
+int count = 0;
+while (stream &gt;&gt; word) {
+    count++;
+}
+return count;</code></pre>
+
+<p><code>std::istringstream</code> wraps a string in the same interface
+<code>std::cin</code> has -- and <code>&gt;&gt;</code> into a
+<code>std::string</code> already means "skip any leading whitespace, then
+read up to the next run of whitespace or the end of input". That is
+exactly the definition of a word this exercise is using.</p>
+
+<h2>What not to reach for</h2>
+
+<div class="trap">
+<p>Splitting on a single literal space character (say, walking the string
+by hand and cutting at every <code>' '</code>) has to separately handle
+runs of more than one space, and separately handle leading or trailing
+space producing empty "words" at the ends -- three things to get right
+instead of one. <code>&gt;&gt;</code> already treats a run of whitespace as
+a single separator and produces nothing at all for leading or trailing
+whitespace, because that is what extracting a whitespace-delimited token
+means by definition.</p>
+</div>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cpp_word_count.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

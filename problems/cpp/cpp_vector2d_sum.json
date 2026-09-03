@@ -1,0 +1,47 @@
+{
+  "id": "cpp_vector2d_sum",
+  "title": "Sum Vectors With operator+",
+  "language": "cpp",
+  "difficulty": "hard",
+  "topics": [
+    "operator overloading",
+    "structs"
+  ],
+  "timeout_seconds": 5,
+  "statement": "C++ lets a plain struct behave like a built-in numeric type for the\noperators that make sense on it: define `operator+` for `Vector2D`, and\n`a + b` on two `Vector2D`s becomes a normal, readable expression instead\nof a named function call like `Add(a, b)`. The compiler does not know\nwhat \"add two vectors\" should mean on its own -- that is exactly what the\noverload supplies.\n\n## The type\n\n```\nstruct Vector2D\n{\n    double x;\n    double y;\n};\n```\n\n## Your function\n\nImplement this exact free-function overload:\n\n```\nVector2D operator+(const Vector2D& a, const Vector2D& b);\n```\n\nReturn a new `Vector2D` whose `x` is `a.x + b.x` and whose `y` is\n`a.y + b.y`. Neither `a` nor `b` is modified.\n\n## Watch out\n\n- **It has to be this exact free-function signature.** `operator+`\n  written as a *member* function (`Vector2D Vector2D::operator+(const\n  Vector2D& other) const`) also makes `a + b` compile, but it defines a\n  different overload than the one this problem's harness declares and\n  calls -- the harness's own declaration of the free function would then\n  have nothing matching it to link against, and the build fails at the\n  link step with no error pointing at a line of your code.\n- **`const Vector2D&` parameters, not `Vector2D` by value.** Either\n  compiles and produces the right answer, but taking a 16-byte struct by\n  value copies it twice for no reason on every call -- the same\n  const-reference habit that matters for a `std::vector` matters here too,\n  just for a smaller object.\n- **The addition is component-wise, not any other combination.** `x` adds\n  to `x`, `y` adds to `y` -- there is no meaningful \"cross\" addition for a\n  plain sum, and mixing the components up produces a value that compiles\n  and looks plausible without being the vector sum at all.\n",
+  "starter_code": "struct Vector2D\n{\n    double x;\n    double y;\n};\n\n/// Component-wise sum of two 2D vectors.\nVector2D operator+(const Vector2D& a, const Vector2D& b)\n{\n    // your code here\n    return Vector2D{0, 0};\n}\n",
+  "harness": "#include <iomanip>\n#include <iostream>\n\nstruct Vector2D\n{\n    double x;\n    double y;\n};\n\nVector2D operator+(const Vector2D& a, const Vector2D& b);\n\nint main()\n{\n    int n;\n    while (std::cin >> n)\n    {\n        Vector2D total{0, 0};\n        for (int i = 0; i < n; i++)\n        {\n            Vector2D v;\n            std::cin >> v.x >> v.y;\n            total = total + v;\n        }\n        std::cout << std::fixed << std::setprecision(2)\n                  << total.x << \" \" << total.y << \"\\n\";\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random lists of 2D vectors with two-decimal-place components, including\nnegatives and an empty list.\"\"\"\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    n = rng.randint(0, 8)\n    vectors = [(round(rng.uniform(-20, 20), 2), round(rng.uniform(-20, 20), 2))\n               for _ in range(n)]\n    lines = [str(n)] + [\"%.2f %.2f\" % v for v in vectors]\n    return {\"name\": \"%d random 2D vectors #%d\" % (n, index),\n            \"stdin\": \" \".join(lines) + \"\\n\"}\n"
+  },
+  "tests": [
+    {
+      "name": "no vectors sums to the zero vector",
+      "stdin": "0\n",
+      "expected_stdout": "0.00 0.00"
+    },
+    {
+      "name": "a single vector",
+      "stdin": "1 2.25 -3.75\n",
+      "expected_stdout": "2.25 -3.75"
+    },
+    {
+      "name": "several vectors, positive and negative components",
+      "stdin": "3 1.0 2.0 3.0 -1.0 -0.5 0.5\n",
+      "expected_stdout": "3.50 1.50"
+    },
+    {
+      "name": "components are not swapped or cross-added",
+      "stdin": "1 5.00 1.00\n",
+      "expected_stdout": "5.00 1.00",
+      "description": "A sum that accidentally mixes x and y would still print two numbers -- just the wrong ones, or the right ones in the wrong slot."
+    },
+    {
+      "name": "many small vectors accumulate correctly",
+      "stdin": "2 1.1 2.2 2.2 1.1\n",
+      "expected_stdout": "3.30 3.30"
+    }
+  ],
+  "reference_solution_b64": "c3RydWN0IFZlY3RvcjJECnsKICAgIGRvdWJsZSB4OwogICAgZG91YmxlIHk7Cn07CgpWZWN0b3IyRCBvcGVyYXRvcisoY29uc3QgVmVjdG9yMkQmIGEsIGNvbnN0IFZlY3RvcjJEJiBiKQp7CiAgICByZXR1cm4gVmVjdG9yMkR7YS54ICsgYi54LCBhLnkgKyBiLnl9Owp9Cg=="
+}

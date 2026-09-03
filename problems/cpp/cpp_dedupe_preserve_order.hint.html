@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Remove Duplicates, Keep First-Seen Order · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C++ · medium</p>
+  <h1>Remove Duplicates, Keep First-Seen Order</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>One set, one pass, one append</h2>
+
+<pre><code>std::vector&lt;int&gt; result;
+std::unordered_set&lt;int&gt; seen;
+for (int v : values) {
+    if (seen.insert(v).second) {
+        result.push_back(v);
+    }
+}
+return result;</code></pre>
+
+<h2>One call answers two questions</h2>
+
+<div class="trap">
+<p><code>seen.insert(v)</code> returns a <code>std::pair&lt;iterator,
+bool&gt;</code>, and the <code>.second</code> is <code>true</code> exactly
+when <code>v</code> was not already in the set -- the insert happens
+either way, so by the time you read <code>.second</code> the value is
+already recorded for next time. There is no need for a separate
+<code>seen.count(v)</code> check before the insert: that would be asking
+the same question twice, once explicitly and once as a side effect of
+inserting.</p>
+</div>
+
+<p>Do not sort <code>values</code>, and do not iterate
+<code>seen</code> itself to build the answer -- an
+<code>unordered_set</code>'s own iteration order has nothing to do with
+insertion order. The output has to be built by walking <code>values</code>,
+which is the only place the "first appeared" order actually lives.</p>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cpp_dedupe_preserve_order.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Reverse a String in Place · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C++ · easy</p>
+  <h1>Reverse a String in Place</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Two indices, walking inward</h2>
+
+<pre><code>int left = 0;
+int right = static_cast&lt;int&gt;(text.size()) - 1;
+while (left &lt; right) {
+    // swap text[left] and text[right]
+    left++;
+    right--;
+}</code></pre>
+
+<p>Nothing needs to be allocated: every character already lives inside
+<code>text</code>, and reversing it is just a matter of exchanging pairs of
+characters from the outside in.</p>
+
+<h2>The signature is the whole point</h2>
+
+<div class="trap">
+<p>Look closely at the parameter: <code>std::string&amp;</code>, not
+<code>std::string</code>. Drop the <code>&amp;</code> and the function still
+compiles, still runs, and still appears to "work" when you test it by
+printing something inside the function -- it is only from the *caller's*
+side that the bug shows up, because the caller's own string was never
+touched. If your function signature doesn't match the one given in the
+starter code exactly, that is the first thing to check.</p>
+</div>
+
+<p><code>std::swap(text[left], text[right])</code> exchanges the two
+characters directly through the reference -- there is no need to read them
+into temporaries yourself first.</p>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cpp_reverse_string.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

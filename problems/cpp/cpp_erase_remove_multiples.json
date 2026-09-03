@@ -1,0 +1,53 @@
+{
+  "id": "cpp_erase_remove_multiples",
+  "title": "Erase-While-Iterating, Correctly",
+  "language": "cpp",
+  "difficulty": "fiendish",
+  "topics": [
+    "vectors",
+    "iterators",
+    "algorithms"
+  ],
+  "timeout_seconds": 5,
+  "statement": "`std::vector<int>::erase(it)` removes the element `it` points to and\nreturns an iterator to whatever now sits in its place -- the element that\nused to come *after* it. That return value matters more than it looks\nlike it should: a hand-written loop that calls `erase` and then blindly\nadvances its own iterator afterwards skips the element that just slid\ninto the gap, silently, with no warning and no crash.\n\n## Your function\n\n```\nvoid RemoveMultiplesOf(std::vector<int>& values, int n);\n```\n\n`n` is always at least `1`. **Mutate `values` in place**, removing every\nelement that is a multiple of `n` (including `0`, which is a multiple of\neverything), and keeping the relative order of everything that survives.\n`values` may be empty.\n\n## Watch out\n\n- **A loop shaped like `for (auto it = values.begin(); it !=\n  values.end(); ++it) { if (cond) values.erase(it); }` skips the element\n  right after every one it removes.** `erase(it)` already advances past\n  the removed element, to the one that now occupies its old position --\n  the loop's own `++it` then moves *past that one too*, and it is never\n  checked. Two adjacent multiples of `n` are the case this shows up on:\n  the first is removed correctly, and the second, right behind it, is\n  skipped and survives even though it should not.\n- **The standard fix is the erase-remove idiom**: `std::remove_if`\n  rearranges the surviving elements to the front of the vector (in one\n  linear pass) and returns an iterator to where the leftovers begin; a\n  single call to `values.erase(...)` with that iterator and `values.end()`\n  then drops them all in one O(n) operation, no per-element iterator\n  bookkeeping required.\n- **`0 % n` is always `0`.** A `values` containing `0` should have every\n  `0` removed regardless of what `n` is -- there is no need, and no\n  correct reason, to special-case it.\n",
+  "starter_code": "#include <vector>\n\n/// Remove every element of values that is a multiple of n (n >= 1),\n/// mutating values in place and keeping the relative order of survivors.\nvoid RemoveMultiplesOf(std::vector<int>& values, int n)\n{\n    // your code here\n}\n",
+  "harness": "#include <iostream>\n#include <vector>\n\nvoid RemoveMultiplesOf(std::vector<int>& values, int n);\n\nint main()\n{\n    int count, n;\n    while (std::cin >> count >> n)\n    {\n        std::vector<int> values(count);\n        for (int i = 0; i < count; i++)\n        {\n            std::cin >> values[i];\n        }\n        RemoveMultiplesOf(values, n);\n        for (size_t i = 0; i < values.size(); i++)\n        {\n            std::cout << values[i] << (i + 1 < values.size() ? \" \" : \"\");\n        }\n        std::cout << \"\\n\";\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random arrays and small divisors, weighted so adjacent multiples of n --\nthe case a broken erase-in-a-loop skips -- show up often.\"\"\"\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    n = rng.randint(2, 5)\n    length = rng.randint(0, 15)\n    values = []\n    for _ in range(length):\n        if rng.random() < 0.5:\n            values.append(rng.randint(-10, 10) * n)  # a multiple of n\n        else:\n            values.append(rng.randint(-10, 10) * n + rng.randint(1, n - 1))\n    lines = [\"%d %d\" % (len(values), n)] + [str(v) for v in values]\n    return {\"name\": \"%d values, removing multiples of %d #%d\"\n                    % (len(values), n, index),\n            \"stdin\": \" \".join(lines) + \"\\n\"}\n"
+  },
+  "tests": [
+    {
+      "name": "an empty vector stays empty",
+      "stdin": "0 3\n",
+      "expected_stdout": ""
+    },
+    {
+      "name": "no multiples present -- nothing is removed",
+      "stdin": "4 2\n1 3 5 7\n",
+      "expected_stdout": "1 3 5 7"
+    },
+    {
+      "name": "every element is a multiple -- the result is empty",
+      "stdin": "4 5\n5 10 15 20\n",
+      "expected_stdout": ""
+    },
+    {
+      "name": "two adjacent multiples -- the classic skip-after-erase bug",
+      "stdin": "6 2\n2 4 6 3 8 5\n",
+      "expected_stdout": "3 5",
+      "description": "2, 4, 6 and 8 are all multiples of 2. A loop that blindly advances its iterator after erase() typically keeps 4 by accident -- check the exact survivors, not just the count."
+    },
+    {
+      "name": "zero is a multiple of everything",
+      "stdin": "5 4\n0 1 4 0 9\n",
+      "expected_stdout": "1 9"
+    },
+    {
+      "name": "n of 1 removes every element",
+      "stdin": "3 1\n7 -2 0\n",
+      "expected_stdout": ""
+    }
+  ],
+  "reference_solution_b64": "I2luY2x1ZGUgPGFsZ29yaXRobT4KI2luY2x1ZGUgPHZlY3Rvcj4KCnZvaWQgUmVtb3ZlTXVsdGlwbGVzT2Yoc3RkOjp2ZWN0b3I8aW50PiYgdmFsdWVzLCBpbnQgbikKewogICAgdmFsdWVzLmVyYXNlKAogICAgICAgIHN0ZDo6cmVtb3ZlX2lmKHZhbHVlcy5iZWdpbigpLCB2YWx1ZXMuZW5kKCksCiAgICAgICAgICAgICAgICAgICAgICAgW25dKGludCB2KSB7IHJldHVybiB2ICUgbiA9PSAwOyB9KSwKICAgICAgICB2YWx1ZXMuZW5kKCkpOwp9Cg=="
+}

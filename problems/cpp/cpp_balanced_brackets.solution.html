@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Balanced Brackets With std::stack · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C++ · medium</p>
+  <h1>Balanced Brackets With std::stack</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>#include &lt;stack&gt;
+#include &lt;string&gt;
+
+bool IsBalanced(const std::string&amp; text)
+{
+    std::stack&lt;char&gt; open_brackets;
+    for (char c : text)
+    {
+        if (c == '(' || c == '[' || c == '{')
+        {
+            open_brackets.push(c);
+        }
+        else if (c == ')' || c == ']' || c == '}')
+        {
+            if (open_brackets.empty())
+            {
+                return false;
+            }
+            char top = open_brackets.top();
+            open_brackets.pop();
+            if ((c == ')' &amp;&amp; top != '(') ||
+                (c == ']' &amp;&amp; top != '[') ||
+                (c == '}' &amp;&amp; top != '{'))
+            {
+                return false;
+            }
+        }
+    }
+    return open_brackets.empty();
+}</code></pre>
+
+<h2>Why `.top()` runs before `.pop()`, as two statements</h2>
+
+<div class="trap">
+<p>`std::stack` mirrors the container it wraps (`std::deque` by default),
+and its removal operation follows the same convention every standard
+container's does: `pop_back`-style operations return nothing, because
+handing back a copy of the removed element is not always cheap or even
+meaningful for every element type the container might hold. Reading the
+top before popping it is unavoidably two calls here -- `top()` to see
+what is about to be removed, `pop()` to actually remove it -- rather than
+the single "pop and tell me what it was" call some other languages'
+stack types provide.</p>
+</div>
+
+<h2>Why the empty check comes before either call</h2>
+
+<p>Calling `.top()` or `.pop()` on an empty `std::stack` is undefined
+behaviour, not a thrown exception -- there is no guaranteed error to catch
+after the fact, only a guarantee that something has already gone wrong
+once it happens. `open_brackets.empty()` has to be checked *before*
+either call runs, for exactly the input this guards against: a closing
+bracket arriving with nothing open to match it, such as `text` starting
+with `)`.</p>
+
+<h2>Why the final check is on the stack, not on anything seen while scanning</h2>
+
+<p>`"(()"` never encounters a closing bracket that disagrees with what is
+open -- there simply are not enough closing brackets to reach the point of
+disagreement. Nothing about scanning left to right ever notices that; the
+only place it shows up is that the stack still has an unclosed `'('` on it
+once `text` runs out. That is exactly what
+`return open_brackets.empty();` is checking: not "did I ever see a
+mismatch", but "is there anything still waiting to be closed".</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(n)</strong> in the length of `text` -- each character is
+looked at once, and each bracket does at most one push or one
+top-then-pop.</p>
+
+<footer>
+  <p><a href="cpp_balanced_brackets.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

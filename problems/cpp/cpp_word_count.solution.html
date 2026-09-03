@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Count Words With a String Stream · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C++ · easy</p>
+  <h1>Count Words With a String Stream</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>#include &lt;sstream&gt;
+#include &lt;string&gt;
+
+int CountWords(const std::string&amp; text)
+{
+    std::istringstream stream(text);
+    std::string word;
+    int count = 0;
+    while (stream &gt;&gt; word)
+    {
+        count++;
+    }
+    return count;
+}</code></pre>
+
+<h2>Why this needs no special handling for whitespace runs or edges</h2>
+
+<div class="trap">
+<p><code>stream &gt;&gt; word</code> is defined, by the standard library's own
+rules for extracting a whitespace-delimited token, to first skip any
+whitespace, then read characters up to the next whitespace character (or
+the end of the stream). Both halves of that definition do the work a
+hand-rolled splitter would otherwise need explicit code for: skipping first
+means leading whitespace never produces an empty leading token, and reading
+"up to the next whitespace" rather than "up to the next single space"
+means a run of several spaces is one separator, not several. The
+expression <code>while (stream &gt;&gt; word)</code> also does its own loop
+termination correctly: the extraction fails (and the <code>while</code>
+stops) exactly when there is nothing left to read, including for a `text`
+that is empty or entirely whitespace.</p>
+</div>
+
+<h2>Why an `istringstream`, not `std::cin`</h2>
+
+<p>The function receives `text` as an in-memory string, not as something
+already sitting on standard input -- `std::istringstream` gives that string
+the exact same extraction interface `std::cin` has, without needing the
+data to actually come from a real input stream. The harness that calls
+this function reads the *line* from `std::cin` itself; everything after
+that point works on the string in memory.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(n)</strong> in the length of `text` -- the stream visits each
+character once while scanning for whitespace boundaries, and each word is
+copied into `word` once, which is discarded and refilled every iteration.</p>
+
+<footer>
+  <p><a href="cpp_word_count.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,48 @@
+{
+  "id": "cpp_vector_sum",
+  "title": "Sum a Vector Without Overflowing",
+  "language": "cpp",
+  "difficulty": "easy",
+  "topics": [
+    "vectors",
+    "loops",
+    "overflow"
+  ],
+  "timeout_seconds": 5,
+  "statement": "`std::vector<int>` is the workhorse container for \"a resizable list of\nnumbers\" in C++, and passing one to a function almost always means passing\nit `const&` -- a read-only reference -- rather than by value: taking it by\nvalue would copy every element just to read them, for no benefit, every\nsingle time the function is called.\n\n## Your function\n\n```\nlong long SumVector(const std::vector<int>& values);\n```\n\nReturn the sum of every element of `values`. `values` may be empty, in\nwhich case the sum is `0`.\n\n## Watch out\n\n- **The return type is `long long`, not `int`.** `values` can hold enough\n  large `int` elements that their true sum does not fit in 32 bits, even\n  though every individual element does. Accumulate into the `long long`\n  the return type already commits you to from the very first addition --\n  not into an `int` total you only widen at the end, by which point an\n  overflow has already happened and wrapped to a nonsense negative number.\n- **`const&` means you cannot modify `values`.** The compiler enforces\n  this -- assigning to `values[i]` or calling a mutating method will not\n  compile -- which is the point: this function only ever needs to read the\n  vector, and the signature says so.\n- An empty vector's sum is `0`, not an error and not a value that needs a\n  special check: a loop that simply never executes its body already\n  produces the right answer.\n",
+  "starter_code": "#include <vector>\n\n/// Sum every element of values, which may be empty.\nlong long SumVector(const std::vector<int>& values)\n{\n    // your code here\n    return 0;\n}\n",
+  "harness": "#include <iostream>\n#include <vector>\n\nlong long SumVector(const std::vector<int>& values);\n\nint main()\n{\n    int n;\n    while (std::cin >> n)\n    {\n        std::vector<int> values(n);\n        for (int i = 0; i < n; i++)\n        {\n            std::cin >> values[i];\n        }\n        std::cout << SumVector(values) << \"\\n\";\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random arrays, including one deliberately built to overflow a 32-bit\naccumulator but not a 64-bit one.\"\"\"\n\n\ndef generate(rng, count):\n    builders = (_random, _random, _random, _overflow)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, values, description=\"\"):\n    lines = [str(len(values))] + [str(v) for v in values]\n    return {\"name\": name, \"stdin\": \" \".join(lines) + \"\\n\",\n            \"description\": description}\n\n\ndef _random(rng, index):\n    n = rng.randint(0, 20)\n    values = [rng.randint(-1000, 1000) for _ in range(n)]\n    return _case(\"a random %d-element vector #%d\" % (n, index), values)\n\n\ndef _overflow(rng, index):\n    values = [rng.randint(1500000000, 2000000000) for _ in range(4)]\n    return _case(\"a sum that overflows a 32-bit int #%d\" % index, values,\n                 \"Four values near 2 billion sum past int.MaxValue.\")\n"
+  },
+  "tests": [
+    {
+      "name": "an empty vector sums to zero",
+      "stdin": "0\n",
+      "expected_stdout": "0"
+    },
+    {
+      "name": "a single element",
+      "stdin": "1 7\n",
+      "expected_stdout": "7"
+    },
+    {
+      "name": "a small mixed vector",
+      "stdin": "5 3 -1 4 -1 5\n",
+      "expected_stdout": "10"
+    },
+    {
+      "name": "all negative values",
+      "stdin": "4 -5 -1 -9 -3\n",
+      "expected_stdout": "-18"
+    },
+    {
+      "name": "a sum that overflows a 32-bit int but not a 64-bit long long",
+      "stdin": "3 2000000000 2000000000 2000000000\n",
+      "expected_stdout": "6000000000",
+      "description": "6,000,000,000 is past INT_MAX (~2.1 billion) -- accumulating into a 32-bit int wraps to a negative number."
+    }
+  ],
+  "reference_solution_b64": "I2luY2x1ZGUgPHZlY3Rvcj4KCmxvbmcgbG9uZyBTdW1WZWN0b3IoY29uc3Qgc3RkOjp2ZWN0b3I8aW50PiYgdmFsdWVzKQp7CiAgICBsb25nIGxvbmcgdG90YWwgPSAwOwogICAgZm9yIChpbnQgdiA6IHZhbHVlcykKICAgIHsKICAgICAgICB0b3RhbCArPSB2OwogICAgfQogICAgcmV0dXJuIHRvdGFsOwp9Cg=="
+}

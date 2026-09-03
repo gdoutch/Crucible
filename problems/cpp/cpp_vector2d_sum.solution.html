@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Sum Vectors With operator+ · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C++ · hard</p>
+  <h1>Sum Vectors With operator+</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>struct Vector2D
+{
+    double x;
+    double y;
+};
+
+Vector2D operator+(const Vector2D&amp; a, const Vector2D&amp; b)
+{
+    return Vector2D{a.x + b.x, a.y + b.y};
+}</code></pre>
+
+<h2>Why it must be this exact free function</h2>
+
+<div class="trap">
+<p>The harness declares <code>Vector2D operator+(const Vector2D&amp; a,
+const Vector2D&amp; b);</code> and calls it as <code>total = total +
+v;</code>. That declaration names a specific symbol the linker has to
+find: a free function taking two <code>const Vector2D&amp;</code>
+parameters. A member-function version of <code>operator+</code>
+(<code>Vector2D Vector2D::operator+(const Vector2D&amp; other) const</code>)
+is legal C++ and would make <code>a + b</code> compile inside a
+translation unit that has that member function's declaration available --
+but it is a genuinely different function from the one the harness
+forward-declared, and the harness's translation unit only ever sees the
+free-function declaration. The build fails at the link step -- "unresolved
+external symbol operator+" or similar -- rather than anywhere in your own
+source file, because nothing about your code is syntactically wrong, it
+just does not define the symbol the harness needs.</p>
+</div>
+
+<h2>Why the parameters are `const Vector2D&amp;`</h2>
+
+<p><code>Vector2D</code> is small (two <code>double</code>s, 16 bytes), so
+taking it by value instead would not be a *correctness* problem the way it
+would be for a large container -- but it is still needless copying twice
+per call for no benefit, and `const&amp;` costs nothing while making clear
+that `operator+` only reads `a` and `b`, never modifies either one.</p>
+
+<h2>Why the addition is component-wise</h2>
+
+<p>`a.x + b.x` and `a.y + b.y` are independent, ordinary `double`
+additions -- there is no interaction between the x and y components in a
+vector sum, so nothing here can accidentally "cross" them the way a typo
+like `a.x + b.y` would. Constructing the result with
+`Vector2D{a.x + b.x, a.y + b.y}` keeps the two additions visually paired
+with the fields they belong to.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(1)</strong> per call -- two `double` additions and one small
+struct returned by value, which for an object this size the compiler
+typically returns without any heap allocation at all.</p>
+
+<footer>
+  <p><a href="cpp_vector2d_sum.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

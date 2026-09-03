@@ -1,0 +1,48 @@
+{
+  "id": "cpp_word_frequency",
+  "title": "Word Frequency With operator[]",
+  "language": "cpp",
+  "difficulty": "medium",
+  "topics": [
+    "maps",
+    "strings",
+    "streams"
+  ],
+  "timeout_seconds": 5,
+  "statement": "`std::map<std::string, int>`'s `operator[]` has a property worth knowing\ncold: asking for a key that is not there yet does not fail or read\ngarbage -- it **inserts that key with a value-initialised value** (`0` for\n`int`) and returns a reference to it. That is a genuinely different\ncontract from some other languages' map/dictionary types, and it is\nexactly the behaviour a frequency counter wants.\n\n## Your function\n\n```\nstd::map<std::string, int> WordFrequency(const std::string& text);\n```\n\nReturn a map from each distinct whitespace-separated word in `text` to how\nmany times it occurs. `text` may be empty, in which case the result is an\nempty map. Matching is case-sensitive: `\"Cat\"` and `\"cat\"` are different\nwords.\n\n## Watch out\n\n- **`counts[word]++` is not a bug here the way it would be in some other\n  languages -- it is the whole function.** The first time `word` is seen,\n  `counts[word]` creates the entry as `0` and hands back a reference to\n  it, which `++` then turns into `1`; every later occurrence reads the\n  entry that is already there and increments it further. One line, no\n  branch, correct on the first occurrence and every one after.\n- **Matching is case-sensitive on purpose.** `\"Cat\"` and `\"cat\"` are\n  different keys in the map -- do not lower-case anything before counting.\n- **`std::map` keeps its keys in sorted order** (unlike\n  `std::unordered_map`), which is exactly why the harness below can print\n  every word and count by walking the map directly and get a predictable\n  order back -- nothing about *this* function has to sort anything itself.\n",
+  "starter_code": "#include <map>\n#include <string>\n\n/// Count occurrences of each distinct whitespace-separated word in text.\n/// Matching is case-sensitive. text may be empty.\nstd::map<std::string, int> WordFrequency(const std::string& text)\n{\n    // your code here\n    return {};\n}\n",
+  "harness": "#include <iostream>\n#include <map>\n#include <sstream>\n#include <string>\n\nstd::map<std::string, int> WordFrequency(const std::string& text);\n\nint main()\n{\n    std::string line;\n    while (std::getline(std::cin, line))\n    {\n        std::map<std::string, int> counts = WordFrequency(line);\n        bool first = true;\n        for (const auto& entry : counts)\n        {\n            if (!first) { std::cout << \" \"; }\n            std::cout << entry.first << \":\" << entry.second;\n            first = false;\n        }\n        std::cout << \"\\n\";\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random sentences built from a small vocabulary, mixed case, so repeats\nand case-sensitivity both show up.\"\"\"\n\n\nWORDS = [\"cat\", \"Cat\", \"dog\", \"the\", \"a\", \"runs\", \"fast\", \"slow\"]\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    n = rng.randint(1, 10)\n    words = [rng.choice(WORDS) for _ in range(n)]\n    return {\"name\": \"%d words from a small vocabulary #%d\" % (n, index),\n            \"stdin\": \" \".join(words) + \"\\n\"}\n"
+  },
+  "tests": [
+    {
+      "name": "an empty line has no words",
+      "stdin": "\n",
+      "expected_stdout": ""
+    },
+    {
+      "name": "every word distinct -- the case a bare counts[word]++ handles on its own",
+      "stdin": "alpha beta gamma\n",
+      "expected_stdout": "alpha:1 beta:1 gamma:1"
+    },
+    {
+      "name": "a repeated word",
+      "stdin": "cat dog cat\n",
+      "expected_stdout": "cat:2 dog:1"
+    },
+    {
+      "name": "case-sensitive: Cat and cat are different keys",
+      "stdin": "Cat cat CAT cat\n",
+      "expected_stdout": "CAT:1 Cat:1 cat:2",
+      "description": "Three distinct keys by exact case, sorted lexicographically by std::map -- capitals sort before lower case in ASCII."
+    },
+    {
+      "name": "words printed in sorted key order",
+      "stdin": "zebra apple mango apple\n",
+      "expected_stdout": "apple:2 mango:1 zebra:1"
+    }
+  ],
+  "reference_solution_b64": "I2luY2x1ZGUgPG1hcD4KI2luY2x1ZGUgPHNzdHJlYW0+CiNpbmNsdWRlIDxzdHJpbmc+CgpzdGQ6Om1hcDxzdGQ6OnN0cmluZywgaW50PiBXb3JkRnJlcXVlbmN5KGNvbnN0IHN0ZDo6c3RyaW5nJiB0ZXh0KQp7CiAgICBzdGQ6Om1hcDxzdGQ6OnN0cmluZywgaW50PiBjb3VudHM7CiAgICBzdGQ6OmlzdHJpbmdzdHJlYW0gc3RyZWFtKHRleHQpOwogICAgc3RkOjpzdHJpbmcgd29yZDsKICAgIHdoaWxlIChzdHJlYW0gPj4gd29yZCkKICAgIHsKICAgICAgICBjb3VudHNbd29yZF0rKzsKICAgIH0KICAgIHJldHVybiBjb3VudHM7Cn0K"
+}

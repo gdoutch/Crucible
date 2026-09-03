@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Reverse a Singly Linked List · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C++ · hard</p>
+  <h1>Reverse a Singly Linked List</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Three pointers, one loop</h2>
+
+<pre><code>Node* prev = nullptr;
+Node* current = head;
+while (current != nullptr) {
+    // save current-&gt;next somewhere BEFORE overwriting it
+    // point current-&gt;next backwards, at prev
+    // advance prev and current
+}
+return prev;</code></pre>
+
+<h2>The order these three steps happen in is the entire exercise</h2>
+
+<div class="trap">
+<p>The moment <code>current-&gt;next</code> is reassigned to point at
+<code>prev</code>, the original value it held -- the pointer to the rest
+of the list -- is gone unless something already saved it. Reassign first
+and read <code>current-&gt;next</code> afterwards to "advance", and what
+you read back is <code>prev</code>, the node you just rewired to, not the
+node that used to come next. The rest of the original list becomes
+unreachable, permanently, with no crash to announce it -- on a two-node
+list this can accidentally look fine; it stops looking fine the moment
+there is a third node.</p>
+</div>
+
+<p>By the time the loop ends, <code>current</code> is <code>nullptr</code>
+and <code>prev</code> is sitting on the last node the loop visited -- the
+new head. Return <code>prev</code>, not <code>current</code>.</p>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cpp_reverse_linked_list.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>
