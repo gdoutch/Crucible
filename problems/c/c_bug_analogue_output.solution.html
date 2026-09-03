@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Fix the Analogue Output Correction · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · hard</p>
+  <h1>Fix the Analogue Output Correction</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The defect</h2>
+
+<div class="note">
+<p>Subtracting a larger unsigned value from a smaller one does not go
+  negative. It wraps around to the top of the type's range. <code>dw</code>
+  is <code>uint32_t</code>, so <code>0u - 3000u</code> is not <code>-3000</code>
+  — it is <code>4294964296</code>, a perfectly ordinary, perfectly valid
+  <code>uint32_t</code>.</p>
+</div>
+
+<p>The line that does the damage:</p>
+
+<pre><code>dw -= AO_OFFSET;   /* underflows whenever dw &lt; AO_OFFSET */</code></pre>
+
+<p>and the fix, which is the whole fix — guard the subtraction so it can only
+  ever run when it is safe:</p>
+
+<pre><code>uint16_t scale_analogue_output(uint16_t raw)
+{
+    uint32_t dw = raw;
+
+    dw *= AO_GAIN;
+    if (dw &gt; AO_OFFSET)
+    {
+        dw -= AO_OFFSET;
+    }
+    else
+    {
+        dw = 0u;
+    }
+    dw /= AO_SCALE;
+
+    if (dw &gt; AO_FULL_SCALE)
+    {
+        dw = AO_FULL_SCALE;
+    }
+
+    return (uint16_t)dw;
+}</code></pre>
+
+<p>When <code>raw * AO_GAIN</code> would leave the correction below zero in
+  real terms, the corrected value is simply <code>0</code> — the DAC value
+  for "as low as this output goes" — instead of whatever the wraparound
+  happened to leave lying around for the clamp to find.</p>
+
+<h2>Walking raw = 0 through both versions</h2>
+
+<table class="trace">
+  <tr><th>Step</th><th>Buggy</th><th>Fixed</th></tr>
+  <tr><td><code>dw = raw</code></td><td>0</td><td>0</td></tr>
+  <tr><td><code>dw *= AO_GAIN</code></td><td>0</td><td>0</td></tr>
+  <tr><td>subtract <code>AO_OFFSET</code> (3000)</td>
+      <td><code>0u - 3000u</code> → <strong>4294964296</strong> (wraps)</td>
+      <td><code>0 &gt; 3000</code>? No → set to <strong>0</strong></td></tr>
+  <tr><td><code>dw /= AO_SCALE</code></td><td>4294964</td><td>0</td></tr>
+  <tr><td>clamp to <code>AO_FULL_SCALE</code> (4095)</td>
+      <td>4294964 &gt; 4095 → <strong>4095</strong></td>
+      <td>0 &gt; 4095? No → <strong>0</strong></td></tr>
+</table>
+
+<p>Both columns reach the clamp. Only one of them is being clamped for a real
+  reason. The buggy column is not "off by a bit" or "rounding the wrong way"
+  — it hands the final <code>if</code> a value nowhere near the true answer,
+  and the <code>if</code> does exactly what a bounds check is supposed to do
+  with a value that big: pin it to the maximum.</p>
+
+<h2>Why the band is four counts wide, not one</h2>
+
+<p>The subtraction is safe exactly when <code>raw * AO_GAIN &gt; AO_OFFSET</code>,
+  i.e. <code>raw &gt; AO_OFFSET / AO_GAIN</code> = <code>3000 / 990</code> ≈
+  <code>3.03</code>. Integer <code>raw</code> values <code>0</code>, <code>1</code>,
+  <code>2</code> and <code>3</code> all fall short of that; <code>4</code> is
+  the first one past it. That is the entire reason the test suite's
+  underflow band is <code>0..3</code> and clears at exactly <code>4</code> —
+  it falls straight out of the two constants, not out of anything special
+  about zero. A bench calibration with a smaller offset, or a steeper gain,
+  would narrow that band; it would not remove it.</p>
+
+<h2>The case that keeps this out of a debugger</h2>
+
+<div class="trap">
+<p>Nothing crashes. There is no invalid read, no invalid write, no division
+  by zero, no signed-overflow undefined behaviour. Every operation in the
+  buggy function is fully defined by the C standard and does precisely what
+  the standard says it will do. A debugger will show you a <code>dw</code>
+  full of nines and a clamp firing exactly as written — both true, and
+  neither one wrong. The defect is not in any single line's behaviour; it is
+  in what the second line was allowed to hand the fourth.</p>
+</div>
+
+<p>It is also why the usual safety net does not catch it. UndefinedBehaviorSanitizer's
+  overflow checks exist for exactly this shape of bug — but they trigger on
+  <em>signed</em> overflow, which is undefined behaviour, not on unsigned
+  wraparound, which the standard defines and which plenty of real code
+  (checksums, free-running tick counters, hash mixing) relies on
+  deliberately. <code>-fsanitize=unsigned-integer-overflow</code> exists
+  precisely because the default build tooling will not flag this for you.</p>
+
+<h2>The readings that pass either way</h2>
+
+<p><strong>4095</strong> and <strong>4200</strong> come out at <code>4095</code>
+  whether or not the fix is applied, and that is worth sitting with rather
+  than shrugging off. The correction's gain is a shade under 1
+  (<code>990/1000</code>), so a legitimately-computed value never actually
+  reaches full scale within the 12-bit input range in this design — the
+  clamp is there for the input that runs a little past nominal (rounding
+  slop from an earlier stage, say), not for anything inside the calibrated
+  range. That clamp firing correctly, on realistic data, on every test run
+  anyone ever wrote against this function, is a big part of why the defect
+  survived review: the one piece of code near the bug that gets regularly
+  exercised by real signals was never the piece that was wrong.</p>
+
+<h2>What else would you flag in this function?</h2>
+
+<p>The defect is fixed, but a review would not stop there.</p>
+
+<ul>
+  <li><strong>There is only ever an upper-bound check.</strong> Nothing in
+    the original function ever asks "did this go too low?" — every failure
+    mode this arithmetic can produce resolves, structurally, to "value too
+    big → clamp to max." A subtraction is not the only way to trigger that;
+    any future change to this correction that can underflow will fail the
+    same silent way, and clamp the wrong direction, until someone adds a
+    matching lower bound.</li>
+
+  <li><strong><code>dw</code>'s width was never the issue.</strong> Making it
+    a wider or narrower unsigned type changes nothing about whether this bug
+    exists — 16, 32 and 64-bit unsigned subtraction all wrap the same way. If
+    your first instinct on seeing this class of bug is "use a bigger type,"
+    that instinct is worth unlearning; the fix is a comparison before the
+    subtraction, not a wider container for the wrapped result.</li>
+
+  <li><strong>Truncating division, more than once.</strong> Both
+    <code>dw /= AO_SCALE</code> here and any prior stage that scaled
+    <code>raw</code> down by division round toward zero. Each one is a small,
+    one-directional bias, and biases from separate truncating divides in the
+    same pipeline can compound differently depending on the input's scale —
+    worth measuring on the bench rather than assuming they cancel out.</li>
+
+  <li><strong>The magic numbers.</strong> <code>990</code>, <code>3000</code>
+    and <code>1000</code> read as arbitrary without the comment explaining
+    the fixed-point scaling. A <code>_Static_assert</code> tying
+    <code>AO_SCALE</code> to the number of decimal digits in the calibration
+    constants, or simply naming the real gain and offset in the comment (as
+    this one does), is the difference between a reviewer being able to check
+    the arithmetic and a reviewer taking it on faith.</li>
+</ul>
+
+<h2>The general lesson</h2>
+
+<div class="note">
+<p>Unsigned wraparound is not a bug in itself — it is well-defined, and
+  plenty of code (a free-running tick counter's elapsed-time calculation, for
+  one) relies on it correctly. It becomes a bug the moment a computation
+  reaches a subtraction that <em>can</em> wrap on inputs the rest of the
+  system considers completely ordinary, and nothing downstream is written to
+  tell "wrapped" apart from "large and legitimate." The fix is never a wider
+  type. It is knowing, at the point of every unsigned subtraction, whether
+  the minuend can be smaller than the subtrahend — and if it can, checking
+  before you subtract, not after.</p>
+</div>
+
+<footer>
+  <p><a href="c_bug_analogue_output.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set. The
+     useful repeat of this one is not solving it again — it's grepping your
+     own codebase for a bare <code>-=</code> on an unsigned type that isn't
+     provably safe at every call site.</p>
+</footer>
+
+</main>
+</body>
+</html>

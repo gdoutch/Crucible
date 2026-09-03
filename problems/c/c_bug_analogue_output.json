@@ -1,0 +1,53 @@
+{
+  "id": "c_bug_analogue_output",
+  "title": "Fix the Analogue Output Correction",
+  "language": "c",
+  "difficulty": "hard",
+  "topics": [
+    "debugging",
+    "code-review",
+    "unsigned-arithmetic",
+    "embedded",
+    "calibration"
+  ],
+  "timeout_seconds": 5,
+  "statement": "This one is already written. It compiles without a murmur, the constants came\nstraight off a bench calibration, and it is wrong.\n\n## The bug report\n\n> Analogue output configured as 0-10V, tracking measured motor current. With\n> the motor stopped -- current reading essentially zero -- the output sits at\n> full-scale, close to 10V. It only \"scales down\" to a sensible,\n> current-proportional reading once the motor starts drawing current.\n> Expected behaviour is the opposite: near 0V at standstill, rising with\n> current.\n\nThe editor starts with the code as it currently stands. Find the defect, fix\nit, and leave the rest of the function alone.\n\n## Your function\n\n```\nuint16_t scale_analogue_output(uint16_t raw);\n```\n\n`raw` is the pre-correction DAC value computed from a scaled current reading\nelsewhere in the firmware -- a 12-bit quantity, `0..4095`, where `0` means the\nsensor is reading nothing. Apply the bench-measured linear correction (a\ngain, then an offset, both fixed-point -- the stored constants are the real\nnumber times 1000, so the target never needs an FPU), clamp the result to the\nDAC's `0..4095` range, and return it.\n\n## What the tests will tell you\n\n- `raw = 0`, the case from the bug report, is the one to look at first. Work\n  out, by hand, what the buggy code actually returns for it -- not just that\n  it's wrong, but what number it is and why the final `if` lets it through.\n- Readings `0` through `3` all fail the same way; by `4` the fault has\n  cleared. That boundary is not an accident of the test data -- something\n  about the arithmetic genuinely changes there, and finding out what pins\n  down the defect.\n- `4095`, and a value past it, both come out the same before and after your\n  fix. The clamp at the bottom of the function is not the problem. Noticing\n  that narrows the search a lot.\n\n## Watch out\n\n- The fix is small, and it is not the clamp\n  (`if (dw > AO_FULL_SCALE) { dw = AO_FULL_SCALE; }`). That comparison does\n  exactly what it says. The trouble is what `dw` already equals by the time\n  execution reaches it.\n- `dw` is unsigned. Whatever your instinct says a subtraction \"obviously\"\n  does when the mathematical result would be negative, check it against the\n  type before you trust it.\n- Wraparound on an unsigned type is well-defined C, not undefined behaviour --\n  it is not a crash to go hunting for with a debugger. It is an ordinary,\n  enormous number, silently produced, that the very next line's bounds check\n  reads as \"too big\" rather than \"went the wrong way.\"\n",
+  "starter_code": "#include <stdint.h>\n\n/* Bench-measured linear correction, gain then offset, both fixed-point\n * (values are the real number x1000) so the target never needs an FPU. */\n#define AO_GAIN        990u    /* slope,  x1000 -> real gain   0.990        */\n#define AO_OFFSET     3000u    /* offset, x1000 -> real offset 3 DAC counts */\n#define AO_SCALE      1000u\n#define AO_FULL_SCALE 4095u    /* 12-bit DAC, 0-10V full scale */\n\n/**\n * @brief Apply the bench calibration to a raw analogue-output value and\n *        clamp it to the DAC's range.\n *\n * @param raw Pre-correction DAC value, 0..4095 (0 = sensor reading nothing).\n * @return Corrected DAC value, clamped to 0..4095.\n *\n * @note Bug report: with the output tracking measured motor current, it\n *       reads full-scale (~10V) while the motor is stopped, and only drops\n *       to a sensible, current-proportional value once the motor starts\n *       drawing current.\n */\nuint16_t scale_analogue_output(uint16_t raw)\n{\n    uint32_t dw = raw;\n\n    dw *= AO_GAIN;\n    dw -= AO_OFFSET;\n    dw /= AO_SCALE;\n\n    if (dw > AO_FULL_SCALE)\n    {\n        dw = AO_FULL_SCALE;\n    }\n\n    return (uint16_t)dw;\n}\n",
+  "harness": "#include <inttypes.h>\n#include <stdint.h>\n#include <stdio.h>\n\n/* Provided by the candidate in solution.c */\nuint16_t scale_analogue_output(uint16_t raw);\n\nint main(void)\n{\n    unsigned int raw;\n    while (scanf(\"%u\", &raw) == 1) {\n        printf(\"%u\\n\", (unsigned int)scale_analogue_output((uint16_t)raw));\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 5,
+    "source": "\"\"\"Random raw pre-correction DAC readings.\n\nWeighted towards the low end of the range, where the underflow bug lives,\nplus ordinary mid-range and near-full-scale readings so a fix has to stay\ncorrect everywhere, not just at zero.\n\"\"\"\n\nFULL_SCALE = 4095\n\n\ndef generate(rng, count):\n    builders = (_near_zero, _low_band, _mid_range, _near_full_scale)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, raws, description=\"\"):\n    body = \"\\n\".join(str(r) for r in raws)\n    return {\"name\": name, \"stdin\": body + \"\\n\", \"description\": description}\n\n\ndef _near_zero(rng, index):\n    raws = [0] + sorted(rng.randint(0, 3) for _ in range(4))\n    return _case(\"a run of readings at or near zero #%d\" % index, raws,\n                 \"The motor-stopped case and its close neighbours -- all \"\n                 \"inside the band where the correction can underflow.\")\n\n\ndef _low_band(rng, index):\n    raws = list(range(0, 12))\n    return _case(\"every reading from 0 up to 11 #%d\" % index, raws,\n                 \"Walks straight across the underflow band and a few counts \"\n                 \"past it, so the exact edge shows up in the output.\")\n\n\ndef _mid_range(rng, index):\n    raws = sorted(rng.sample(range(20, 3000), 6))\n    return _case(\"ordinary mid-range current readings #%d\" % index, raws,\n                 \"Comfortably clear of the underflow band -- correct on \"\n                 \"both the buggy and the fixed code.\")\n\n\ndef _near_full_scale(rng, index):\n    raws = sorted(rng.sample(range(3800, FULL_SCALE + 1), 5))\n    return _case(\"readings near full-scale current #%d\" % index, raws,\n                 \"Close to the top of the input range -- checks the clamp \"\n                 \"is still doing its real job, not just papering over the \"\n                 \"underflow.\")\n"
+  },
+  "tests": [
+    {
+      "name": "motor stopped: the reading the bug report describes",
+      "stdin": "0\n",
+      "expected_stdout": "0",
+      "description": "raw is zero -- the current sensor reading nothing, motor at standstill. The buggy code returns 4095 (full-scale, ~10V) here instead of near-zero."
+    },
+    {
+      "name": "the whole underflow band, back to back",
+      "stdin": "0\n1\n2\n3\n4\n5\n",
+      "expected_stdout": "0\n0\n0\n0\n0\n1",
+      "description": "raw * 990 stays below the 3000 offset for 0..3, so the buggy subtraction underflows on all four of them; by raw = 4 it is clear of the band and both versions agree."
+    },
+    {
+      "name": "an ordinary mid-range current reading",
+      "stdin": "500\n",
+      "expected_stdout": "492"
+    },
+    {
+      "name": "near the top of the output's range",
+      "stdin": "4095\n",
+      "expected_stdout": "4051",
+      "description": "The largest 12-bit input. Comfortably under the clamp -- the correction's gain is a shade under 1, so a correctly-corrected reading never legitimately reaches full scale in this design."
+    },
+    {
+      "name": "a genuinely oversized value, clamped for real",
+      "stdin": "4200\n",
+      "expected_stdout": "4095",
+      "description": "raw here is past the nominal 12-bit range (a couple of counts of rounding slop from the stage upstream, say). The corrected value genuinely comes out above 4095 and the clamp catches it correctly -- both the buggy and fixed code agree on this one, which is part of why the defect survived review: the clamp visibly works."
+    }
+  ],
+  "reference_solution_b64": "I2luY2x1ZGUgPHN0ZGludC5oPgoKLyogQmVuY2gtbWVhc3VyZWQgbGluZWFyIGNvcnJlY3Rpb24sIGdhaW4gdGhlbiBvZmZzZXQsIGJvdGggZml4ZWQtcG9pbnQKICogKHZhbHVlcyBhcmUgdGhlIHJlYWwgbnVtYmVyIHgxMDAwKSBzbyB0aGUgdGFyZ2V0IG5ldmVyIG5lZWRzIGFuIEZQVS4gKi8KI2RlZmluZSBBT19HQUlOICAgICAgICA5OTB1ICAgIC8qIHNsb3BlLCAgeDEwMDAgLT4gcmVhbCBnYWluICAgMC45OTAgICAgICAgICovCiNkZWZpbmUgQU9fT0ZGU0VUICAgICAzMDAwdSAgICAvKiBvZmZzZXQsIHgxMDAwIC0+IHJlYWwgb2Zmc2V0IDMgREFDIGNvdW50cyAqLwojZGVmaW5lIEFPX1NDQUxFICAgICAgMTAwMHUKI2RlZmluZSBBT19GVUxMX1NDQUxFIDQwOTV1ICAgIC8qIDEyLWJpdCBEQUMsIDAtMTBWIGZ1bGwgc2NhbGUgKi8KCi8qKgogKiBAYnJpZWYgQXBwbHkgdGhlIGJlbmNoIGNhbGlicmF0aW9uIHRvIGEgcmF3IGFuYWxvZ3VlLW91dHB1dCB2YWx1ZSBhbmQKICogICAgICAgIGNsYW1wIGl0IHRvIHRoZSBEQUMncyByYW5nZS4KICoKICogQHBhcmFtIHJhdyBQcmUtY29ycmVjdGlvbiBEQUMgdmFsdWUsIDAuLjQwOTUgKDAgPSBzZW5zb3IgcmVhZGluZyBub3RoaW5nKS4KICogQHJldHVybiBDb3JyZWN0ZWQgREFDIHZhbHVlLCBjbGFtcGVkIHRvIDAuLjQwOTUuCiAqLwp1aW50MTZfdCBzY2FsZV9hbmFsb2d1ZV9vdXRwdXQodWludDE2X3QgcmF3KQp7CiAgICB1aW50MzJfdCBkdyA9IHJhdzsKCiAgICBkdyAqPSBBT19HQUlOOwogICAgaWYgKGR3ID4gQU9fT0ZGU0VUKQogICAgewogICAgICAgIGR3IC09IEFPX09GRlNFVDsKICAgIH0KICAgIGVsc2UKICAgIHsKICAgICAgICBkdyA9IDB1OwogICAgfQogICAgZHcgLz0gQU9fU0NBTEU7CgogICAgaWYgKGR3ID4gQU9fRlVMTF9TQ0FMRSkKICAgIHsKICAgICAgICBkdyA9IEFPX0ZVTExfU0NBTEU7CiAgICB9CgogICAgcmV0dXJuICh1aW50MTZfdClkdzsKfQo="
+}

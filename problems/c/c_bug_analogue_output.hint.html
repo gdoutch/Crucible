@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Fix the Analogue Output Correction · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · hard</p>
+  <h1>Fix the Analogue Output Correction</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>Not to write a linear correction from scratch — the one in the editor is a
+  perfectly normal shape for the job: multiply by a gain, subtract an offset,
+  divide back down, clamp to range. You are being asked why a function built
+  out of four ordinary, individually-correct-looking steps produces the
+  <em>opposite</em> of the right answer at one end of its input range.</p>
+
+<h2>Start from the number, not the code</h2>
+
+<p>Put <code>raw = 0</code> through the four steps by hand, in order, and
+  write down what <code>dw</code> actually holds after each one. Not "it goes
+  negative" — <code>dw</code> cannot go negative, and that fact is the whole
+  problem. Write down the actual value.</p>
+
+<table>
+  <tr><th>Step</th><th>Expression</th><th>What dw holds after</th></tr>
+  <tr><td>1</td><td><code>dw *= AO_GAIN;</code></td><td>still 0</td></tr>
+  <tr><td>2</td><td><code>dw -= AO_OFFSET;</code></td><td>?</td></tr>
+  <tr><td>3</td><td><code>dw /= AO_SCALE;</code></td><td>?</td></tr>
+  <tr><td>4</td><td><code>if (dw &gt; AO_FULL_SCALE) dw = AO_FULL_SCALE;</code></td><td>?</td></tr>
+</table>
+
+<p>Fill in row 2 first. <code>dw</code> is declared <code>uint32_t</code>.
+  What does an unsigned type do with a subtraction it cannot represent?</p>
+
+<div class="trap">
+<p>It does not clamp to 0. It does not saturate. It does not raise anything.
+  C defines exactly what happens, and the definition has nothing to do with
+  "negative" — unsigned types don't have a negative side to fall back to.</p>
+</div>
+
+<h2>Where to look</h2>
+
+<p>The final <code>if</code> is correct C, doing exactly what its one line
+  says: <em>if this got too big, clamp it down.</em> Read row 2 again with
+  that in mind. Is the value sitting in <code>dw</code> by the time it
+  reaches that line actually too big — or does it only look that way to a
+  comparison that has no way to tell "too big" apart from "wrapped past
+  zero"?</p>
+
+<p>That is the whole defect. Nothing after step 2 is wrong; everything after
+  step 2 is correctly propagating what step 2 handed it.</p>
+
+<h2>Why 0..3 and not just 0</h2>
+
+<p>The bug report only mentions a stopped motor, i.e. <code>raw = 0</code>.
+  The test suite pushes on 1, 2 and 3 as well, and they fail exactly the same
+  way. Work out the condition under which step 2 is safe — in terms of
+  <code>raw</code>, <code>AO_GAIN</code> and <code>AO_OFFSET</code> — and the
+  four-count width of the band stops being a mystery and becomes arithmetic
+  you can check.</p>
+
+<details>
+<summary>Still stuck? A bigger nudge</summary>
+
+<p>Add this as the first line inside the function, temporarily:</p>
+
+<pre><code>printf("raw=%u after-mul=%lu\n", raw, (unsigned long)(raw * (uint32_t)AO_GAIN));</code></pre>
+
+<p>(<code>#include &lt;stdio.h&gt;</code> at the top; take it back out before
+  you submit, since the tests compare stdout exactly.) Run it for
+  <code>raw = 0, 1, 2, 3, 4</code> and compare <code>after-mul</code> against
+  <code>AO_OFFSET</code> (3000) each time. One of those five is the first
+  where <code>after-mul</code> is actually bigger than <code>AO_OFFSET</code>
+  — that is the boundary the tests are drawing your attention to, and it's a
+  comparison you can make before the subtraction runs at all.</p>
+
+</details>
+
+<h2>When you think you have it</h2>
+
+<ul>
+  <li>The fix touches step 2 only. <code>AO_GAIN</code>, <code>AO_SCALE</code>,
+    <code>AO_FULL_SCALE</code> and the final clamp are all correct as written
+    — if your change touches any of those, you've gone further than the
+    defect goes.</li>
+  <li>Check <em>4095</em> and <em>4200</em> still both come out at
+    <code>4095</code>. The clamp has a real job to do near the top of the
+    range, and your fix should not stop it doing it.</li>
+  <li>Check <em>500</em> still comes out at <code>492</code>. A fix that only
+    special-cases small inputs, rather than making the subtraction safe in
+    general, is a second bug wearing the first one's clothes.</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="c_bug_analogue_output.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>
