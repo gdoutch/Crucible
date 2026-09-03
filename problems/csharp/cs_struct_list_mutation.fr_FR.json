@@ -1,0 +1,19 @@
+{
+  "title": "Muter des structs à l'intérieur d'une liste",
+  "statement": "Une `struct` est un type valeur : chaque fois qu'on en lit une quelque\npart -- affectée à une variable, passée à une méthode, retournée par un\nindexeur -- ce que l'on obtient est une *copie*. Cela reste invisible et\ninoffensif jusqu'au moment où l'endroit d'où elle a été lue est une\n`List<T>`, et que tout l'intérêt était de changer l'original.\n\n## Le type\n\n```\npublic struct Counter\n{\n    public int Value;\n    public void Increment() { Value++; }\n}\n```\n\n`Counter` est une struct mutable : `Increment()` change `Value` sur\nquelle que soit la `Counter` sur laquelle elle est appelée.\n\n## Votre fonction\n\n```\npublic static void IncrementAll(List<Counter> counters);\n```\n\nAppelez `Increment()` sur chaque élément de `counters`, **en mutant la\nliste sur place** -- après le retour de cette fonction,\n`counters[i].Value` doit être supérieur d'un à ce qu'il était avant, pour\nchaque `i`.\n\n## Attention\n\n- **`counters[i].Increment();` compile proprement et ne change rien à la\n  liste.** L'accesseur de l'indexeur de `List<T>` retourne une *copie* de\n  la struct à cette position -- `counters[i]` est une valeur, pas une\n  référence à l'emplacement d'où elle provient -- donc `Increment()` mute\n  cette copie, qui est ensuite abandonnée dès que l'instruction se\n  termine. Aucun avertissement, aucune exception : la liste reste\n  silencieusement inchangée.\n- **`foreach (var c in counters) { c.Increment(); }` a exactement le même\n  problème** -- `c` est une copie fraîche à chaque itération, pas une\n  fenêtre sur le stockage propre de la liste, donc la muter ne mute rien\n  que l'appelant puisse voir ensuite.\n- **La correction consiste à lire, muter, réécrire, explicitement** :\n  lire la struct hors de la liste dans une variable locale, appeler\n  `Increment()` sur la *locale*, puis réaffecter la locale dans la liste\n  au même indice. Trois étapes séparées, parce que la lecture et\n  l'écriture sont les deux seules opérations qui touchent réellement le\n  stockage propre de la liste -- la mutation entre les deux ne touche\n  jamais que la copie locale.\n",
+  "tests": [
+    {
+      "name": "un seul compteur, un tour"
+    },
+    {
+      "name": "plusieurs compteurs, un tour chacun"
+    },
+    {
+      "name": "la même liste incrémentée à travers plusieurs appels séparés",
+      "description": "IncrementAll est appelée trois fois de suite -- une solution qui mute une variable temporaire et l'abandonne rapporte « 0 10 » inchangé, quel que soit le tour vérifié."
+    },
+    {
+      "name": "des valeurs de départ négatives s'incrémentent vers zéro et au-delà"
+    }
+  ]
+}

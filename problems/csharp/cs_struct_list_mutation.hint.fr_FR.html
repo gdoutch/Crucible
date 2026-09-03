@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Indice — Muter des structs à l'intérieur d'une liste · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C# · diabolique</p>
+  <h1>Muter des structs à l'intérieur d'une liste</h1>
+  <p class="kind">Indice</p>
+  <p class="lede">Un coup de pouce dans la bonne direction. La réponse complète
+    se trouve sur la page de la solution détaillée, donc rien ci-dessous ne
+    la révèle.</p>
+</header>
+
+<h2>Lire, muter la locale, réécrire</h2>
+
+<pre><code>for (int i = 0; i &lt; counters.Count; i++) {
+    var c = counters[i];   // une copie
+    c.Increment();         // mute la copie
+    counters[i] = c;       // réécrit la copie dans la liste
+}</code></pre>
+
+<h2>Ce qui semble correct et ne l'est silencieusement pas</h2>
+
+<div class="trap">
+<p><code>counters[i].Increment();</code> compile, s'exécute, et ne lève
+rien -- et ne change rien. <code>counters[i]</code> est un accès par
+indexeur de type propriété qui rend une *copie* de la struct stockée à
+cette position ; <code>Increment()</code> mute alors cette copie, à
+laquelle rien d'autre ne fait référence et qui est abandonnée dès que
+l'instruction se termine. Le stockage réel de la liste à l'indice
+<code>i</code> n'est jamais touché. Il en va de même pour
+<code>foreach (var c in counters) c.Increment();</code>, pour la même
+raison sous-jacente -- <code>c</code> est une copie, à chaque fois.</p>
+</div>
+
+<p>Il n'existe aucun moyen d'obtenir une véritable référence, adossée à la
+liste, à un élément struct et de le muter sur place à travers un simple
+indexeur ou une boucle <code>foreach</code> -- le motif lire-modifier-
+réécrire ci-dessus, explicite sur les trois étapes, est la correction
+standard.</p>
+
+<footer>
+  <p>Prêt pour la totale ?
+    <a href="cs_struct_list_mutation.solution.fr_FR.html">Lire la solution détaillée →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

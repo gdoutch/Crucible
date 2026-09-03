@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Indice — Recherche binaire avec une convention de point d'insertion · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C# · difficile</p>
+  <h1>Recherche binaire avec une convention de point d'insertion</h1>
+  <p class="kind">Indice</p>
+  <p class="lede">Un coup de pouce dans la bonne direction. La réponse complète
+    se trouve sur la page de la solution détaillée, donc rien ci-dessous ne
+    la révèle.</p>
+</header>
+
+<h2>Une recherche binaire ordinaire, avec un changement à la fin</h2>
+
+<pre><code>int low = 0, high = sortedValues.Length - 1;
+while (low &lt;= high) {
+    int mid = low + (high - low) / 2;
+    if (sortedValues[mid] == target) return mid;
+    if (sortedValues[mid] &lt; target) low = mid + 1;
+    else high = mid - 1;
+}
+// non trouvé : low se trouve maintenant exactement au point d'insertion
+return ~low;</code></pre>
+
+<h2>Pourquoi <code>low</code>, spécifiquement, est le point d'insertion</h2>
+
+<p>Suivez ce que signifient <code>low</code> et <code>high</code> à chaque
+étape : tout ce qui est strictement avant <code>low</code> est connu pour
+être plus petit que <code>target</code>, et tout ce qui est strictement
+après <code>high</code> est connu pour être plus grand. La boucle ne
+s'arrête qu'une fois que <code>low &gt; high</code> -- à ce moment,
+<code>low</code> est devenu le premier indice dont la valeur serait plus
+grande que <code>target</code>, ce qui est exactement là où
+<code>target</code> doit se trouver.</p>
+
+<h2>La ligne qu'il est facile d'inverser</h2>
+
+<div class="trap">
+<p><code>~low</code>, pas <code>-low</code>. <code>~5</code> vaut
+<code>-6</code> ; <code>-5</code> vaut <code>-5</code>. Si <code>low</code>
+finit par valoir <code>0</code> (la cible appartient tout au début),
+<code>-0</code> vaut simplement <code>0</code> -- indiscernable de « trouvé
+à l'indice 0 » -- alors que <code>~0</code> vaut <code>-1</code>, sans
+ambiguïté. C'est le complément binaire qui rend l'indice <code>0</code>
+représentable comme un résultat négatif « non trouvé, insérer ici ».</p>
+</div>
+
+<footer>
+  <p>Prêt pour la totale ?
+    <a href="cs_binary_search_insertion_point.solution.fr_FR.html">Lire la solution détaillée →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

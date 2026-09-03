@@ -1,0 +1,18 @@
+{
+  "title": "Assembler une liste en une ligne CSV",
+  "statement": "Transformer une liste de champs en une seule ligne séparée par des virgules\nsemble devoir tenir en une ligne de code, et en C# c'est le cas -- mais\nseulement une fois que vous avez décidé ce qu'une liste vide est censée\nproduire, ce qui est exactement le cas qu'une boucle écrite à la main a le\nplus de chances de mal traiter.\n\n## Votre fonction\n\n```\npublic static string JoinCsv(List<string> items);\n```\n\nRetournez tous les éléments de `items` assemblés par une seule virgule,\nsans virgule avant le premier élément ni après le dernier. `items` peut\nêtre vide ; aucun de ses éléments n'est jamais `null`.\n\n## Attention\n\n- **Une liste vide s'assemble en la chaîne vide, pas en rien du tout et pas\n  en une erreur.** `JoinCsv(new List<string>())` retourne `\"\"` -- une\n  chaîne de longueur nulle reste une chaîne, et c'est ici la réponse\n  correcte et représentable.\n- **Une liste à un seul élément ne contient aucune virgule.**\n  `JoinCsv(new List<string> { \"solo\" })` retourne `\"solo\"`, pas `\"solo,\"`\n  ni `\",solo\"` -- la virgule est un *séparateur* entre éléments, et un seul\n  élément n'a pas de voisin dont être séparé.\n- Une boucle qui ajoute `item + \",\"` après chaque élément et ne corrige la\n  virgule finale qu'après coup fonctionne, mais il existe une seule méthode\n  qui fait tout le travail -- et qui n'a d'ailleurs pas besoin de cette\n  correction.\n",
+  "tests": [
+    {
+      "name": "une liste vide s'assemble en la chaîne vide"
+    },
+    {
+      "name": "une liste à un seul élément ne contient aucune virgule"
+    },
+    {
+      "name": "deux éléments, une virgule"
+    },
+    {
+      "name": "plusieurs éléments"
+    }
+  ]
+}

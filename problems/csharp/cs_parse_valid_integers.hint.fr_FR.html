@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Indice — Ne garder que les entiers valides · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C# · moyen</p>
+  <h1>Ne garder que les entiers valides</h1>
+  <p class="kind">Indice</p>
+  <p class="lede">Un coup de pouce dans la bonne direction. La réponse complète
+    se trouve sur la page de la solution détaillée, donc rien ci-dessous ne
+    la révèle.</p>
+</header>
+
+<h2>Laissez TryParse être tout le filtre</h2>
+
+<pre><code>var result = new List&lt;int&gt;();
+foreach (var token in tokens) {
+    if (int.TryParse(token, out int value)) {
+        result.Add(value);
+    }
+}
+return result;</code></pre>
+
+<p>C'est toute la fonction. Ce que cet exercice teste réellement, c'est de
+savoir si vous faites confiance au jugement de <code>TryParse</code> sur
+les cas limites plutôt que de le remettre en question avec vos propres
+vérifications préalables.</p>
+
+<h2>Ne pré-filtrez pas ce que TryParse gère déjà</h2>
+
+<div class="trap">
+<p>Rejeter un jeton parce qu'il a des espaces en début ou en fin, ou parce
+qu'il est « trop long pour être un vrai nombre », avant même d'appeler
+<code>TryParse</code>, écarte des entrées que la méthode aurait acceptées
+correctement toute seule. Appelez <code>TryParse</code> directement sur le
+jeton brut et laissez son résultat booléen être la seule décision qui
+compte.</p>
+</div>
+
+<footer>
+  <p>Prêt pour la totale ?
+    <a href="cs_parse_valid_integers.solution.fr_FR.html">Lire la solution détaillée →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

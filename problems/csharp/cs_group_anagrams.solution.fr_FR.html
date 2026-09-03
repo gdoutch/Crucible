@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solution détaillée — Regrouper les anagrammes · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C# · moyen</p>
+  <h1>Regrouper les anagrammes</h1>
+  <p class="kind">Solution détaillée</p>
+  <p class="lede">Cette page contient la réponse complète et explique
+    pourquoi chaque partie s'y trouve.</p>
+</header>
+
+<h2>Le code</h2>
+
+<pre><code>public static List&lt;List&lt;string&gt;&gt; GroupAnagrams(List&lt;string&gt; words)
+{
+    string Key(string word) =&gt; new string(word.OrderBy(c =&gt; c).ToArray());
+
+    var groups = new Dictionary&lt;string, List&lt;string&gt;&gt;();
+    foreach (var word in words)
+    {
+        var key = Key(word);
+        if (!groups.TryGetValue(key, out var list))
+        {
+            list = new List&lt;string&gt;();
+            groups[key] = list;
+        }
+        list.Add(word);
+    }
+
+    var result = new List&lt;List&lt;string&gt;&gt;();
+    var emitted = new HashSet&lt;string&gt;();
+    foreach (var word in words)
+    {
+        var key = Key(word);
+        if (emitted.Add(key))
+        {
+            result.Add(groups[key]);
+        }
+    }
+    return result;
+}</code></pre>
+
+<h2>Pourquoi regroupement et ordre sont deux passages séparés</h2>
+
+<div class="trap">
+<p>La première boucle a pour seul rôle la correction -- chaque mot finit
+dans la liste que désigne sa signature d'anagramme, et
+<code>TryGetValue</code> associé à une liste créée paresseusement gère
+« est-ce le premier mot avec cette signature » sans vérification
+<code>ContainsKey</code> séparée. Elle ne dit rien de l'ordre dans lequel
+<code>groups</code> lui-même énumérerait, et rien dans le contrat de
+<code>Dictionary&lt;TKey, TValue&gt;</code> ne promet que cet ordre
+corresponde à l'ordre d'insertion -- c'est un détail d'implémentation de
+l'environnement d'exécution actuel, pas une partie de la spécification du
+type. La seconde boucle est ce qui produit réellement l'ordre demandé par
+le problème : en reparcourant <code>words</code>, dans son propre ordre
+d'origine, et en utilisant la valeur de retour de
+<code>HashSet&lt;string&gt;.Add</code> (vrai la première fois qu'une clé est
+ajoutée, faux ensuite) pour émettre chaque groupe exactement une fois, au
+moment où son premier mot apparaît.</p>
+</div>
+
+<h2>Pourquoi la clé est construite une seule fois, comme fonction locale</h2>
+
+<p><code>Key(word)</code> est appelée deux fois par mot au total sur les
+deux passages -- une fois pendant le regroupement, une fois en décidant de
+l'ordre d'émission -- et la définir une seule fois comme fonction locale
+empêche les deux sites d'appel de calculer discrètement la signature de
+deux façons différentes. <code>word.OrderBy(c =&gt; c)</code> trie les
+caractères (un tri ordinal, puisque <code>char</code> se compare par
+point de code), et <code>new string(...)</code> reconvertit
+l'<code>IEnumerable&lt;char&gt;</code> trié en chaîne, assez peu coûteux
+pour ne pas compter sur des mots de longueur réaliste.</p>
+
+<h2>Coût</h2>
+
+<p><strong>O(n · k log k)</strong> où n est le nombre de mots et k la
+longueur du plus long -- trier les caractères de chaque mot domine,
+exécuté deux fois par mot au total sur les deux passages. Le regroupement
+et l'ordonnancement eux-mêmes sont O(n) au-delà de cela, grâce à un
+dictionnaire et un ensemble de hachage pour des recherches en O(1) en
+moyenne.</p>
+
+<footer>
+  <p><a href="cs_group_anagrams.hint.fr_FR.html">← Retour à l'indice</a> ·
+     Appuyez sur <strong>Ctrl+R</strong> dans Crucible pour un nouveau jeu de
+     données et résolvez-le à nouveau depuis un éditeur vierge.</p>
+</footer>
+
+</main>
+</body>
+</html>

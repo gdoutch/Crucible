@@ -1,0 +1,28 @@
+{
+  "title": "Compter les voyelles",
+  "statement": "Chaque piste de langage a besoin d'un échauffement du type « lire une\nchaîne, regarder chaque caractère », et compter les voyelles en est la\nversion la plus simple : aucune structure de données à choisir, aucun\nalgorithme à choisir, juste la discipline de bien comparer chaque\ncaractère que la chaîne peut réellement contenir.\n\n## Votre fonction\n\n```\npublic static int CountVowels(string text);\n```\n\nRetournez le nombre de caractères de `text` qui sont l'un de `a`, `e`,\n`i`, `o`, `u`. `text` peut être vide, et n'est jamais `null`.\n\n## Attention\n\n- **`text` peut contenir des majuscules.** `\"Crucible\"` en compte trois :\n  les deux `i` n'y sont pas, mais le `u`, le premier `i`, et le... comptez\n  vous-même, et vérifiez que votre fonction est d'accord. Le point important\n  est qu'une voyelle en majuscule reste une voyelle -- ne comparer qu'aux\n  minuscules sous-compte discrètement toute chaîne contenant la moindre\n  majuscule, ce qui, dans un texte anglais ordinaire, concerne la plupart\n  d'entre elles.\n- **`y` n'est jamais une voyelle ici.** L'usage anglais est véritablement\n  partagé sur `y` (comparez « myth » et « boy »), donc cet exercice évite\n  entièrement le débat : les cinq lettres ci-dessus forment la liste\n  complète, et `y` -- majuscule ou minuscule -- n'en fait pas partie.\n- **La ponctuation, les chiffres et les espaces ne sont pas des erreurs.**\n  Ce ne sont simplement pas des voyelles, et la boucle doit passer dessus\n  de la même façon qu'elle passe sur une consonne -- aucun cas particulier,\n  aucune exception, juste des caractères qui ne correspondent pas.\n",
+  "tests": [
+    {
+      "name": "une chaîne vide n'a aucune voyelle"
+    },
+    {
+      "name": "toutes les lettres de l'alphabet, en minuscules",
+      "description": "Exactement a, e, i, o, u -- cinq voyelles parmi 26 lettres."
+    },
+    {
+      "name": "le même alphabet, en majuscules",
+      "description": "Les voyelles en majuscules comptent aussi -- une solution qui ne vérifie que les minuscules sous-compterait ceci à 0."
+    },
+    {
+      "name": "casse mixte dans une phrase ordinaire",
+      "description": "CRUCIBLE : u, i, e. « The Quick Brown Fox » : e, u, i, o, o."
+    },
+    {
+      "name": "y n'est jamais compté comme une voyelle"
+    },
+    {
+      "name": "la ponctuation et les chiffres ne sont simplement pas des voyelles",
+      "description": "Seul le « o » de « go » est une voyelle."
+    }
+  ]
+}

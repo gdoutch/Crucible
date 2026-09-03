@@ -193,6 +193,104 @@ class TestProblemLoading(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# translated problem content
+# ---------------------------------------------------------------------------
+
+def write_overlay(directory: Path, locale: str, problem_id: str = "demo", **fields) -> Path:
+    path = directory / f"{problem_id}.{locale}.json"
+    path.write_text(json.dumps(fields), encoding="utf-8")
+    return path
+
+
+class TestProblemLocaleOverlay(unittest.TestCase):
+    """A problem's prose may be translated by dropping a `<stem>.<locale>.json`
+    sibling next to it -- see `crucible.problem._load_locale_overlay`. This is
+    a different mechanism from `crucible.i18n` (which never sees problem
+    content at all), so it gets its own coverage rather than piggybacking on
+    `TestI18n`."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self._tmp.name)
+        self._original_locale = i18n.get_locale()
+        self.addCleanup(i18n.set_locale, self._original_locale)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_overlay_is_ignored_under_the_default_locale(self):
+        write_problem(self.dir)
+        write_overlay(self.dir, "fr_FR", title="Démo")
+        problem = load_problem(self.dir / "demo.json")
+        self.assertEqual(problem.title, "Demo")
+
+    def test_overlay_translates_title_and_statement(self):
+        write_problem(self.dir)
+        write_overlay(self.dir, "fr_FR", title="Démo", statement="Fais une chose.")
+        i18n.set_locale("fr_FR")
+        problem = load_problem(self.dir / "demo.json")
+        self.assertEqual(problem.title, "Démo")
+        self.assertEqual(problem.statement, "Fais une chose.")
+
+    def test_overlay_field_left_blank_falls_back_to_english(self):
+        write_problem(self.dir)
+        write_overlay(self.dir, "fr_FR", title="Démo")  # no 'statement'
+        i18n.set_locale("fr_FR")
+        problem = load_problem(self.dir / "demo.json")
+        self.assertEqual(problem.title, "Démo")
+        self.assertEqual(problem.statement, "Do a thing.")
+
+    def test_missing_overlay_file_leaves_everything_in_english(self):
+        write_problem(self.dir)
+        i18n.set_locale("fr_FR")
+        problem = load_problem(self.dir / "demo.json")
+        self.assertEqual(problem.title, "Demo")
+        self.assertEqual(problem.statement, "Do a thing.")
+
+    def test_overlay_translates_test_names_and_descriptions_by_position(self):
+        tests = [{"name": "first", "stdin": "a", "expected_stdout": "1",
+                 "description": "the first case"},
+                {"name": "second", "stdin": "b", "expected_stdout": "2"}]
+        write_problem(self.dir, tests=tests)
+        write_overlay(self.dir, "fr_FR", tests=[
+            {"name": "premier", "description": "le premier cas"},
+            {"name": "second"},
+        ])
+        i18n.set_locale("fr_FR")
+        problem = load_problem(self.dir / "demo.json")
+        self.assertEqual(problem.fixed_tests[0].name, "premier")
+        self.assertEqual(problem.fixed_tests[0].description, "le premier cas")
+        self.assertEqual(problem.fixed_tests[1].name, "second")
+        # stdin/expected_stdout are data, not prose -- the overlay never
+        # touches them even though it could set them by key.
+        self.assertEqual(problem.fixed_tests[0].stdin, "a")
+        self.assertEqual(problem.fixed_tests[1].expected_stdout, "2")
+
+    def test_malformed_overlay_is_reported_against_the_overlay_file(self):
+        """The error names the overlay file itself, not the base problem --
+        and is reported through `t()` in the active locale like any other
+        `ProblemError`, so this checks the overlay's filename rather than
+        any particular language's wording for 'line'."""
+        write_problem(self.dir)
+        (self.dir / "demo.fr_FR.json").write_text("{ not json", encoding="utf-8")
+        i18n.set_locale("fr_FR")
+        with self.assertRaises(ProblemError) as ctx:
+            load_problem(self.dir / "demo.json")
+        self.assertIn("demo.fr_FR.json", str(ctx.exception))
+
+    def test_overlay_starter_code_and_reference_are_never_translated(self):
+        """Code fields are deliberately outside `_OVERLAY_FIELDS` -- an
+        overlay cannot rewrite them even if it tries."""
+        write_problem(self.dir)
+        write_overlay(self.dir, "fr_FR", starter_code="// pas de ceci",
+                      reference_solution="not_python(")
+        i18n.set_locale("fr_FR")
+        problem = load_problem(self.dir / "demo.json")
+        self.assertEqual(problem.starter_code, "")
+        self.assertEqual(problem.reference.source, "x = 1")
+
+
+# ---------------------------------------------------------------------------
 # randomised test data
 # ---------------------------------------------------------------------------
 
@@ -770,6 +868,49 @@ class TestGuideLookup(unittest.TestCase):
         self.assertEqual(guides.find_all(self.problem), {})
 
 
+class TestLocalisedGuideLookup(unittest.TestCase):
+    """A translated guide is one more dotted qualifier on the same naming
+    convention -- `{stem}.{kind}.{locale}.html` -- found the same way, and
+    falling back to the English page when there is no translation yet."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self._tmp.name)
+        self.problem = load_problem(write_problem(self.dir))
+        self._original_locale = i18n.get_locale()
+        self.addCleanup(i18n.set_locale, self._original_locale)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_localised_guide_is_preferred_when_it_exists(self):
+        (self.dir / "demo.hint.html").write_text("<h1>Demo</h1>", encoding="utf-8")
+        (self.dir / "demo.hint.fr_FR.html").write_text("<h1>Démo</h1>", encoding="utf-8")
+        i18n.set_locale("fr_FR")
+        guide = guides.find(self.problem, guides.HINT)
+        self.assertEqual(guide.path, self.dir / "demo.hint.fr_FR.html")
+
+    def test_falls_back_to_english_when_not_translated(self):
+        (self.dir / "demo.hint.html").write_text("<h1>Demo</h1>", encoding="utf-8")
+        i18n.set_locale("fr_FR")
+        guide = guides.find(self.problem, guides.HINT)
+        self.assertEqual(guide.path, self.dir / "demo.hint.html")
+
+    def test_english_page_is_used_under_the_default_locale_even_if_translated(self):
+        (self.dir / "demo.hint.html").write_text("<h1>Demo</h1>", encoding="utf-8")
+        (self.dir / "demo.hint.fr_FR.html").write_text("<h1>Démo</h1>", encoding="utf-8")
+        guide = guides.find(self.problem, guides.HINT)
+        self.assertEqual(guide.path, self.dir / "demo.hint.html")
+
+    def test_guide_path_always_names_the_english_file(self):
+        """`guide_path` backs '--guides' reporting and stays locale-agnostic
+        -- `find` is the layer that adds translation preference."""
+        (self.dir / "demo.hint.fr_FR.html").write_text("x", encoding="utf-8")
+        i18n.set_locale("fr_FR")
+        self.assertEqual(guides.guide_path(self.problem, guides.HINT),
+                         self.dir / "demo.hint.html")
+
+
 class TestShippedGuides(unittest.TestCase):
     """Every shipped problem must come with both pages, and the pages must be
     usable off the disk -- no missing stylesheet, no broken cross-link."""
@@ -884,6 +1025,77 @@ class TestShippedGuides(unittest.TestCase):
         for problem, kind, page in self.each_page():
             with self.subTest(problem=problem.id, kind=kind):
                 self.assertIn('rel="stylesheet"', page)
+
+
+class TestShippedCSharpTranslations(unittest.TestCase):
+    """The French translation covers the C# problems specifically (and the
+    app chrome, via `fr_FR.json` -- see `TestI18n`), not every language --
+    this pins that down the same way `TestShippedGuides` pins down the
+    English guides, scoped to `problems/csharp` and loaded under `fr_FR`."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls._original_locale = i18n.get_locale()
+        cls.english = load_library(PROBLEMS_ROOT).by_language("csharp")
+        i18n.set_locale("fr_FR")
+        cls.french = load_library(PROBLEMS_ROOT).by_language("csharp")
+
+    @classmethod
+    def tearDownClass(cls):
+        i18n.set_locale(cls._original_locale)
+
+    def test_every_csharp_problem_was_found_in_both_passes(self):
+        self.assertGreater(len(self.english), 0)
+        self.assertEqual({p.id for p in self.english}, {p.id for p in self.french})
+
+    def test_every_csharp_title_and_statement_is_actually_translated(self):
+        """Not just present -- different from the English source. A file
+        that exists but was never filled in would pass a bare
+        `assertTrue(problem.title)` check without anyone noticing."""
+        by_id = {p.id: p for p in self.english}
+        for problem in self.french:
+            with self.subTest(problem=problem.id):
+                english = by_id[problem.id]
+                self.assertNotEqual(problem.title, english.title)
+                self.assertNotEqual(problem.statement, english.statement)
+
+    def test_every_csharp_test_case_name_is_translated(self):
+        by_id = {p.id: p for p in self.english}
+        for problem in self.french:
+            with self.subTest(problem=problem.id):
+                english = by_id[problem.id]
+                for fr_case, en_case in zip(problem.fixed_tests, english.fixed_tests):
+                    self.assertNotEqual(fr_case.name, en_case.name)
+                    # data, not prose -- translation must never touch these
+                    self.assertEqual(fr_case.stdin, en_case.stdin)
+                    self.assertEqual(fr_case.expected_stdout, en_case.expected_stdout)
+
+    def test_every_csharp_problem_has_translated_guides(self):
+        for problem in self.french:
+            with self.subTest(problem=problem.id):
+                self.assertEqual(guides.missing(problem), [])
+                for kind in guides.REQUIRED:
+                    guide = guides.find(problem, kind)
+                    self.assertEqual(guide.path.suffixes[-3:],
+                                     [f".{kind}", ".fr_FR", ".html"],
+                                     f"{guide.path.name} is not a translated {kind} page")
+
+    def test_translated_guide_pages_name_the_translated_title(self):
+        for problem in self.french:
+            for kind in guides.REQUIRED:
+                with self.subTest(problem=problem.id, kind=kind):
+                    page = guides.find(problem, kind).path.read_text(encoding="utf-8")
+                    self.assertIn(problem.title, page)
+
+    def test_translated_guide_pages_cross_link_each_other(self):
+        for problem in self.french:
+            with self.subTest(problem=problem.id):
+                hint_path = guides.find(problem, guides.HINT).path
+                solution_path = guides.find(problem, guides.SOLUTION).path
+                hint_page = hint_path.read_text(encoding="utf-8")
+                solution_page = solution_path.read_text(encoding="utf-8")
+                self.assertIn(solution_path.name, hint_page)
+                self.assertIn(hint_path.name, solution_page)
 
 
 # ---------------------------------------------------------------------------
@@ -1132,6 +1344,74 @@ class TestI18n(unittest.TestCase):
     def test_locale_file_is_valid_json(self):
         path = i18n.LOCALES_DIR / "en_GB.json"
         json.loads(path.read_text(encoding="utf-8"))  # raises on malformed JSON
+
+    def test_fr_fr_is_available(self):
+        self.assertIn("fr_FR", i18n.available_locales())
+
+    def test_fr_fr_locale_file_is_valid_json(self):
+        path = i18n.LOCALES_DIR / "fr_FR.json"
+        json.loads(path.read_text(encoding="utf-8"))  # raises on malformed JSON
+
+    def test_fr_fr_has_no_empty_or_non_string_leaves(self):
+        data = i18n._load("fr_FR")  # noqa: SLF001 -- whole-file structural check
+
+        def walk(node, path):
+            if isinstance(node, dict):
+                for key, child in node.items():
+                    walk(child, f"{path}.{key}")
+            else:
+                self.assertIsInstance(node, str, f"{path} is not a string")
+                self.assertTrue(node, f"{path} is an empty string")
+
+        for top_key, value in data.items():
+            walk(value, top_key)
+
+    def test_fr_fr_has_exactly_the_same_keys_as_en_gb(self):
+        """`t()` falls back key-by-key, so `fr_FR` is allowed to be
+        incomplete without breaking anything -- but it ships complete today,
+        and a key silently dropped (or added somewhere it doesn't belong)
+        during an edit is worth catching rather than only noticing by eye."""
+
+        def leaf_paths(node, prefix=""):
+            if isinstance(node, dict):
+                for key, child in node.items():
+                    yield from leaf_paths(child, f"{prefix}.{key}" if prefix else key)
+            else:
+                yield prefix
+
+        en_keys = set(leaf_paths(i18n._load("en_GB")))  # noqa: SLF001
+        fr_keys = set(leaf_paths(i18n._load("fr_FR")))  # noqa: SLF001
+        self.assertEqual(en_keys, fr_keys,
+                         f"only in en_GB: {sorted(en_keys - fr_keys)}\n"
+                         f"only in fr_FR: {sorted(fr_keys - en_keys)}")
+
+    def test_fr_fr_templates_use_the_same_placeholders_as_en_gb(self):
+        """A translated template with a renamed or dropped `{placeholder}`
+        would raise `TranslationError` the first time the app actually called
+        `t()` for it under `fr_FR` -- with a real keyword argument, since a
+        placeholder can appear anywhere in the template. Checked structurally
+        here instead of by exercising every call site under every locale."""
+        field_re = re.compile(r"\{([a-zA-Z_][a-zA-Z0-9_]*)(?::[^{}]*)?\}")
+
+        def leaves(node, prefix=""):
+            if isinstance(node, dict):
+                for key, child in node.items():
+                    yield from leaves(child, f"{prefix}.{key}" if prefix else key)
+            else:
+                yield prefix, node
+
+        en_leaves = dict(leaves(i18n._load("en_GB")))  # noqa: SLF001
+        fr_leaves = dict(leaves(i18n._load("fr_FR")))  # noqa: SLF001
+        mismatches = []
+        for key, en_value in en_leaves.items():
+            fr_value = fr_leaves.get(key)
+            if fr_value is None:
+                continue  # covered by test_fr_fr_has_exactly_the_same_keys_as_en_gb
+            en_fields = set(field_re.findall(en_value))
+            fr_fields = set(field_re.findall(fr_value))
+            if en_fields != fr_fields:
+                mismatches.append(f"{key}: en={sorted(en_fields)} fr={sorted(fr_fields)}")
+        self.assertEqual(mismatches, [], "\n".join(mismatches))
 
     def test_every_static_t_call_site_resolves(self):
         """Walks every `t("...")` call in the package whose key is a plain

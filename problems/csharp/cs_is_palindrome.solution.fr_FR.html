@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solution détaillée — Vérification de palindrome · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C# · facile</p>
+  <h1>Vérification de palindrome</h1>
+  <p class="kind">Solution détaillée</p>
+  <p class="lede">Cette page contient la réponse complète et explique
+    pourquoi chaque partie s'y trouve.</p>
+</header>
+
+<h2>Le code</h2>
+
+<pre><code>public static bool IsPalindrome(string text)
+{
+    int left = 0;
+    int right = text.Length - 1;
+
+    while (left &lt; right)
+    {
+        if (!char.IsLetterOrDigit(text[left])) { left++; continue; }
+        if (!char.IsLetterOrDigit(text[right])) { right--; continue; }
+
+        if (char.ToLowerInvariant(text[left]) != char.ToLowerInvariant(text[right]))
+        {
+            return false;
+        }
+        left++;
+        right--;
+    }
+    return true;
+}</code></pre>
+
+<h2>Pourquoi sauter est deux vérifications séparées, pas une seule</h2>
+
+<div class="trap">
+<p>Les deux <code>if</code> qui avancent au-delà de la ponctuation sont
+volontairement indépendants : une chaîne comme <code>"A, ."</code> peut
+avoir des caractères non alphanumériques des <em>deux</em> côtés à la fois
+(la virgule près du début, le point à la fin), et chaque pointeur doit
+pouvoir avancer de son côté sans attendre l'autre. Les combiner en une
+seule vérification « sauter si l'un ou l'autre côté est de la ponctuation »
+déplacerait les deux pointeurs ensemble et sauterait discrètement une
+lettre qui aurait dû être comparée.</p>
+</div>
+
+<h2>Pourquoi la condition de boucle suffit comme cas de base</h2>
+
+<p><code>left &lt; right</code> arrête la boucle une fois que les pointeurs se
+rejoignent ou se croisent, et la fonction termine sur <code>return
+true</code>. Cela couvre la chaîne vide (<code>left</code> commence à
+<code>0</code>, <code>right</code> à <code>-1</code>, la boucle ne s'exécute
+jamais) et une chaîne sans rien d'alphanumérique (les pointeurs passent
+outre tout et se croisent sans jamais rien comparer) de la même façon, sans
+vérification séparée pour l'un ou l'autre -- les deux cas signifient « rien
+n'a été trouvé en désaccord », ce qui est exactement ce qu'une vérification
+de palindrome doit en dire.</p>
+
+<h2>Coût</h2>
+
+<p><strong>O(n)</strong> dans la longueur de `text` -- chaque pointeur
+n'avance (ou ne recule) jamais qu'une fois, si bien que les deux réunis
+visitent chaque caractère au plus une fois. Aucune copie de la chaîne
+n'est faite.</p>
+
+<footer>
+  <p><a href="cs_is_palindrome.hint.fr_FR.html">← Retour à l'indice</a> ·
+     Appuyez sur <strong>Ctrl+R</strong> dans Crucible pour un nouveau jeu de
+     données et résolvez-le à nouveau depuis un éditeur vierge.</p>
+</footer>
+
+</main>
+</body>
+</html>

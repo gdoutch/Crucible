@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Indice — Comptage de fréquence des caractères · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C# · moyen</p>
+  <h1>Comptage de fréquence des caractères</h1>
+  <p class="kind">Indice</p>
+  <p class="lede">Un coup de pouce dans la bonne direction. La réponse complète
+    se trouve sur la page de la solution détaillée, donc rien ci-dessous ne
+    la révèle.</p>
+</header>
+
+<h2>Une seule ligne, aucune branche</h2>
+
+<pre><code>var counts = new Dictionary&lt;char, int&gt;();
+foreach (char c in text) {
+    counts[c] = counts.GetValueOrDefault(c) + 1;
+}
+return counts;</code></pre>
+
+<h2>Ce qui casse si vous utilisez <code>counts[c]++</code> à la place</h2>
+
+<div class="trap">
+<p><code>counts[c]++</code> est un raccourci pour <code>counts[c] =
+counts[c] + 1</code> -- et la moitié lecture de cette affectation
+composée, <code>counts[c]</code>, lève une <code>KeyNotFoundException</code>
+la toute première fois que <code>c</code> apparaît, parce qu'il n'y a
+encore aucune entrée à lire. Cela fonctionne très bien à partir de la
+<em>deuxième</em> occurrence d'un caractère, ce qui est exactement le genre
+de bogue qui survit à des tests superficiels sur une entrée avec des
+répétitions et ne se révèle que sur une chaîne où chaque caractère est
+distinct.</p>
+</div>
+
+<h2>Le cas de la chaîne vide est gratuit</h2>
+
+<p><code>foreach</code> sur une chaîne vide n'exécute jamais son corps,
+donc le dictionnaire reste vide et est retourné tel quel -- aucune
+vérification séparée n'est nécessaire pour « il n'y avait rien à
+compter ».</p>
+
+<footer>
+  <p>Prêt pour la totale ?
+    <a href="cs_char_frequency_count.solution.fr_FR.html">Lire la solution détaillée →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

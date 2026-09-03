@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solution détaillée — Assembler une liste en une ligne CSV · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C# · facile</p>
+  <h1>Assembler une liste en une ligne CSV</h1>
+  <p class="kind">Solution détaillée</p>
+  <p class="lede">Cette page contient la réponse complète et explique
+    pourquoi chaque partie s'y trouve.</p>
+</header>
+
+<h2>Le code</h2>
+
+<pre><code>public static string JoinCsv(List&lt;string&gt; items)
+{
+    return string.Join(",", items);
+}</code></pre>
+
+<h2>Pourquoi cela ne demande aucun cas particulier pour les listes vides ou à un seul élément</h2>
+
+<div class="trap">
+<p>Le contrat de <code>string.Join</code> est « placer le séparateur
+strictement *entre* les éléments consécutifs », ce qui couvre déjà les deux
+cas limites sans code supplémentaire : zéro élément signifie zéro
+séparateur et un résultat vide ; un élément signifie zéro séparateur (il
+n'y a pas de second élément dont le séparer) et l'élément lui-même,
+inchangé. Une boucle écrite à la main qui ajoute <code>item + séparateur</code>
+après *chaque* élément répond à une question subtilement différente --
+« mettre un séparateur après chaque élément » -- ce qui donne la bonne
+réponse pour les éléments *intérieurs* et la mauvaise à la frontière,
+nécessitant une correction ou une vérification en fin de boucle.</p>
+</div>
+
+<h2>Coût</h2>
+
+<p><strong>O(n)</strong> dans la longueur totale de toutes les chaînes
+concernées -- <code>string.Join</code> calcule la longueur totale du
+résultat à l'avance et écrit dans un seul tampon, plutôt que de
+réallouer sans cesse comme le ferait <code>result += item</code> dans une
+boucle.</p>
+
+<footer>
+  <p><a href="cs_csv_join.hint.fr_FR.html">← Retour à l'indice</a> ·
+     Appuyez sur <strong>Ctrl+R</strong> dans Crucible pour un nouveau jeu de
+     données et résolvez-le à nouveau depuis un éditeur vierge.</p>
+</footer>
+
+</main>
+</body>
+</html>

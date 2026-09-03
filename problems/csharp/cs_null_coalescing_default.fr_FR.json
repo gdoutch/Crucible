@@ -1,0 +1,19 @@
+{
+  "title": "Valeur nullable ou repli",
+  "statement": "`int` ne peut pas être `null` -- c'est un type valeur, et une variable de\ntype valeur contient toujours une valeur réelle. `int?` (abréviation de\n`System.Nullable<int>`) ajoute exactement un état de plus par-dessus : « un\n`int`, ou rien du tout », qui est précisément la forme qu'a réellement une\nmesure de capteur pas encore arrivée, ou un paramètre optionnel que\npersonne n'a configuré.\n\n## Votre fonction\n\n```\npublic static int ValueOrDefault(int? value, int fallback);\n```\n\nRetournez `value` s'il contient une valeur, ou `fallback` sinon.\n\n## Attention\n\n- **`value.Value` lève une exception si `value` est `null`.** C'est du\n  code légal, qui compile -- `int? x = null; int y = x.Value;` -- et cela\n  lève une `InvalidOperationException` dès que ça s'exécute. Cette fonction\n  existe précisément pour qu'un appelant n'ait jamais besoin de recourir à\n  `.Value` (ni de vérifier `.HasValue` à la main d'abord).\n- **`??`, l'opérateur de coalescence nulle, constitue toute la fonction.**\n  `value ?? fallback` se lit « `value`, ou `fallback` si `value` est\n  `null` » -- ce qui est exactement la spécification ci-dessus, mot pour\n  mot. Une solution construite avec une branche explicite\n  `if (value.HasValue)` n'est pas fausse, juste plus longue que ce que le\n  langage offre déjà.\n- `fallback` lui-même est un simple `int` non nullable -- c'est toujours\n  une valeur réelle, jamais quelque chose qui aurait lui-même besoin d'un\n  repli.\n",
+  "tests": [
+    {
+      "name": "une valeur présente est retournée inchangée, le repli est ignoré"
+    },
+    {
+      "name": "une valeur absente utilise le repli"
+    },
+    {
+      "name": "une valeur présente de zéro n'est pas confondue avec une valeur absente",
+      "description": "0 est une valeur réelle -- .HasValue vaut true pour elle, contrairement à null."
+    },
+    {
+      "name": "les valeurs négatives traversent normalement le type nullable"
+    }
+  ]
+}

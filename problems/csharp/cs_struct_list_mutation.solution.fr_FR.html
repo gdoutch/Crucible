@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solution détaillée — Muter des structs à l'intérieur d'une liste · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C# · diabolique</p>
+  <h1>Muter des structs à l'intérieur d'une liste</h1>
+  <p class="kind">Solution détaillée</p>
+  <p class="lede">Cette page contient la réponse complète et explique
+    pourquoi chaque partie s'y trouve.</p>
+</header>
+
+<h2>Le code</h2>
+
+<pre><code>public static void IncrementAll(List&lt;Counter&gt; counters)
+{
+    for (int i = 0; i &lt; counters.Count; i++)
+    {
+        var c = counters[i];
+        c.Increment();
+        counters[i] = c;
+    }
+}</code></pre>
+
+<h2>Pourquoi <code>counters[i].Increment()</code> compile et ne fait rien</h2>
+
+<div class="trap">
+<p><code>List&lt;T&gt;.this[int]</code> est une propriété, et lire une propriété
+signifie appeler son accesseur et recevoir ce qu'il retourne. Pour un type
+d'élément struct, ce qu'il retourne est une <strong>copie</strong> de la
+valeur stockée en interne -- les structs n'ont pas d'identité comme les
+objets en ont une, donc « la struct à l'indice <code>i</code> » et « une
+copie de la struct à l'indice <code>i</code> » sont, une fois lues, des
+valeurs indiscernables, sans lien persistant avec le tableau propre de la
+liste. Appeler <code>Increment()</code> directement sur le résultat de
+l'indexeur mute cette copie -- à laquelle rien d'autre ne fait référence,
+et qui est jetée dès que l'instruction se termine -- tandis que le
+stockage réel de la liste ne change jamais. Aucun diagnostic ne se
+déclenche parce que rien ici n'est réellement illégal : le code fait
+exactement ce qu'il dit, muter une valeur, sauf que la valeur en question
+n'est reliée à rien de durable.</p>
+</div>
+
+<h2>Pourquoi trois instructions séparées, pas une seule</h2>
+
+<p>Seules deux opérations dans la version corrigée touchent jamais le
+stockage réel de la liste : <code>counters[i]</code> à droite d'une
+affectation (l'accesseur, qui lit une copie) et <code>counters[i] = c</code>
+(le mutateur, qui écrit une valeur). Tout ce qui arrive à <code>c</code>
+entre les deux -- ici, un appel à <code>Increment()</code> -- opère
+purement sur la copie locale, et n'est préservé que parce que la ligne
+suivante réécrit explicitement cette locale dans l'emplacement d'où elle
+venait. Omettez l'affectation finale et la mutation est correctement
+calculée puis abandonnée, exactement comme dans la version en une ligne
+que ceci remplace.</p>
+
+<h2>À quoi cela ressemblerait avec une classe à la place</h2>
+
+<p>Si <code>Counter</code> était déclarée comme une <code>class</code>
+plutôt qu'une <code>struct</code>, <code>counters[i]</code> retournerait
+une <em>référence</em> vers l'unique objet partagé à cette position -- et
+<code>counters[i].Increment()</code> fonctionnerait exactement comme la
+version naïve l'espérait ici, parce qu'il n'y aurait qu'un seul objet
+<code>Counter</code> par élément, pas une copie fraîche à chaque lecture.
+C'est précisément pourquoi ce piège est spécifique aux types valeur : il
+ne s'agit pas de l'indexeur de `List<T>` qui serait inhabituel, il s'agit
+de ce que signifie « lire une valeur hors d'une collection » quand le type
+d'élément est une struct plutôt qu'une classe.</p>
+
+<h2>Coût</h2>
+
+<p><strong>O(n)</strong> dans le nombre de compteurs -- une lecture, une
+mutation et une écriture par élément, toutes en O(1).</p>
+
+<footer>
+  <p><a href="cs_struct_list_mutation.hint.fr_FR.html">← Retour à l'indice</a> ·
+     Appuyez sur <strong>Ctrl+R</strong> dans Crucible pour un nouveau jeu de
+     données et résolvez-le à nouveau depuis un éditeur vierge.</p>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,422 @@
+{
+  "cli": {
+    "description": "Crucible -- un environnement de pratique du code en Tkinter pour le C (et d'autres langages).",
+    "arg_problems_help": "répertoire des problèmes (par défaut : ./problems)",
+    "arg_seed_help": "numéro du jeu de données pour les cas aléatoires (par défaut : un nouveau à chaque exécution)",
+    "arg_verify_help": "vérifier chaque solution de référence puis quitter",
+    "arg_list_help": "lister les problèmes disponibles puis quitter",
+    "arg_toolchains_help": "afficher les compilateurs détectés puis quitter",
+    "arg_guides_help": "signaler les problèmes sans indice ou sans solution détaillée ; quitter avec le code 1 si c'est le cas",
+    "no_tkinter": "Tkinter n'est pas disponible dans cette installation de Python.\nSous Debian/Ubuntu :  sudo apt install python3-tk\nSous Windows/macOS :  réinstallez Python en cochant l'option Tcl/Tk.",
+    "toolchains": {
+      "heading": "Chaînes d'outils\n",
+      "row": "  {mark} {name:<10} {summary}",
+      "mark_ok": "OK ",
+      "mark_missing": "-- ",
+      "detail_line": "         {line}",
+      "some_missing": "\nUne ou plusieurs chaînes d'outils sont manquantes. Lancez avec --verify pour plus de détails,\nou ouvrez l'interface graphique et utilisez Aide -> État du compilateur pour les étapes d'installation."
+    },
+    "list": {
+      "load_errors_heading": "Problèmes n'ayant pas pu être chargés :",
+      "load_error_row": "  ! {error}",
+      "none_found": "Aucun problème trouvé sous {root}",
+      "heading": "{count} problème(s) sous {root}\n",
+      "row_title": "  [{language:<6}] {title}",
+      "row_detail": "           {difficulty}, {visible} test(s) visible(s){extra}{random_note}  id={id}",
+      "hidden_suffix": " (+{hidden} caché(s))",
+      "randomised_suffix": " + {count} aléatoire(s)"
+    },
+    "guides": {
+      "none_found": "Aucun problème trouvé sous {root}",
+      "ok_row": "  OK    {title}{extra}",
+      "diagram_suffix": "  (+diagramme)",
+      "missing_row": "  MANQUANT {title}  -- pas de {kinds}",
+      "missing_path_row": "           attendu : {path}",
+      "some_incomplete": "{incomplete} problème(s) sur {total} n'ont pas de guide.",
+      "all_complete": "Les {total} problèmes ont tous les deux guides."
+    },
+    "verify": {
+      "none_found": "Aucun problème trouvé sous {root}",
+      "heading": "Vérification de {count} problème(s) par rapport à leurs solutions de référence",
+      "seed_note": "Les jeux de données aléatoires utilisent la graine {seed}  (--seed {seed} pour répéter)\n",
+      "skip_row": "  IGNORÉ  {title}  ({summary})",
+      "broken_generator_row": "  DÉFECTUEUX {title}  -- {error}",
+      "ok_row": "  OK    {title}  ({total} tests{random_note})",
+      "randomised_suffix": ", {count} aléatoire(s)",
+      "broken_build_row": "  DÉFECTUEUX {title}  -- la référence n'a pas compilé",
+      "build_output_line": "           {line}",
+      "broken_row": "  DÉFECTUEUX {title}  -- {summary}",
+      "failure_row": "           {symbol:<8} {name}  {message}",
+      "failure_expected": "             attendu : {expected}",
+      "failure_actual": "             obtenu :  {actual}",
+      "broken_summary": "{count} problème(s) sont défectueux -- corrigez-les avant utilisation.",
+      "skipped_summary": "{count} problème(s) ignoré(s) : aucune chaîne d'outils installée.",
+      "all_verified": "Tous les problèmes ont été vérifiés."
+    }
+  },
+  "problem": {
+    "test_case": {
+      "hidden_suffix": "{name} (caché)",
+      "default_name": "cas {index}"
+    },
+    "error": {
+      "test_where": "{file}: tests[{index}]",
+      "missing_field": "{file} : champ requis manquant « {key} »",
+      "wrong_type": "{file} : le champ « {key} » doit être de type {expected}, reçu {actual}",
+      "empty_field": "{file} : le champ « {key} » ne doit pas être vide",
+      "reference_both_set": "{file} : définissez « reference_solution » ou « reference_solution_b64 », pas les deux",
+      "reference_bad_base64": "{file} : « reference_solution_b64 » n'est pas un UTF-8 encodé en base64 valide ({error})",
+      "reference_decoded_empty": "{file} : la solution de référence décodée est vide",
+      "reference_required": "{file} : une solution de référence est requise -- la suite de tests ne peut pas être pré-vérifiée sans elle",
+      "generator_not_object": "{file} : « generator » doit être un objet avec un champ « source »",
+      "generator_source_not_string": "{file} : « generator.source » doit être du code source Python",
+      "generator_source_syntax_error": "{file} : « generator.source » n'est pas du Python valide (ligne {line} : {message})",
+      "generator_missing_generate": "{file} : « generator.source » doit définir generate(rng, count)",
+      "generator_count_not_int": "{file} : « generator.count » doit être un entier",
+      "generator_count_out_of_range": "{file} : « generator.count » doit être compris entre 1 et {max}",
+      "tests_not_list": "{file} : « tests » doit être une liste",
+      "tests_empty_without_generator": "{file} : « tests » doit être une liste non vide, sauf si le problème possède un « generator » pour fournir des cas",
+      "test_not_object": "{where} doit être un objet",
+      "test_name_not_string": "{where}.name doit être une chaîne de caractères",
+      "test_name_duplicated": "{where}.name « {name} » est en double",
+      "test_missing_expected_stdout": "{where} : « expected_stdout » manquant",
+      "invalid_json": "{file} : JSON invalide à la ligne {line} : {message}",
+      "cannot_read_file": "{file} : impossible de lire le fichier ({error})",
+      "top_level_not_object": "{file} : le niveau racine doit être un objet JSON",
+      "unknown_language": "{file} : langage inconnu « {language} ». Langages enregistrés : {known}",
+      "unknown_difficulty": "{file} : la difficulté « {difficulty} » doit être l'une de {choices}",
+      "timeout_not_number": "{file} : « timeout_seconds » doit être un nombre",
+      "timeout_out_of_range": "{file} : « timeout_seconds » doit être compris entre 0 et 120",
+      "topics_not_list": "{file} : « topics » doit être une liste",
+      "directory_not_found": "Répertoire des problèmes introuvable : {root}",
+      "duplicate_id": "Identifiant de problème en double « {id} » -- les identifiants doivent être uniques"
+    }
+  },
+  "editor": {
+    "find_bar": {
+      "find_label": "Rechercher",
+      "replace_label": "Remplacer",
+      "replace_button": "Remplacer",
+      "replace_all_button": "Tout",
+      "no_matches": "aucune correspondance",
+      "match_position": "{index} sur {total}",
+      "replaced_count": "{count} remplacement(s)"
+    }
+  },
+  "profiles": {
+    "error": {
+      "empty_username": "Saisissez un nom d'utilisateur."
+    }
+  },
+  "profile_dialog": {
+    "window_title": "Choisir un profil",
+    "heading": "Qui s'entraîne ?",
+    "subtitle": "Seul un nom d'utilisateur est stocké ici -- rien d'autre.",
+    "list_row": "  {username}",
+    "new_profile_label": "Nouveau profil :",
+    "delete_button": "Supprimer",
+    "cancel_button": "Annuler",
+    "create_button": "Créer && ouvrir",
+    "open_button": "Ouvrir",
+    "invalid_username_title": "Choisissez un nom d'utilisateur",
+    "delete_confirm_title": "Supprimer le profil",
+    "delete_confirm_message": "Supprimer le profil « {username} » ?\n\nCela supprime ses brouillons enregistrés, ses jeux de données et ses problèmes résolus. Cette action est irréversible."
+  },
+  "guides": {
+    "kind": {
+      "diagram": "Diagramme",
+      "hint": "Indice",
+      "solution": "Solution détaillée"
+    }
+  },
+  "languages": {
+    "common": {
+      "could_not_start_process": "Impossible de démarrer le processus : {error}",
+      "exited_with_status": "terminé avec le code {code}"
+    },
+    "python": {
+      "summary": "Python {version}",
+      "interpreter_detail": "Interpréteur : {executable}",
+      "syntax_error_detail": "{file}:{line}: {message}",
+      "syntax_error_context": "\n    {text}\n    {caret}"
+    },
+    "c": {
+      "install_help_windows": "Aucun compilateur C trouvé.\n\nChoisissez l'option la plus simple pour vous :\n\n  1. w64devkit  -- une simple archive zip portable, sans installeur, ~80 Mo.\n     https://github.com/skeeto/w64devkit/releases\n     Décompressez-la, puis ajoutez son dossier bin\\ au PATH (ou relancez\n     simplement cette application -- C:\\w64devkit\\bin est détecté automatiquement).\n\n  2. MSYS2      -- gestionnaire de paquets complet, la meilleure option à long terme.\n     https://www.msys2.org  puis :  pacman -S mingw-w64-ucrt-x86_64-gcc\n\n  3. Visual Studio -- vous avez déjà VS installé, mais sans les outils C++.\n     Ouvrez le Visual Studio Installer, cliquez sur Modifier, et cochez\n     « Développement Desktop en C++ ».\n\nRevérifiez depuis le menu Outils une fois installé -- aucun redémarrage nécessaire.",
+      "install_help_posix": "Aucun compilateur C trouvé.\n\n  Debian/Ubuntu :  sudo apt install build-essential\n  Fedora :         sudo dnf install gcc\n  macOS :          xcode-select --install\n\nRevérifiez depuis le menu Outils une fois installé.",
+      "summary_gnu": "C : {version}",
+      "detail_gnu": "Compilateur : {path}\nMode : ligne de commande compatible GCC",
+      "summary_msvc": "C : Microsoft Visual C++ (MSVC)",
+      "detail_msvc": "Compilateur : {path}\nEnvironnement initialisé à partir de vcvars64.bat",
+      "summary_msvc_current_env": "C : Microsoft Visual C++ (MSVC, depuis l'environnement courant)",
+      "detail_msvc_current_env": "Compilateur : {path}",
+      "summary_not_found": "C : aucun compilateur trouvé",
+      "detail_not_found": "Recherche effectuée dans le PATH et les emplacements d'installation habituels pour {compilers} et cl.exe.",
+      "compile_timeout": "Délai de compilation dépassé après 60 s.",
+      "exit": {
+        "access_violation": "violation d'accès (pointeur invalide / débordement de tampon)",
+        "divide_by_zero": "division entière par zéro",
+        "stack_overflow": "débordement de pile (récursion incontrôlée ?)",
+        "interrupted": "interrompu",
+        "crashed": "plantage : {description}",
+        "sigsegv": "SIGSEGV (erreur de segmentation)",
+        "sigabrt": "SIGABRT (abandon)",
+        "sigfpe": "SIGFPE (erreur arithmétique, ex. : division par zéro)",
+        "killed_by_signal": "tué par le signal {signal}"
+      }
+    },
+    "csharp": {
+      "install_help_windows": "Aucun SDK .NET trouvé.\n\nChoisissez l'option la plus simple pour vous :\n\n  1. winget      -- depuis une invite de commandes élevée :\n     winget install Microsoft.DotNet.SDK.8\n\n  2. Installeur  -- téléchargez l'installeur du SDK .NET 8.\n     https://dotnet.microsoft.com/download\n\n  3. Visual Studio -- vous avez déjà VS installé ; ouvrez le Visual\n     Studio Installer, cliquez sur Modifier, et cochez « Développement\n     Desktop .NET ».\n\nRevérifiez depuis le menu Outils une fois installé -- aucun redémarrage nécessaire.",
+      "install_help_posix": "Aucun SDK .NET trouvé.\n\n  Debian/Ubuntu :  sudo apt install dotnet-sdk-8.0\n  Fedora :         sudo dnf install dotnet-sdk-8.0\n  macOS :          brew install dotnet-sdk\n  Toute plateforme : https://dotnet.microsoft.com/download\n\nRevérifiez depuis le menu Outils une fois installé.",
+      "summary_not_found": "C# : aucun SDK .NET trouvé",
+      "detail_not_found": "Recherche effectuée dans le PATH et les emplacements d'installation habituels pour dotnet.",
+      "summary_no_sdk": "C# : runtime .NET trouvé, mais aucun SDK",
+      "detail_no_sdk": "dotnet : {path}\n« dotnet --version » a échoué -- cela ressemble à une installation runtime seule, capable d'exécuter un programme mais pas d'en compiler un.",
+      "summary": "C# : SDK .NET {version}",
+      "detail": "dotnet : {path}",
+      "build_timeout": "Délai de compilation dépassé après 90 s.",
+      "exit": {
+        "unhandled_exception": "exception non gérée (voir stderr)",
+        "sigabrt": "SIGABRT (abandon) -- probablement une exception non gérée",
+        "killed_by_signal": "tué par le signal {signal}"
+      }
+    }
+  },
+  "app": {
+    "window_title_with_problem": "{app_name} — {title}",
+    "menu": {
+      "file": {
+        "title": "Fichier",
+        "save_draft": "Enregistrer le brouillon\tCtrl+S",
+        "reset": "Réinitialiser au code de départ",
+        "reload": "Recharger les problèmes",
+        "quit": "Quitter"
+      },
+      "edit": {
+        "title": "Édition",
+        "undo": "Annuler\tCtrl+Z",
+        "redo": "Rétablir\tCtrl+Y",
+        "cut_line": "Couper la ligne\tCtrl+X",
+        "duplicate_line": "Dupliquer la ligne\tCtrl+D",
+        "delete_line": "Supprimer la ligne\tCtrl+Maj+K",
+        "move_up": "Déplacer la ligne vers le haut\tAlt+Haut",
+        "move_down": "Déplacer la ligne vers le bas\tAlt+Bas",
+        "toggle_comment": "Commenter/décommenter\tCtrl+/",
+        "find": "Rechercher…\tCtrl+F",
+        "replace": "Remplacer…\tCtrl+H",
+        "find_next": "Rechercher suivant\tF3",
+        "find_previous": "Rechercher précédent\tMaj+F3"
+      },
+      "run": {
+        "title": "Exécuter",
+        "go": "Lancer -- exécuter tous les tests\tF5",
+        "stop": "Arrêter",
+        "new_data": "Nouveau jeu de données\tCtrl+R"
+      },
+      "profile": {
+        "title": "Profil",
+        "current": "Actuel : {username}",
+        "unknown": "…",
+        "switch": "Changer de profil…"
+      },
+      "guides": {
+        "title": "Guides",
+        "diagram": "Diagramme de ce problème\tF2",
+        "hint": "Indice pour ce problème\tF1",
+        "solution": "Solution détaillée de ce problème…",
+        "what_are_these": "Qu'est-ce que c'est ?"
+      },
+      "view": {
+        "title": "Affichage",
+        "pane_toggle": "{label}\tCtrl+{index}",
+        "reset_layout": "Réinitialiser la disposition des panneaux\tCtrl+0",
+        "toggle_theme": "Basculer entre thème clair et sombre",
+        "larger_font": "Agrandir la police de l'éditeur",
+        "smaller_font": "Réduire la police de l'éditeur"
+      },
+      "tools": {
+        "title": "Outils",
+        "recheck_compilers": "Revérifier les compilateurs",
+        "verify_all": "Vérifier la solution de référence de chaque problème",
+        "open_problems_folder": "Ouvrir le dossier des problèmes",
+        "open_drafts_folder": "Ouvrir le dossier des brouillons"
+      },
+      "help": {
+        "title": "Aide",
+        "compiler_status": "État du compilateur",
+        "authoring": "Écrire ses propres problèmes",
+        "about": "À propos"
+      }
+    },
+    "toolbar": {
+      "language_label": "Langage",
+      "all_languages": "Tous",
+      "no_problem_selected": "Aucun problème sélectionné",
+      "go_button": "▶  Lancer",
+      "stop_button": "■  Arrêter",
+      "reset_button": "Réinitialiser",
+      "new_data_button": "Nouvelles données",
+      "problem_meta": "{language}  ·  {difficulty}",
+      "problem_meta_topics_suffix": "  ·  {topics}"
+    },
+    "pane": {
+      "problems": "PROBLÈMES",
+      "statement": "L'ÉNONCÉ",
+      "editor": "VOTRE SOLUTION",
+      "results": "RÉSULTATS"
+    },
+    "tree": {
+      "column_problem": "Problème",
+      "group_row": "{name}  ({count})",
+      "problem_row": "  {title}"
+    },
+    "difficulty": {
+      "easy": "Facile",
+      "medium": "Moyen",
+      "hard": "Difficile",
+      "fiendish": "Diabolique"
+    },
+    "results": {
+      "unit_tests_tab": "Tests unitaires",
+      "build_output_tab": "Sortie de compilation",
+      "column_result": "Résultat",
+      "column_test_case": "Cas de test",
+      "column_time": "Durée",
+      "duration_ms": "{ms:.0f} ms",
+      "run_anyway_button": "Exécuter quand même",
+      "randomised_building_row": "construction de {count} cas aléatoire(s)…",
+      "not_run": "non exécuté"
+    },
+    "detail": {
+      "input_label": "ENTRÉE (stdin)",
+      "expected_label": "SORTIE ATTENDUE",
+      "your_output_label": "VOTRE SORTIE",
+      "stderr_label": "STDERR",
+      "empty_value": "(vide)",
+      "randomised_note": "Entrée aléatoire. La sortie attendue ci-dessous est celle produite par la solution de référence pour ce cas.\n\n",
+      "press_go_hint": "Cliquez sur Lancer pour exécuter votre solution sur ce cas.\n",
+      "status_message_suffix": "  — {message}"
+    },
+    "status": {
+      "pass": "RÉUSSI",
+      "fail": "ÉCHEC",
+      "error": "ERREUR",
+      "timeout": "DÉLAI DÉPASSÉ",
+      "skipped": "ignoré"
+    },
+    "statusbar": {
+      "checking_compilers": "Vérification des compilateurs…",
+      "no_languages_registered": "Aucun langage enregistré",
+      "detecting": "{name} : détection…",
+      "detection_failed": "{name} : échec de la détection",
+      "separator": "   |   ",
+      "profile_status": "{username}  ·  {note}",
+      "solved_note": "{solved}/{total} résolus",
+      "no_problems_loaded": "aucun problème chargé",
+      "building": "Compilation…",
+      "stopping": "Arrêt…",
+      "running_test": "Exécution du test {index} sur {total}…",
+      "verifying_problems": "Vérification de {count} problèmes…",
+      "build_failed": "Échec de la compilation"
+    },
+    "banner": {
+      "building_data_set": "Construction du jeu de données n° {seed} — génération de nouvelles entrées et interrogation de la solution de référence sur ce que chacune doit produire…",
+      "checking_suite": "Vérification de la suite de tests de ce problème par rapport à sa solution de référence…",
+      "generator_unavailable": "⚠  Données aléatoires indisponibles — {error}. Les {count} cas écrits à la main s'exécutent quand même.",
+      "no_compiler_installed": "Aucun compilateur {language} installé, la suite de tests n'a donc pas encore pu être vérifiée. Cliquez sur Lancer, ou consultez Aide → État du compilateur, pour les étapes d'installation.",
+      "verified": "{badge}  Suite de tests vérifiée — la solution de référence réussit les {total} cas{suffix}. Les {visible} cas ci-dessous sont tous affichés en entier.{note}",
+      "disabled": "{badge}  Ce problème est désactivé : sa propre solution de référence ne réussit pas ses tests ({detail}). Le fichier du problème doit être corrigé.",
+      "hidden_suffix": " ({count} caché(s))",
+      "data_set_note": "  {count} d'entre eux sont aléatoires (jeu de données n° {seed} — appuyez sur Ctrl+R pour un autre).",
+      "all_passed": "Les {total} tests ont tous réussi — beau travail.",
+      "summary_to_go": "{summary}  ({failed} restant(s))",
+      "passed_fraction": "{passed}/{total} réussis"
+    },
+    "build": {
+      "command_line": "$ {command}\n\n",
+      "succeeded": "\nCompilation réussie.\n",
+      "build_failed_fallback": "Échec de la compilation.",
+      "compiled_no_warnings": "Compilé sans avertissement."
+    },
+    "dialog": {
+      "problem_files_skipped_title": "Fichiers de problèmes ignorés",
+      "problem_files_skipped_message": "Ces fichiers n'ont pas pu être chargés :\n\n{errors}",
+      "bullet_line": "• {error}",
+      "no_problems_found_title": "Aucun problème trouvé",
+      "no_problems_found_message": "Aucun fichier de problème n'a été trouvé sous :\n{root}\n\nVoir Aide → Écrire ses propres problèmes.",
+      "no_compiler_available_title": "Aucun compilateur disponible",
+      "reset_code_title": "Réinitialiser le code",
+      "reset_code_message": "Remplacer votre code par le code de départ de ce problème ?\nVotre travail actuel sera perdu.",
+      "theme_changed_title": "Thème modifié",
+      "theme_changed_message": "Le nouveau thème sera appliqué au prochain démarrage de {app_name}.",
+      "compiler_status_line": "{mark} {language} : {summary}",
+      "compiler_status_detecting_line": "{badge} {language} : détection en cours…",
+      "authoring_help_message": "Un problème est un fichier JSON situé sous :\n{root}\n\nChamps requis :\n  title, language, statement, harness, tests,\n  et reference_solution (ou reference_solution_b64)\n\nLe harness fournit main() ; le candidat fournit la fonction.\nChaque test est {{name, stdin, expected_stdout, description}}.\n\nChaque solution de référence est exécutée sur la suite complète avant\nque le problème ne soit proposé -- un problème dont la référence échoue\nest désactivé.\n\nLe champ optionnel 'generator' ajoute des cas aléatoires :\n  {{\"count\": 4, \"source\": \"def generate(rng, count): ...\"}}\nIl ne renvoie que des entrées -- {{name, stdin, description}} -- et la\nsortie attendue est capturée depuis la solution de référence, si bien que\nles deux ne peuvent jamais être en désaccord. Ctrl+R tire un nouveau jeu\nde données.\n\nVoir README.md pour le schéma complet et un exemple détaillé.",
+      "no_guide_title": "Aucun « {kind} » pour ce problème",
+      "no_guide_message": "{title} ne fournit pas de page « {kind} ».\n\nElle se trouverait à :\n{path}\n\nVoir Guides → Qu'est-ce que c'est ? pour la convention.",
+      "could_not_open_guide_title": "Impossible d'ouvrir le guide",
+      "could_not_open_guide_message": "Aucun navigateur n'a pu être lancé pour :\n{path}\n\nCette page est un simple fichier HTML -- ouvrez-la manuellement.",
+      "show_solution_title": "Afficher la solution détaillée ?",
+      "show_solution_message": "Cela ouvre la réponse complète à {title}, avec le code et une explication de chaque partie.{nudge}\n\nL'ouvrir ?",
+      "show_solution_hint_nudge": "\n\nL'indice (F1) donne la piste sans révéler le code.",
+      "guides_help_title": "À propos des guides",
+      "guides_help_message": "Des pages qui s'ouvrent dans votre navigateur plutôt que dans l'application :\n\n  Diagramme        la spécification du problème, dessinée. Seuls\n                   les problèmes dont la spécification EST un\n                   diagramme en ont un\n  Indice           l'idée, les pièges, et les cas auxquels penser\n                   -- sans la réponse\n  Solution détaillée  la réponse complète, une trace de son\n                   exécution, et les fausses pistes à reconnaître\n\nElles se trouvent à côté du fichier du problème et sont repérées\npar leur nom :\n\n  c_sum_array.json\n  c_sum_array.hint.html\n  c_sum_array.solution.html\n\nIl n'y a rien à enregistrer -- déposez les fichiers à côté du\nJSON et ce menu les détecte. Elles partagent problems/guides.css.\n\nUne page de diagramme affiche sa source Mermaid grâce à un script\nrécupéré depuis un CDN. Sans réseau, elle affiche la source à la\nplace, qui est la même spécification en texte -- et ce texte se\ntrouve aussi dans l'énoncé du problème, donc l'application n'a\njamais besoin du réseau.\n\n'python -m crucible --guides' liste les problèmes auxquels il\nmanque un indice ou une solution détaillée.",
+      "about_title": "À propos de {app_name}",
+      "about_message": "{app_name}\n\nUn environnement de pratique pour langages compilés et interprétés.\nLes cas de test sont toujours affichés en entier ; les solutions de\nréférence ne le sont jamais.\n\nProblèmes : {problems_root}\nProfil :    {username}  ({profile_root})\nPython :    {python_version}",
+      "about_no_profile": "(aucun pour l'instant)",
+      "could_not_open_folder_title": "Impossible d'ouvrir le dossier"
+    }
+  },
+  "runner": {
+    "symbol": {
+      "pass": "RÉUSSI",
+      "fail": "ÉCHEC",
+      "error": "ERREUR",
+      "timeout": "DÉLAI DÉPASSÉ",
+      "skipped": "--"
+    },
+    "diff": {
+      "no_output": "n'a produit aucune sortie",
+      "whitespace_only": "la sortie ne diffère que par des espaces en début/fin",
+      "case_only": "la sortie ne diffère que par la casse",
+      "line_count_mismatch": "{expected} ligne(s) attendue(s), {actual} obtenue(s)",
+      "first_difference": "première différence à la ligne {line}",
+      "generic": "la sortie diffère"
+    },
+    "outcome": {
+      "cancelled": "annulé",
+      "timeout": "Aucun résultat après {timeout}s -- probablement une boucle infinie ou une lecture bloquante"
+    },
+    "summary": {
+      "build_failed": "Échec de la compilation",
+      "cancelled": "Annulé -- {passed}/{total} réussis jusqu'ici",
+      "passed": "{passed}/{total} tests réussis"
+    },
+    "capture": {
+      "timeout": "la référence ne s'est pas terminée en {timeout}s",
+      "exit_status": "la référence s'est terminée avec le code {code}",
+      "exit_status_detail_suffix": ": {detail}"
+    }
+  },
+  "randomise": {
+    "build_failed": "impossible de générer des données : la solution de référence n'a pas compilé",
+    "build_failed_detail_suffix": " ({detail})",
+    "rejected_cases": "{count} cas généré(s) ont été rejetés -- la solution de référence n'a pas pu les exécuter : {examples}",
+    "rejected_case_line": "{name} : {reason}",
+    "generator_launch_error": "impossible de démarrer le générateur : {error}",
+    "generator_timeout": "le générateur ne s'est pas terminé en {timeout}s -- vérifiez qu'il ne boucle pas indéfiniment",
+    "generator_failed": "le générateur a échoué : {detail}",
+    "generator_exit_status_fallback": "code de sortie {code}",
+    "generator_bad_json": "le générateur n'a pas renvoyé de cas encodables en JSON",
+    "validate": {
+      "not_a_list": "generate(rng, count) doit renvoyer une liste de cas",
+      "empty": "generate(rng, count) n'a renvoyé aucun cas",
+      "too_many": "generate(rng, count) a renvoyé {count} cas ; la limite est {max}",
+      "case_label": "cas généré {index}",
+      "not_an_object": "{where} n'est pas un objet",
+      "sets_expected_stdout": "{where} définit « expected_stdout ». Les générateurs ne fournissent que des entrées -- la sortie attendue provient de la solution de référence",
+      "no_stdin": "{where} n'a pas de chaîne « stdin »",
+      "name_not_string": "{where} a un « name » qui n'est pas une chaîne de caractères"
+    },
+    "default_case_name": "cas aléatoire {index}"
+  }
+}

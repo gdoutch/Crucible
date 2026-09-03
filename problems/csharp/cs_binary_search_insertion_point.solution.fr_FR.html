@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solution détaillée — Recherche binaire avec une convention de point d'insertion · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C# · difficile</p>
+  <h1>Recherche binaire avec une convention de point d'insertion</h1>
+  <p class="kind">Solution détaillée</p>
+  <p class="lede">Cette page contient la réponse complète et explique
+    pourquoi chaque partie s'y trouve.</p>
+</header>
+
+<h2>Le code</h2>
+
+<pre><code>public static int BinarySearchInsertionPoint(int[] sortedValues, int target)
+{
+    int low = 0;
+    int high = sortedValues.Length - 1;
+
+    while (low &lt;= high)
+    {
+        int mid = low + (high - low) / 2;
+        if (sortedValues[mid] == target)
+        {
+            return mid;
+        }
+        if (sortedValues[mid] &lt; target)
+        {
+            low = mid + 1;
+        }
+        else
+        {
+            high = mid - 1;
+        }
+    }
+    return ~low;
+}</code></pre>
+
+<h2>Pourquoi <code>low</code> est exactement le point d'insertion quand la boucle se termine</h2>
+
+<p>Deux invariants sont maintenus tout au long de la boucle, entretenus par
+la borne qui bouge à chaque comparaison : tout indice strictement inférieur
+à <code>low</code> contient une valeur connue pour être inférieure à
+<code>target</code>, et tout indice strictement supérieur à
+<code>high</code> contient une valeur connue pour être supérieure. La
+boucle continue de réduire cet écart jusqu'à ce que <code>low</code> et
+<code>high</code> se croisent -- <code>low == high + 1</code> -- moment
+où <code>low</code> est le premier indice à partir duquel commence la
+région « connue supérieure », ce qui est précisément là où
+<code>target</code> devrait aller pour garder tout ce qui le précède plus
+petit et tout ce qui le suit non plus petit. Cela reste vrai que
+<code>low</code> atterrisse au milieu du tableau, à <code>0</code> (la
+cible appartient avant tout) ou à <code>sortedValues.Length</code> (la
+cible appartient après tout) -- le même invariant produit la bonne réponse
+aux deux extrémités sans vérification séparée pour l'une ou l'autre.</p>
+
+<h2>Pourquoi le complément, et pourquoi il est réversible</h2>
+
+<div class="trap">
+<p><code>~x</code> pour un <code>x</code> non négatif est défini comme
+<code>-x - 1</code> -- pas <code>-x</code>. Ce <code>-1</code>
+supplémentaire est ce qui fait que chaque indice non négatif correspond à
+un nombre négatif *distinct*, y compris <code>0</code> :
+<code>~0 == -1</code>, sans ambiguïté différent d'un véritable résultat
+« trouvé à l'indice 0 » de <code>0</code>, alors que <code>-0 == 0</code>
+entrerait directement en collision avec lui. Ce même décalage est aussi ce
+qui rend l'encodage réversible dans l'autre sens : un appelant tenant un
+résultat négatif peut récupérer l'indice d'insertion avec un second
+complément, <code>~result</code>, parce que <code>~(~x) == x</code> pour
+tout entier <code>x</code> -- complémenter deux fois s'annule exactement.
+C'est la même convention que <code>Array.BinarySearch</code> et
+<code>List&lt;T&gt;.BinarySearch</code> utilisent, ce qui est précisément
+la raison pour laquelle il vaut la peine de la respecter plutôt que
+d'inventer un autre signal de « non trouvé ».</p>
+</div>
+
+<h2>Coût</h2>
+
+<p><strong>O(log n)</strong> dans la longueur de `sortedValues` -- chaque
+comparaison élimine la moitié de ce qu'il reste à chercher.</p>
+
+<footer>
+  <p><a href="cs_binary_search_insertion_point.hint.fr_FR.html">← Retour à l'indice</a> ·
+     Appuyez sur <strong>Ctrl+R</strong> dans Crucible pour un nouveau jeu de
+     données et résolvez-le à nouveau depuis un éditeur vierge.</p>
+</footer>
+
+</main>
+</body>
+</html>

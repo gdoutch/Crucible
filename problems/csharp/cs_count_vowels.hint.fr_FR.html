@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Indice — Compter les voyelles · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C# · facile</p>
+  <h1>Compter les voyelles</h1>
+  <p class="kind">Indice</p>
+  <p class="lede">Un coup de pouce dans la bonne direction. La réponse complète
+    se trouve sur la page de la solution détaillée, donc rien ci-dessous ne
+    la révèle.</p>
+</header>
+
+<h2>Un seul passage, une seule comparaison</h2>
+
+<pre><code>int count = 0;
+foreach (char c in text) {
+    // c est-il une voyelle, majuscule ou minuscule ?
+}
+return count;</code></pre>
+
+<h2>Normalisez la casse avant de comparer, pas après</h2>
+
+<div class="trap">
+<p><code>char.ToLowerInvariant(c)</code> met la casse de <code>c</code>,
+quelle qu'elle soit, en minuscule, une seule fois, avant de la comparer aux
+cinq voyelles. Écrire la comparaison contre les deux casses --
+<code>c == 'a' || c == 'A' || ...</code> -- fonctionne aussi, mais cela fait
+dix comparaisons là où une normalisation de casse et cinq comparaisons
+suffisent, et c'est exactement le genre de chose qu'on oublie facilement de
+faire pour certaines des cinq lettres sous la pression du temps.</p>
+</div>
+
+<p><code>ToLowerInvariant</code> plutôt que le simple <code>ToLower()</code>
+-- la forme invariante ne dépend pas de la locale configurée sur la machine,
+ce qui compte plus qu'il n'y paraît pour les lettres : une poignée de
+locales met en minuscule certaines lettres Unicode différemment, et il n'y
+a aucune raison que la réponse de cet exercice change selon l'endroit où il
+s'exécute.</p>
+
+<footer>
+  <p>Prêt pour la totale ?
+    <a href="cs_count_vowels.solution.fr_FR.html">Lire la solution détaillée →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

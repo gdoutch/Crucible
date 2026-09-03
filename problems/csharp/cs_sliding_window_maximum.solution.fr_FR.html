@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solution détaillée — Maximum de fenêtre glissante · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C# · difficile</p>
+  <h1>Maximum de fenêtre glissante</h1>
+  <p class="kind">Solution détaillée</p>
+  <p class="lede">Cette page contient la réponse complète et explique
+    pourquoi chaque partie s'y trouve.</p>
+</header>
+
+<h2>Le code</h2>
+
+<pre><code>public static int[] SlidingWindowMaximum(int[] values, int windowSize)
+{
+    var result = new int[values.Length - windowSize + 1];
+    var deque = new LinkedList&lt;int&gt;();   // indices ; valeurs décroissantes de l'avant vers l'arrière
+
+    for (int i = 0; i &lt; values.Length; i++)
+    {
+        while (deque.Count &gt; 0 &amp;&amp; deque.First.Value &lt;= i - windowSize)
+        {
+            deque.RemoveFirst();
+        }
+        while (deque.Count &gt; 0 &amp;&amp; values[deque.Last.Value] &lt;= values[i])
+        {
+            deque.RemoveLast();
+        }
+        deque.AddLast(i);
+
+        if (i &gt;= windowSize - 1)
+        {
+            result[i - windowSize + 1] = values[deque.First.Value];
+        }
+    }
+    return result;
+}</code></pre>
+
+<h2>Pourquoi chaque indice est ajouté et retiré de la deque au plus une fois</h2>
+
+<p>Chaque indice entre dans la deque exactement une fois, via
+<code>AddLast</code>. À partir de là, il en sort d'exactement une des deux
+façons : évincé de l'arrière par une valeur ultérieure au moins aussi
+grande avant même d'atteindre l'avant, ou évincé de l'avant une fois que
+la fenêtre a glissé au-delà de lui. Dans les deux cas, une fois parti, il
+est parti pour de bon -- rien ne réajoute jamais un indice. C'est ce qui
+borne le travail total sur toute la fonction : n insertions et au plus n
+suppressions, plutôt que les <code>O(n · windowSize)</code> que coûterait
+un nouveau parcours de chaque fenêtre.</p>
+
+<h2>Pourquoi la vérification d'éviction est <code>&lt;=</code>, pas <code>&lt;</code></h2>
+
+<div class="trap">
+<p>Un indice dont la valeur est simplement à égalité avec celle qui vient
+d'arriver est déjà redondant : la nouvelle survivra plus longtemps dans la
+fenêtre (elle est arrivée plus tard, donc elle en sortira plus tard), donc
+l'ancienne valeur, à égalité, ne peut plus jamais redevenir le seul
+maximum une fois que la plus récente existe à ses côtés. Évincer sur
+<code>&lt;=</code> garde la deque aussi petite que les valeurs distinctes
+« qui pourraient encore compter », plutôt que d'accumuler des indices de
+valeur égale qu'un <code>&lt;</code> strict laisserait s'y installer sans
+être relus. Les deux versions calculent le bon <em>maximum</em> -- une
+égalité ne change pas quelle valeur est la plus grande -- mais seule la
+version en <code>&lt;=</code> garde la taille de la deque bornée par la
+forme des données plutôt que par le nombre d'ex æquo qui s'y trouvent.</p>
+</div>
+
+<h2>Pourquoi l'éviction avant se produit avant l'éviction arrière</h2>
+
+<p>Les deux vérifications s'exécutent à chaque itération, dans cet ordre,
+parce qu'elles répondent à des questions différentes sur des extrémités
+différentes de la deque : « la fenêtre a-t-elle dépassé cet indice »
+(avant) n'a rien à voir avec « la valeur de cet indice est-elle devenue
+redondante » (arrière), et faire la vérification avant en premier
+garantit qu'un indice obsolète n'est jamais lu par erreur comme le
+maximum courant de la fenêtre, même pour la seule itération où cela
+aurait autrement pu survivre.</p>
+
+<h2>Coût</h2>
+
+<p><strong>O(n)</strong> au total -- chacun des n éléments est empilé dans
+la deque exactement une fois et retiré au plus une fois, de l'une ou
+l'autre extrémité, deux opérations en O(1) sur une
+<code>LinkedList&lt;T&gt;</code>. À comparer aux <code>O(n · windowSize)</code>
+d'un nouveau parcours de chaque fenêtre depuis zéro.</p>
+
+<footer>
+  <p><a href="cs_sliding_window_maximum.hint.fr_FR.html">← Retour à l'indice</a> ·
+     Appuyez sur <strong>Ctrl+R</strong> dans Crucible pour un nouveau jeu de
+     données et résolvez-le à nouveau depuis un éditeur vierge.</p>
+</footer>
+
+</main>
+</body>
+</html>

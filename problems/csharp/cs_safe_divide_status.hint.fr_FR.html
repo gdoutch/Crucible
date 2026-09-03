@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Indice — Division avec deux modes d'échec distincts · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C# · diabolique</p>
+  <h1>Division avec deux modes d'échec distincts</h1>
+  <p class="kind">Indice</p>
+  <p class="lede">Un coup de pouce dans la bonne direction. La réponse complète
+    se trouve sur la page de la solution détaillée, donc rien ci-dessous ne
+    la révèle.</p>
+</header>
+
+<h2>Vérifiez les deux cas particuliers avant de diviser quoi que ce soit</h2>
+
+<pre><code>if (b == 0) {
+    return (DivideStatus.DivideByZero, 0);
+}
+if (a == int.MinValue &amp;&amp; b == -1) {
+    return (DivideStatus.Overflow, 0);
+}
+return (DivideStatus.Ok, a / b);</code></pre>
+
+<h2>Pourquoi la seconde vérification ne peut pas être un bloc catch</h2>
+
+<div class="trap">
+<p>Il est tentant de laisser <code>a / b</code> s'exécuter dans un
+<code>try</code> et de capturer ce qu'il lève -- mais au moment où
+l'exception a été levée, elle s'est déjà produite, à un coût, pour une
+entrée que cette fonction est précisément censée reconnaître et traiter
+*sans* jamais lever d'exception. Pire, capturer une simple
+<code>OverflowException</code> autour de la division et la signaler comme
+<code>DivideByZero</code> (en réutilisant le cas voisin qui semble erroné)
+rapporte une raison de l'échec qui n'a rien à voir avec ce qui s'est
+réellement passé. Vérifiez explicitement
+<code>a == int.MinValue &amp;&amp; b == -1</code>, avant même que la
+division ne s'exécute.</p>
+</div>
+
+<p>Si vous n'êtes pas certain que la division entière vérifie le
+débordement sans condition en C# (contrairement à
+<code>+</code>/<code>-</code>/<code>*</code>, qui ne le font qu'à
+l'intérieur d'un bloc <code>checked</code>), c'est exactement le fait que
+cet exercice est construit pour vous faire confirmer par vous-même.</p>
+
+<footer>
+  <p>Prêt pour la totale ?
+    <a href="cs_safe_divide_status.solution.fr_FR.html">Lire la solution détaillée →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

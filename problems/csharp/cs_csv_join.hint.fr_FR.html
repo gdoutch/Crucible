@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Indice — Assembler une liste en une ligne CSV · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C# · facile</p>
+  <h1>Assembler une liste en une ligne CSV</h1>
+  <p class="kind">Indice</p>
+  <p class="lede">Un coup de pouce dans la bonne direction. La réponse complète
+    se trouve sur la page de la solution détaillée, donc rien ci-dessous ne
+    la révèle.</p>
+</header>
+
+<h2>Un seul appel</h2>
+
+<p><code>string.Join</code> prend un séparateur et une séquence, et produit
+exactement cela : chaque élément, séparé par ce séparateur, sans rien avant
+ni après.</p>
+
+<pre><code>return string.Join(",", items);</code></pre>
+
+<h2>Pourquoi une boucle écrite à la main a besoin d'une étape en plus</h2>
+
+<div class="trap">
+<p>La boucle qui semble naturelle --</p>
+<pre><code>var result = "";
+foreach (var item in items) {
+    result += item + ",";
+}
+return result;</code></pre>
+<p>-- laisse une virgule en trop à la fin, et nécessite ensuite un
+<code>TrimEnd(',')</code> ou une vérification « est-ce le dernier élément »
+à l'intérieur de la boucle pour la corriger. <code>string.Join</code> n'a
+jamais ce problème, parce qu'il place le séparateur *entre* les éléments
+plutôt qu'*après* chacun d'eux.</p>
+</div>
+
+<p>Sur une liste vide, <code>string.Join</code> retourne directement
+<code>""</code> -- aucune boucle ne s'exécute, rien n'a besoin d'être
+corrigé, il n'y a simplement rien à assembler.</p>
+
+<footer>
+  <p>Prêt pour la totale ?
+    <a href="cs_csv_join.solution.fr_FR.html">Lire la solution détaillée →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

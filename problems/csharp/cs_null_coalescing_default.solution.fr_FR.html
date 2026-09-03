@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solution détaillée — Valeur nullable ou repli · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C# · facile</p>
+  <h1>Valeur nullable ou repli</h1>
+  <p class="kind">Solution détaillée</p>
+  <p class="lede">Cette page contient la réponse complète et explique
+    pourquoi chaque partie s'y trouve.</p>
+</header>
+
+<h2>Le code</h2>
+
+<pre><code>public static int ValueOrDefault(int? value, int fallback)
+{
+    return value ?? fallback;
+}</code></pre>
+
+<h2>Pourquoi c'est toute la fonction</h2>
+
+<p><code>??</code> est défini exactement pour cette forme : son opérande de
+gauche est un type nullable (ou n'importe quel type référence), son
+opérande de droite est la valeur à produire si celui de gauche s'avère être
+<code>null</code>, et le résultat est le type non nullable sous-jacent --
+un <code>int</code>, ici, pas un <code>int?</code>, parce qu'une fois
+l'opérateur exécuté il ne reste plus rien d'incertain. Écrire l'équivalent
+à la main :</p>
+
+<pre><code>return value.HasValue ? value.Value : fallback;</code></pre>
+
+<p>produit la même réponse, et mérite d'être reconnu comme la même idée en
+plus de mots -- <code>??</code> n'a pas inventé un nouveau comportement, il
+a nommé un motif suffisamment courant pour mériter son propre opérateur.</p>
+
+<div class="trap">
+<p>La version à éviter activement est <code>value.Value</code> utilisé
+directement, en supposant que « l'appelant n'enverrait pas null sans
+raison » -- l'un des cas de test fixes envoie exactement cela, et
+<code>InvalidOperationException : Nullable object must have a value.</code>
+n'est un résultat de test réussi sous aucune interprétation du contrat de
+cette fonction.</p>
+</div>
+
+<h2>Coût</h2>
+
+<p><strong>O(1)</strong> -- une seule comparaison et, au plus, une seule
+lecture de valeur.</p>
+
+<footer>
+  <p><a href="cs_null_coalescing_default.hint.fr_FR.html">← Retour à l'indice</a> ·
+     Appuyez sur <strong>Ctrl+R</strong> dans Crucible pour un nouveau jeu de
+     données et résolvez-le à nouveau depuis un éditeur vierge.</p>
+</footer>
+
+</main>
+</body>
+</html>

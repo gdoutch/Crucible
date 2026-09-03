@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Indice — Entrelacer deux séquences, paresseusement · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C# · difficile</p>
+  <h1>Entrelacer deux séquences, paresseusement</h1>
+  <p class="kind">Indice</p>
+  <p class="lede">Un coup de pouce dans la bonne direction. La réponse complète
+    se trouve sur la page de la solution détaillée, donc rien ci-dessous ne
+    la révèle.</p>
+</header>
+
+<h2>Deux énumérateurs, avancés en parallèle</h2>
+
+<pre><code>using var ea = a.GetEnumerator();
+using var eb = b.GetEnumerator();
+bool aHasMore = ea.MoveNext();
+bool bHasMore = eb.MoveNext();
+
+while (aHasMore || bHasMore) {
+    if (aHasMore) {
+        yield return ea.Current;
+        aHasMore = ea.MoveNext();
+    }
+    if (bHasMore) {
+        yield return eb.Current;
+        bHasMore = eb.MoveNext();
+    }
+}</code></pre>
+
+<h2>Pourquoi la condition de boucle est <code>||</code>, pas <code>&amp;&amp;</code></h2>
+
+<div class="trap">
+<p><code>while (aHasMore &amp;&amp; bHasMore)</code> arrête tout dès que l'un
+des deux côtés s'épuise -- ce qui perd le reste de la séquence la plus
+longue, exactement le comportement que l'énoncé exclut. <code>||</code>
+garde la boucle en marche tant que *l'un ou l'autre* côté a encore
+quelque chose, et les deux <code>if</code> indépendants à l'intérieur --
+chacun ne produisant et n'avançant son propre côté que si ce côté a encore
+quelque chose -- sont ce qui permet à un côté de continuer à contribuer
+après que l'autre s'est déjà tu.</p>
+</div>
+
+<p><code>aHasMore</code> et <code>bHasMore</code> sont lus, pas
+recalculés, à l'intérieur de la boucle -- chacun n'est mis à jour que par
+l'appel à <code>MoveNext()</code> de son propre côté, juste après que ce
+côté a produit une valeur.</p>
+
+<footer>
+  <p>Prêt pour la totale ?
+    <a href="cs_interleave_iterator.solution.fr_FR.html">Lire la solution détaillée →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,25 @@
+{
+  "title": "Maximum de fenêtre glissante",
+  "statement": "Recalculer le maximum de chaque fenêtre depuis zéro est la solution\nhonnête et évidente -- et elle est en O(n · windowSize), parce que chacune\ndes n fenêtres coûte un nouveau parcours qui lui est propre. Les valeurs à\nl'intérieur de fenêtres consécutives se recouvrent pourtant presque\nentièrement, et une **deque monotone** est ce qui permet à l'algorithme de\nréutiliser ce recouvrement plutôt que de le payer deux fois : maintenue\ndans la bonne forme, elle a toujours le maximum de la fenêtre courante\nassis à son avant, gratuitement, à chaque fois que la fenêtre glisse.\n\n## Votre fonction\n\n```\npublic static int[] SlidingWindowMaximum(int[] values, int windowSize);\n```\n\n`values` a au moins `windowSize` éléments, et `windowSize` vaut au moins\n`1`. Retournez un tableau de longueur `values.Length - windowSize + 1`, où\nl'élément `i` est le maximum de `values[i .. i + windowSize - 1]`.\n\n## L'invariant de la deque\n\nMaintenez une `LinkedList<int>` d'*indices* dans `values`, de l'avant vers\nl'arrière, avec deux propriétés maintenues après la prise en compte de\nchaque élément :\n\n1. Chaque indice encore dans la deque se trouve à l'intérieur de la\n   fenêtre courante.\n2. Les **valeurs** à ces indices sont strictement décroissantes de\n   l'avant vers l'arrière -- si bien que l'indice de tête désigne toujours\n   le maximum courant de la fenêtre.\n\nEn faisant glisser la fenêtre d'un cran, pour le prochain indice `i` :\n\n- Retirez de l'**avant** les indices tombés hors de la fenêtre\n  (`index <= i - windowSize`).\n- Retirez de l'**arrière** les indices dont la valeur est `<= values[i]`\n  -- ils ne peuvent plus jamais redevenir le maximum tant que\n  `values[i]` reste dans la fenêtre, donc les garder ne coûterait que de\n  l'espace sans jamais être relus.\n- Ajoutez `i` à l'arrière.\n- Une fois la fenêtre pleine (`i >= windowSize - 1`), la valeur de\n  l'indice de tête est le maximum de cette fenêtre.\n\n## Attention\n\n- **La vérification d'éviction arrière doit être `<=`, pas `<`.** Les\n  valeurs égales sont également évincées : si deux éléments sont ex æquo\n  pour le maximum, seul le *plus récent* peut encore être la réponse une\n  fois que le plus ancien sort de la fenêtre, donc le plus ancien ne vaut\n  plus la peine d'être gardé même s'il n'est pas strictement plus petit.\n- **La deque ne contient jamais plus d'indices que la fenêtre ne peut en\n  contenir -- mais elle n'a pas la même taille que la fenêtre.** Une suite\n  strictement décroissante de valeurs réduit immédiatement la deque à une\n  taille de 1 ; seule une suite strictement *croissante* garde chaque\n  indice, ce qui est aussi exactement la forme d'entrée sur laquelle un\n  nouveau parcours quadratique depuis zéro est le plus lent et cet\n  algorithme le plus rapide.\n- `LinkedList<int>.First` et `.Last` sont des `LinkedListNode<int>`, pas\n  l'`int` lui-même -- lisez leur `.Value` pour obtenir l'indice qu'ils\n  contiennent.\n",
+  "tests": [
+    {
+      "name": "l'exemple classique traité en détail"
+    },
+    {
+      "name": "taille de fenêtre égale à tout le tableau"
+    },
+    {
+      "name": "taille de fenêtre de 1 -- chaque élément est sa propre fenêtre"
+    },
+    {
+      "name": "un tableau strictement croissant garde chaque indice jusqu'à ce qu'il sorte de la fenêtre"
+    },
+    {
+      "name": "les ex æquo doivent être évincés de l'arrière, pas seulement de l'avant",
+      "description": "Chaque fenêtre contient au moins un 5 -- mais seule une règle d'éviction en <= (et non <) empêche la deque de grossir silencieusement sur une suite d'ex æquo."
+    },
+    {
+      "name": "des valeurs négatives partout"
+    }
+  ]
+}

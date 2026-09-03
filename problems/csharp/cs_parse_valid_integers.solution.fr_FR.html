@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solution détaillée — Ne garder que les entiers valides · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C# · moyen</p>
+  <h1>Ne garder que les entiers valides</h1>
+  <p class="kind">Solution détaillée</p>
+  <p class="lede">Cette page contient la réponse complète et explique
+    pourquoi chaque partie s'y trouve.</p>
+</header>
+
+<h2>Le code</h2>
+
+<pre><code>public static List&lt;int&gt; ParseValidIntegers(List&lt;string&gt; tokens)
+{
+    var result = new List&lt;int&gt;();
+    foreach (var token in tokens)
+    {
+        if (int.TryParse(token, out int value))
+        {
+            result.Add(value);
+        }
+    }
+    return result;
+}</code></pre>
+
+<h2>Pourquoi c'est toute la fonction, et rien de plus</h2>
+
+<p><code>int.TryParse</code>, appelé sans argument <code>NumberStyles</code>,
+implémente déjà exactement la règle que cet exercice spécifie : un signe
+optionnel en tête, un ou plusieurs chiffres décimaux, des espaces
+optionnels autour, et un résultat qui tient dans 32 bits. Chaque cas limite
+que l'énoncé mentionne -- la tolérance aux espaces, la limite de
+débordement à <code>int.MaxValue</code> et <code>int.MinValue</code>, le
+rejet des points décimaux et de la notation hexadécimale -- est le
+comportement propre, déjà correct, de <code>TryParse</code>. Le seul
+travail de cette fonction est d'aiguiller ce verdict vers ou en dehors de
+la liste de résultats, pas de le redécider.</p>
+
+<div class="trap">
+<p>L'alternative séduisante en apparence -- <code>try {
+result.Add(int.Parse(token)); } catch (FormatException) { }</code> --
+produit les mêmes réponses, mais paie chaque jeton rejeté au prix de lever
+et capturer une exception, et fait appel à la gestion d'exceptions pour
+modéliser quelque chose qui n'a rien d'exceptionnel : un jeton qui n'est
+pas un nombre est un résultat parfaitement ordinaire et attendu pour un
+filtre dont le seul but est de distinguer les deux types de jetons.
+<code>TryParse</code> existe précisément pour que cette distinction n'ait
+jamais besoin d'une exception.</p>
+</div>
+
+<h2>La limite de débordement, dans les deux sens</h2>
+
+<p><code>int.MinValue</code> vaut <code>-2147483648</code>, et c'est un
+<code>int</code> parfaitement valide -- <code>TryParse</code> l'accepte.
+Un de plus vers le négatif, <code>-2147483649</code>, et un de plus que
+<code>int.MaxValue</code> (<code>2147483648</code>), échouent tous les
+deux : non pas à cause de leurs chiffres, mais parce que la valeur qu'ils
+désignent ne tient pas dans 32 bits signés. Un cas de test fixe vérifie
+les deux valeurs limites des deux côtés précisément parce qu'une
+vérification de plage écrite à la main est un endroit facile pour se
+tromper d'une unité, et <code>TryParse</code> ne se trompe jamais.</p>
+
+<h2>Coût</h2>
+
+<p><strong>O(n)</strong> dans le nombre de jetons -- une tentative
+d'analyse par jeton, aucune allocation au-delà de la liste de résultats
+elle-même.</p>
+
+<footer>
+  <p><a href="cs_parse_valid_integers.hint.fr_FR.html">← Retour à l'indice</a> ·
+     Appuyez sur <strong>Ctrl+R</strong> dans Crucible pour un nouveau jeu de
+     données et résolvez-le à nouveau depuis un éditeur vierge.</p>
+</footer>
+
+</main>
+</body>
+</html>

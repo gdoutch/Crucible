@@ -1,0 +1,24 @@
+{
+  "title": "Vérification de palindrome",
+  "statement": "« A man, a plan, a canal, Panama » est un palindrome, mais seulement si\nvous acceptez d'ignorer les espaces, la virgule, et le fait que la moitié\ndes lettres sont des majuscules. Une vraie vérification de palindrome pose\npresque toujours *cette* question plus large -- les lettres et les chiffres\nse lisent-ils de la même façon dans les deux sens -- pas « cette chaîne\nest-elle, octet pour octet, sa propre image miroir ».\n\n## Votre fonction\n\n```\npublic static bool IsPalindrome(string text);\n```\n\nRetournez `true` si `text`, une fois ignoré tout ce qui n'est ni une lettre\nni un chiffre et la casse ignorée, se lit de la même façon dans les deux\nsens. `text` peut être vide, et n'est jamais `null`.\n\n## Attention\n\n- **La ponctuation et les espaces sont sautés, pas traités comme des\n  désaccords.** « A man, a plan... » a une virgule exactement là où la\n  moitié miroir n'en a pas, et cela ne doit pas avoir d'importance -- la\n  comparaison passe outre les caractères non alphanumériques des deux\n  côtés plutôt que de les comparer.\n- **La casse est ignorée.** « Aa » est un palindrome ; comparer les\n  caractères bruts sans d'abord normaliser la casse dit le contraire.\n- **Une chaîne vide, et une chaîne sans aucun caractère alphanumérique\n  (« ... », par exemple), sont toutes deux des palindromes** -- il n'y a\n  rien qui puisse être en désaccord avec soi-même. Ne rejetez rien au\n  prétexte qu'il n'y avait « rien à vérifier ».\n",
+  "tests": [
+    {
+      "name": "une chaîne vide est un palindrome"
+    },
+    {
+      "name": "une chaîne uniquement composée de ponctuation n'a rien à contredire en elle-même"
+    },
+    {
+      "name": "la phrase classique, avec virgule, espaces et casse mixte"
+    },
+    {
+      "name": "la casse seule ne doit pas provoquer un faux négatif"
+    },
+    {
+      "name": "un non-palindrome ordinaire"
+    },
+    {
+      "name": "les chiffres comptent aussi comme alphanumériques"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "title": "Comptage de fréquence des caractères",
+  "statement": "Un `Dictionary<TKey, TValue>` n'a pas de valeur qui attend derrière chaque\nclé possible, prête à être incrémentée -- une clé qui n'a jamais été\nécrite n'existe tout simplement pas, et la demander lève une exception ou\n(avec la bonne méthode) vous dit clairement qu'elle est absente. Un\ncompteur de fréquence doit décider, pour chaque caractère, s'il est vu\npour la première fois ou pour la dixième, et traiter correctement le cas\nde la « première fois » sans avoir besoin d'une branche spéciale pour\ncela.\n\n## Votre fonction\n\n```\npublic static Dictionary<char, int> CountFrequencies(string text);\n```\n\nRetournez un dictionnaire associant chaque caractère distinct de `text` au\nnombre de fois où il apparaît. `text` peut être vide, auquel cas le\nrésultat est un dictionnaire vide. Chaque caractère compte, y compris les\nespaces et la ponctuation -- aucun filtrage.\n\n## Attention\n\n- **`counts[c]++` lève une `KeyNotFoundException` la première fois que `c`\n  est vu.** L'opérateur d'incrémentation se décompose en « lire la valeur\n  actuelle, ajouter un, la réécrire » -- et lire une clé qui n'a jamais été\n  écrite est exactement ce qu'un simple indexeur de dictionnaire refuse de\n  faire silencieusement.\n- **`GetValueOrDefault(c)` retourne `0` pour une clé absente**, ce qui est\n  l'élément neutre pour « ajouter un au compte » -- `counts[c] =\n  counts.GetValueOrDefault(c) + 1;` gère la première occurrence et toutes\n  les suivantes avec la même ligne, sans avoir besoin d'une branche pour\n  les distinguer.\n- Un caractère qui apparaît une seule fois obtient tout de même une entrée\n  avec la valeur `1` -- il n'est pas omis pour n'être apparu « qu'une seule\n  fois ».\n",
+  "tests": [
+    {
+      "name": "une chaîne vide ne produit aucune entrée"
+    },
+    {
+      "name": "tous les caractères distincts -- le cas où un simple counts[c]++ échoue en premier",
+      "description": "a=97, b=98, c=99. Aucun caractère ne se répète, donc une solution qui ne casse qu'à une deuxième occurrence semble correcte jusqu'à ce cas précis."
+    },
+    {
+      "name": "un caractère répété"
+    },
+    {
+      "name": "les espaces et la ponctuation comptent aussi",
+      "description": "espace=32 (une fois), « ! »=33 (une fois), « a »=97 (deux fois)."
+    }
+  ]
+}

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Indice — Valeur nullable ou repli · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C# · facile</p>
+  <h1>Valeur nullable ou repli</h1>
+  <p class="kind">Indice</p>
+  <p class="lede">Un coup de pouce dans la bonne direction. La réponse complète
+    se trouve sur la page de la solution détaillée, donc rien ci-dessous ne
+    la révèle.</p>
+</header>
+
+<h2>Un seul opérateur</h2>
+
+<p>C# possède un unique opérateur dont tout le travail est « ceci, sauf si
+c'est null, auquel cas cela » : <code>??</code>. <code>a ?? b</code>
+s'évalue à <code>a</code> si <code>a</code> n'est pas <code>null</code>, et
+à <code>b</code> sinon -- et il fonctionne directement entre un
+<code>int?</code> et un simple <code>int</code>, en produisant un simple
+<code>int</code> en retour.</p>
+
+<h2>Ce qu'il ne faut pas utiliser</h2>
+
+<div class="trap">
+<p><code>value.Value</code> suppose que <code>value</code> contient
+effectivement quelque chose -- il lève une
+<code>InvalidOperationException</code> dès qu'il est évalué sur une valeur
+<code>null</code>, plutôt que de retourner quoi que ce soit. Si votre
+premier réflexe est d'écrire <code>.Value</code> quelque part, c'est la
+ligne sur laquelle revenir vérifier.</p>
+</div>
+
+<h2>Zéro n'est pas la même chose qu'absent</h2>
+
+<p>Une valeur stockée de <code>0</code> a toujours <code>HasValue ==
+true</code> -- <code>??</code> la retourne inchangée, comme n'importe
+quelle autre valeur présente. Seul un véritable <code>null</code> fait
+appel à <code>fallback</code>.</p>
+
+<footer>
+  <p>Prêt pour la totale ?
+    <a href="cs_null_coalescing_default.solution.fr_FR.html">Lire la solution détaillée →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

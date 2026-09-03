@@ -1,0 +1,27 @@
+{
+  "title": "Recherche binaire avec une convention de point d'insertion",
+  "statement": "`Array.BinarySearch` et `List<T>.BinarySearch` retournent tous les deux\nplus qu'un simple « l'ai-je trouvé » : en cas d'échec, la valeur de retour\nest négative, et son **complément à un bit près** (`~result`) est l'indice\nauquel la cible devrait être insérée pour garder la collection triée.\nC'est une convention qui a vraiment l'air étrange la première fois qu'on\nla rencontre -- et c'est un comportement réel et structurel de la BCL, pas\nune curiosité, parce que cela signifie qu'un seul appel répond à la fois à\n« est-ce présent » et « où irait-il », sans que l'appelant ait besoin d'un\nsecond passage dans un cas comme dans l'autre.\n\n## Votre fonction\n\n```\npublic static int BinarySearchInsertionPoint(int[] sortedValues, int target);\n```\n\n`sortedValues` est trié par ordre croissant et ne contient aucune valeur\nen double. Respectez exactement la convention ci-dessus :\n\n- Si `target` est présent, retournez son indice (toujours `>= 0`).\n- Si `target` est absent, retournez le **complément binaire** de l'indice\n  auquel il devrait être inséré pour garder `sortedValues` trié -- c'est-à-\n  dire `~insertionIndex`, qui est toujours négatif puisque le complément\n  de tout indice non négatif est négatif.\n\n## Attention\n\n- **Le complément, pas le négatif.** `~5` vaut `-6`, pas `-5` -- `~x` vaut\n  `-x - 1` pour un `x` non négatif, ce qui est exactement ce qui rend\n  l'encodage réversible : `~(~x) == x` pour tout `x`, si bien qu'un\n  appelant peut toujours récupérer l'indice d'insertion voulu à partir\n  d'un résultat négatif en le complémentant à nouveau. Retourner\n  directement `-insertionIndex` perd la capacité de représenter un indice\n  d'insertion de `0` comme un nombre négatif distinct (`-0 == 0`, qui\n  ressemble à un résultat *trouvé*).\n- **L'indice d'insertion pour une cible plus grande que tous les éléments\n  est `sortedValues.Length`** -- un de plus que la fin, tout comme insérer\n  au début (indice `0`) pour une cible plus petite que tous les éléments.\n  Les deux sont des points d'insertion légaux ; aucun des deux n'est un cas\n  particulier demandant un traitement différent de « là où les bornes de\n  la recherche binaire ont fini par se trouver ».\n- `low + (high - low) / 2` plutôt que `(low + high) / 2` pour le point\n  médian -- la différence ne se manifeste que sur un tableau assez grand\n  pour que `low + high` déborde un `int`, mais la forme la plus sûre ne\n  coûte rien sur tout tableau plus petit que cela, donc il n'y a aucune\n  raison d'écrire la version avec le débordement latent.\n",
+  "tests": [
+    {
+      "name": "cible présente, au milieu"
+    },
+    {
+      "name": "cible absente, appartient au milieu",
+      "description": "4 appartient à l'indice 2 (entre 3 et 5) -- ~2 == -3."
+    },
+    {
+      "name": "la cible appartient avant tout -- indice d'insertion 0",
+      "description": "L'indice d'insertion 0 doit s'encoder en ~0 == -1, pas -0 (indiscernable de 0, un résultat trouvé)."
+    },
+    {
+      "name": "la cible appartient après tout -- un de plus que la fin",
+      "description": "Indice d'insertion 3 (== la longueur du tableau) -- ~3 == -4."
+    },
+    {
+      "name": "le premier et le dernier éléments sont trouvés, pas traités comme des échecs"
+    },
+    {
+      "name": "un tableau à un seul élément, à la fois trouvé et non trouvé"
+    }
+  ]
+}

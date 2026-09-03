@@ -1,0 +1,25 @@
+{
+  "title": "Entrelacer deux séquences, paresseusement",
+  "statement": "`yield return` transforme une méthode en une machine à états que le\ncompilateur écrit pour vous : chaque appel à `MoveNext()` de la séquence\nrésultante exécute le corps de la méthode jusqu'au prochain\n`yield return`, puis s'y arrête -- au milieu d'une boucle, au milieu de\nn'importe quoi qu'elle était en train de faire -- jusqu'à ce qu'on lui\ndemande de reprendre. Écrire un itérateur qui puise dans *deux* séquences\nà la fois signifie gérer ce point de pause à la main, un\n`IEnumerator<T>` par source, parce que rien ne vous donne les positions\ncourantes des deux séquences dans un seul `foreach`.\n\n## Votre fonction\n\n```\npublic static IEnumerable<int> Interleave(IEnumerable<int> a, IEnumerable<int> b);\n```\n\nProduisez les éléments alternativement depuis `a` et `b` : le premier\nélément de `a`, puis le premier de `b`, puis le deuxième de `a`, puis le\ndeuxième de `b`, et ainsi de suite. Une fois qu'une séquence est épuisée,\nproduisez le reste de l'autre dans l'ordre -- ne vous arrêtez pas tôt, et\nne comblez pas le côté épuisé avec quoi que ce soit. Chaque séquence peut\nêtre vide.\n\n## Attention\n\n- **`GetEnumerator()` et `MoveNext()`, pas `foreach`.** Une boucle\n  `foreach` possède son énumérateur pour tout son corps et ne peut pas\n  être mise en pause en cours d'itération pour laisser *l'autre* séquence\n  avoir son tour -- entrelacer deux séquences signifie tenir vous-même un\n  `IEnumerator<int>` par source, appeler `MoveNext()` sur chacun à tour de\n  rôle, et ne lire `.Current` que lorsque le `MoveNext()` correspondant\n  vient de retourner `true`.\n- **Une fois qu'une séquence est épuisée, arrêtez de lui en demander\n  davantage, mais continuez à en demander à l'autre.** Une boucle qui\n  continue d'essayer de faire avancer un énumérateur terminé ne fait aucun\n  mal (`MoveNext()` sur un énumérateur épuisé continue simplement de\n  retourner `false`), mais une boucle qui arrête *tout* l'entrelacement\n  dès que l'un des deux côtés se termine perd chaque élément restant de la\n  séquence la plus longue -- exactement ce que « produire le reste »\n  exclut.\n- `IEnumerator<T>` implémente `IDisposable` ; enveloppez chacun dans un\n  `using` (ou une déclaration `using`) pour qu'il soit disposé, que\n  l'entrelacement se termine complètement ou qu'un appelant arrête\n  l'énumération en cours de route.\n",
+  "tests": [
+    {
+      "name": "les deux sont vides"
+    },
+    {
+      "name": "longueurs égales, alternance simple"
+    },
+    {
+      "name": "a est vide -- le résultat entier n'est que b"
+    },
+    {
+      "name": "b est vide -- le résultat entier n'est que a"
+    },
+    {
+      "name": "a plus court que b -- le reste de b n'est pas perdu",
+      "description": "Une fois l'unique élément de a utilisé, b a encore trois éléments à produire."
+    },
+    {
+      "name": "b plus court que a -- le cas miroir"
+    }
+  ]
+}

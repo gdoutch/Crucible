@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Indice — Regrouper les anagrammes · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C# · moyen</p>
+  <h1>Regrouper les anagrammes</h1>
+  <p class="kind">Indice</p>
+  <p class="lede">Un coup de pouce dans la bonne direction. La réponse complète
+    se trouve sur la page de la solution détaillée, donc rien ci-dessous ne
+    la révèle.</p>
+</header>
+
+<h2>La clé : trier les lettres du mot lui-même</h2>
+
+<pre><code>string Key(string word) => new string(word.OrderBy(c => c).ToArray());</code></pre>
+
+<p>Deux mots sont anagrammes exactement quand cela produit la même chaîne
+pour les deux -- trier les caractères d'un mot élimine leur ordre, qui est
+la seule chose sur laquelle des anagrammes ont le droit de différer.</p>
+
+<h2>Le regroupement est un dictionnaire ; l'ordre est un second passage</h2>
+
+<div class="trap">
+<p>Construisez un <code>Dictionary&lt;string, List&lt;string&gt;&gt;</code>
+indexé par cette signature triée -- un passage sur <code>words</code>,
+ajoutant chaque mot à la liste que sa clé désigne. Ce dictionnaire contient
+maintenant les bons *groupes*, mais pas nécessairement dans le bon
+*ordre* : parcourez <code>words</code> une seconde fois, et la première
+fois qu'une clé donnée est rencontrée, émettez tout le groupe de cette
+clé ; ignorez tout mot ultérieur dont la clé a déjà été émise. Un
+<code>HashSet&lt;string&gt;</code> des « clés déjà émises » suffit à
+distinguer les deux cas.</p>
+</div>
+
+<footer>
+  <p>Prêt pour la totale ?
+    <a href="cs_group_anagrams.solution.fr_FR.html">Lire la solution détaillée →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,26 @@
+{
+  "title": "Division avec deux modes d'échec distincts",
+  "statement": "`b == 0` est le mode d'échec que toute fonction de division pense à\nprotéger. Ce n'est pas le seul que possède la division d'entiers signés 32\nbits : il existe exactement une autre entrée qui échoue, pour une raison\ncomplètement différente, et qui ne comporte aucun zéro.\n\n## Le type de statut\n\n```\npublic enum DivideStatus { Ok, DivideByZero, Overflow }\n```\n\n## Votre fonction\n\n```\npublic static (DivideStatus Status, int Value) SafeDivide(int a, int b);\n```\n\nDivisez `a` par `b`, en signalant lequel des trois cas s'est produit\nplutôt que de lever une exception :\n\n- **`b == 0`** -- retournez `(DivideStatus.DivideByZero, 0)`.\n- **`a == int.MinValue && b == -1`** -- retournez\n  `(DivideStatus.Overflow, 0)`. `int.MinValue` vaut `-2147483648` ; sa\n  magnitude n'a pas d'équivalent `int` positif (`int.MaxValue` ne vaut que\n  `2147483647`), donc le résultat mathématiquement correct de cette\n  division, `2147483648`, ne peut absolument pas être représenté comme un\n  `int`.\n- **Sinon** -- retournez `(DivideStatus.Ok, a / b)`, la division entière\n  C# ordinaire (qui tronque vers zéro, pas vers l'infini négatif).\n\n## Attention\n\n- **`int.MinValue / -1` lève une `System.OverflowException` à l'exécution,\n  en C#, sans condition.** Contrairement à `+`, `-` et `*`, qui ne\n  vérifient le débordement qu'à l'intérieur d'un bloc `checked` et\n  débordent silencieusement sinon, la *division* d'entiers vérifie le\n  débordement et lève une exception à chaque fois, `checked` ou non. Il\n  n'y a aucun moyen de faire que `a / b` lui-même « déborde simplement »\n  pour cette entrée précise ; les valeurs spécifiques doivent être\n  détectées et traitées *avant* que la division ne s'exécute, pas après\n  qu'elle a levé une exception.\n- **C'est un échec véritablement distinct de `b == 0`.** Rien dans\n  `b == -1` ne ressemble à une division par zéro, et confondre les deux --\n  traiter chaque exception qu'une division pourrait lever comme\n  `DivideStatus.DivideByZero` -- rapporte la mauvaise raison pour un échec\n  qui n'a rien à voir avec zéro.\n- **Toute autre entrée, y compris `int.MinValue` divisé par autre chose\n  que `-1`, est `Ok`.** `int.MinValue / 1` vaut `int.MinValue`,\n  représentable et sans particularité ; c'est spécifiquement la\n  combinaison d'`int.MinValue` comme dividende *et* de `-1` comme diviseur\n  qui déborde.\n",
+  "tests": [
+    {
+      "name": "une division ordinaire",
+      "description": "La division entière C# tronque vers zéro : -7 / 2 == -3, pas -4."
+    },
+    {
+      "name": "diviseur nul"
+    },
+    {
+      "name": "la combinaison exacte de débordement"
+    },
+    {
+      "name": "int.MinValue divisé par autre chose que -1 est Ok"
+    },
+    {
+      "name": "la valeur juste à côté de int.MinValue ne déborde pas avec -1",
+      "description": "-2147483647 n'est pas int.MinValue -- sa négation tient dans un int, donc c'est une division ordinaire."
+    },
+    {
+      "name": "les deux modes d'échec sont signalés distinctement, pas confondus"
+    }
+  ]
+}

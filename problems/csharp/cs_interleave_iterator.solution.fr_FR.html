@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solution détaillée — Entrelacer deux séquences, paresseusement · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C# · difficile</p>
+  <h1>Entrelacer deux séquences, paresseusement</h1>
+  <p class="kind">Solution détaillée</p>
+  <p class="lede">Cette page contient la réponse complète et explique
+    pourquoi chaque partie s'y trouve.</p>
+</header>
+
+<h2>Le code</h2>
+
+<pre><code>public static IEnumerable&lt;int&gt; Interleave(IEnumerable&lt;int&gt; a, IEnumerable&lt;int&gt; b)
+{
+    using var ea = a.GetEnumerator();
+    using var eb = b.GetEnumerator();
+    bool aHasMore = ea.MoveNext();
+    bool bHasMore = eb.MoveNext();
+
+    while (aHasMore || bHasMore)
+    {
+        if (aHasMore)
+        {
+            yield return ea.Current;
+            aHasMore = ea.MoveNext();
+        }
+        if (bHasMore)
+        {
+            yield return eb.Current;
+            bHasMore = eb.MoveNext();
+        }
+    }
+}</code></pre>
+
+<h2>Pourquoi deux drapeaux indépendants, pas une seule variable de boucle partagée</h2>
+
+<div class="trap">
+<p><code>aHasMore</code> et <code>bHasMore</code> sont suivis séparément
+parce que les deux séquences se terminent indépendamment -- l'une peut
+encore avoir mille éléments quand l'autre s'épuise après deux. Les
+fusionner en une seule condition « continuer » vérifiée avec
+<code>&amp;&amp;</code> répond à une question différente de celle posée par
+cet exercice : cela arrête tout l'entrelacement dès que la séquence la
+<em>plus courte</em> est épuisée, en abandonnant tout ce qu'il reste dans
+la plus longue. Le <code>||</code> dans la condition de boucle, associé
+aux deux <code>if</code> indépendants à l'intérieur, est ce qui permet à
+chaque côté de continuer à contribuer exactement aussi longtemps qu'il lui
+reste quelque chose, sans dépendre de l'état de l'autre côté.</p>
+</div>
+
+<h2>Pourquoi cela doit être <code>GetEnumerator()</code> et <code>MoveNext()</code>,
+pas deux boucles <code>foreach</code></h2>
+
+<p>Une boucle <code>foreach</code> possède son énumérateur pour tout le
+corps de la boucle et ne peut pas rendre la main à un contexte extérieur
+en cours d'itération pour laisser une *autre* séquence avoir son tour --
+il n'y a aucun moyen d'écrire « avancer <code>a</code> d'un cran, puis
+mettre en pause, puis avancer <code>b</code> d'un cran » en utilisant
+<code>foreach</code> sur l'une ou l'autre séquence seule. Sortir les
+énumérateurs à la main est ce qui rend « un pas de chacun, en alternance »
+exprimable : chaque appel à <code>MoveNext()</code> avance exactement un
+côté, exactement un élément, et l'état propre de la méthode (quel côté
+vient ensuite) vit dans les variables locales entre les appels -- ce qui
+est aussi précisément ce que la machine à états générée par le compilateur
+pour <code>yield return</code> existe pour préserver entre les pauses.</p>
+
+<h2>Pourquoi les énumérateurs sont enveloppés dans <code>using</code></h2>
+
+<p><code>IEnumerator&lt;T&gt;</code> étend <code>IDisposable</code>, et un
+appelant est libre d'arrêter d'énumérer le résultat entrelacé avant qu'il
+ne se termine complètement -- en ne prenant que les trois premiers
+éléments avec <code>.Take(3)</code>, par exemple. <code>using var ea =
+...;</code> garantit que le `Dispose()` d'<code>ea</code> (et
+d'<code>eb</code>) s'exécute quand l'itérateur lui-même est disposé, que
+cela se produise parce qu'il s'est terminé complètement ou parce qu'un
+appelant s'est arrêté en cours de route ; pour une simple séquence en
+mémoire comme une <code>List&lt;int&gt;</code>, cela n'a rien de réel à
+nettoyer, mais le même code entrelaçant deux séquences adossées à des
+fichiers ouverts ou des flux réseau perdrait une ressource par
+énumération abandonnée sans cela.</p>
+
+<h2>Coût</h2>
+
+<p><strong>O(n + m)</strong> où n et m sont les longueurs des deux
+séquences -- chaque élément de chaque source est visité exactement une
+fois, et rien n'est mis en mémoire tampon : toute la séquence est produite
+paresseusement, un élément par <code>MoveNext()</code> sur le résultat.</p>
+
+<footer>
+  <p><a href="cs_interleave_iterator.hint.fr_FR.html">← Retour à l'indice</a> ·
+     Appuyez sur <strong>Ctrl+R</strong> dans Crucible pour un nouveau jeu de
+     données et résolvez-le à nouveau depuis un éditeur vierge.</p>
+</footer>
+
+</main>
+</body>
+</html>

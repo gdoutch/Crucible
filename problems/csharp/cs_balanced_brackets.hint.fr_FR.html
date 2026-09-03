@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Indice — Parenthèses équilibrées, trois types · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C# · moyen</p>
+  <h1>Parenthèses équilibrées, trois types</h1>
+  <p class="kind">Indice</p>
+  <p class="lede">Un coup de pouce dans la bonne direction. La réponse complète
+    se trouve sur la page de la solution détaillée, donc rien ci-dessous ne
+    la révèle.</p>
+</header>
+
+<h2>Empiler à l'ouverture, dépiler-et-vérifier à la fermeture</h2>
+
+<pre><code>var stack = new Stack&lt;char&gt;();
+foreach (char c in text) {
+    if (c is '(' or '[' or '{') {
+        stack.Push(c);
+    } else if (c is ')' or ']' or '}') {
+        // la pile est-elle vide, ou Pop() ne correspond-il pas à c ?
+        // l'un ou l'autre signifie « non équilibré » -- return false ici même
+    }
+    // tout autre caractère : l'ignorer complètement
+}
+return stack.Count == 0;</code></pre>
+
+<h2>Vérifiez avant de dépiler</h2>
+
+<div class="trap">
+<p><code>stack.Peek()</code> et <code>stack.Pop()</code> lèvent tous les
+deux une exception sur une pile vide plutôt que de retourner quelque chose
+à comparer -- protégez-vous avec <code>stack.Count == 0</code> *avant*
+d'appeler l'un ou l'autre, sur une parenthèse fermante qui n'a rien
+d'ouvert à qui correspondre.</p>
+</div>
+
+<p>Une petite table associant chaque caractère fermant au caractère
+ouvrant qu'il attend -- <code>')' → '(', ']' → '[', '}' → '{'</code> --
+transforme « cette parenthèse fermante correspond-elle à ce que je viens
+de dépiler » en une seule recherche dans un dictionnaire et une seule
+comparaison, plutôt qu'une chaîne de <code>if</code> pour chacune des trois
+paires.</p>
+
+<footer>
+  <p>Prêt pour la totale ?
+    <a href="cs_balanced_brackets.solution.fr_FR.html">Lire la solution détaillée →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

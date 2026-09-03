@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solution détaillée — Division avec deux modes d'échec distincts · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C# · diabolique</p>
+  <h1>Division avec deux modes d'échec distincts</h1>
+  <p class="kind">Solution détaillée</p>
+  <p class="lede">Cette page contient la réponse complète et explique
+    pourquoi chaque partie s'y trouve.</p>
+</header>
+
+<h2>Le code</h2>
+
+<pre><code>public static (DivideStatus Status, int Value) SafeDivide(int a, int b)
+{
+    if (b == 0)
+    {
+        return (DivideStatus.DivideByZero, 0);
+    }
+    if (a == int.MinValue &amp;&amp; b == -1)
+    {
+        return (DivideStatus.Overflow, 0);
+    }
+    return (DivideStatus.Ok, a / b);
+}</code></pre>
+
+<h2>Pourquoi la division entière vérifie le débordement alors que rien d'autre ne le fait</h2>
+
+<div class="trap">
+<p>Les contextes <code>checked</code>/<code>unchecked</code> de C#
+gouvernent le fait que <code>+</code>, <code>-</code> et <code>*</code> sur
+des entiers lèvent une exception en cas de débordement ou débordent
+silencieusement -- <code>unchecked</code> est la valeur par défaut, et sous
+ce régime ces trois opérateurs débordent sans se plaindre. La division ne
+suit pas cette règle : <code>int.MinValue / -1</code> lève une
+<code>System.OverflowException</code> que le code environnant soit
+<code>checked</code> ou non, parce que l'instruction de division du runtime
+.NET elle-même échoue sur cette entrée précise au niveau matériel -- il
+n'existe aucune réponse débordée silencieusement sur laquelle elle
+pourrait se replier, contrairement à l'addition ou la multiplication.
+C'est ce qui rend la capture de l'exception après coup strictement pire
+que la vérifier en amont : l'erreur s'est déjà produite, sans condition,
+au moment où un bloc <code>catch</code> la verrait.</p>
+</div>
+
+<h2>Pourquoi les deux modes d'échec reçoivent deux valeurs d'énumération différentes</h2>
+
+<p><code>b == 0</code> et <code>a == int.MinValue &amp;&amp; b == -1</code>
+sont des questions entièrement différentes avec des réponses entièrement
+différentes -- l'une concerne le diviseur seul, l'autre une combinaison
+précise de dividende et de diviseur. Rapporter les deux comme le même
+statut (ou capturer une exception générale et faire correspondre chaque
+cas à <code>DivideByZero</code> parce que c'est le nom le plus familier)
+fait perdre une information qu'un appelant pourrait raisonnablement
+vouloir : « il n'y a pas de réponse mathématique » et « la réponse existe
+mais ne tient pas dans 32 bits » sont des problèmes différents, et un
+appelant qui décide comment réagir a intérêt à savoir lequel des deux
+c'est.</p>
+
+<h2>Pourquoi l'ordre des deux vérifications n'a en réalité pas d'importance ici</h2>
+
+<p><code>b == 0</code> et <code>b == -1</code> s'excluent mutuellement --
+aucune entrée ne peut déclencher les deux vérifications, donc les deux
+<code>if</code> pourraient être échangés sans changer le comportement de la
+fonction sur quelque entrée que ce soit. Ils sont écrits avec la
+vérification du zéro en premier ici simplement parce que c'est le cas le
+plus familier à lire en premier, pas parce que l'ordre porterait un poids
+logique quelconque.</p>
+
+<h2>Coût</h2>
+
+<p><strong>O(1)</strong> -- deux comparaisons et, sur le chemin ordinaire,
+une division.</p>
+
+<footer>
+  <p><a href="cs_safe_divide_status.hint.fr_FR.html">← Retour à l'indice</a> ·
+     Appuyez sur <strong>Ctrl+R</strong> dans Crucible pour un nouveau jeu de
+     données et résolvez-le à nouveau depuis un éditeur vierge.</p>
+</footer>
+
+</main>
+</body>
+</html>

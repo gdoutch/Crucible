@@ -16,6 +16,13 @@ A problem may also carry a `Generator`, which adds randomised cases to the
 authored ones so the same exercise can be practised more than once without the
 answers becoming a memory test. A generator writes *inputs only* -- see
 `crucible.randomise` for why that restriction is the whole trick.
+
+A problem's prose -- `title`, `statement`, and each test's `name` and
+`description` -- may be translated for the active locale by dropping a
+sibling `<stem>.<locale>.json` file next to it (see `_load_locale_overlay`).
+This is separate from `crucible.i18n`, which only covers application chrome;
+see 'Internationalisation' in the README for why the two are deliberately
+different mechanisms with different owners.
 """
 
 from __future__ import annotations
@@ -26,7 +33,7 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from . import languages
+from . import i18n, languages
 from .i18n import t
 
 DIFFICULTIES = ("easy", "medium", "hard", "fiendish")
@@ -255,6 +262,95 @@ def _load_tests(data: dict, path: Path,
     return tuple(tests)
 
 
+#: The problem fields a locale overlay is allowed to translate. Deliberately
+#: narrow: `starter_code`, `harness` and the reference solution stay English
+#: (and C#, and C, ...) everywhere, because they are code, not prose, and
+#: translating a doc-comment inside them would be one more thing to keep in
+#: sync with no compiler to catch a slip. `tests[].name` and
+#: `tests[].description` are handled separately, matched by position -- see
+#: `_apply_locale_overlay`.
+_OVERLAY_FIELDS = ("title", "statement")
+
+
+def _locale_overlay_path(path: Path, locale: str) -> Path:
+    """Where a translated sibling of `path` would live for `locale`.
+
+    Mirrors the guide-file convention in `crucible.guides`: the locale is
+    another dotted qualifier on the filename, not a subdirectory or a field
+    inside the English file -- so `cs_count_vowels.json` translated into
+    French is `cs_count_vowels.fr_FR.json`, sitting right next to it.
+    """
+    return path.with_name(f"{path.stem}.{locale}.json")
+
+
+def _load_locale_overlay(path: Path, locale: str) -> dict:
+    """The translated fields for `path`'s problem in `locale`, or `{}` if
+    there is no overlay file -- translating a problem is optional, and an
+    untranslated one still loads, showing English throughout.
+
+    This is problem content, not app chrome, so it deliberately does not go
+    through `crucible.i18n` (see 'Internationalisation' in the README): there
+    is no `locales/fr_FR.json` entry for one exercise's statement. What it
+    does borrow from `i18n` is the fallback *philosophy* -- a locale that
+    only translates some fields, or some problems, still works, falling back
+    to English field by field rather than needing to be complete before it
+    can ship.
+    """
+    overlay_path = _locale_overlay_path(path, locale)
+    if not overlay_path.is_file():
+        return {}
+    try:
+        overlay = json.loads(overlay_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ProblemError(t("problem.error.invalid_json", file=overlay_path.name,
+                             line=exc.lineno, message=exc.msg)) from None
+    except OSError as exc:
+        raise ProblemError(t("problem.error.cannot_read_file", file=overlay_path.name,
+                             error=exc)) from None
+    if not isinstance(overlay, dict):
+        raise ProblemError(t("problem.error.top_level_not_object", file=overlay_path.name))
+    return overlay
+
+
+def _apply_locale_overlay(data: dict, overlay: dict) -> dict:
+    """`data` with any translated fields from `overlay` merged on top.
+
+    Per field, not all-or-nothing: an overlay field that is absent, blank, or
+    not a string leaves the English value in `data` in place rather than
+    blanking it out, exactly as a missing key in a `locales/*.json` file
+    falls back to `en_GB` in `i18n.t`. `tests` is matched by position against
+    the base list -- the overlay only needs to carry the fields it
+    translates, not a full copy of every test case.
+    """
+    if not overlay:
+        return data
+
+    merged = dict(data)
+    for field_name in _OVERLAY_FIELDS:
+        value = overlay.get(field_name)
+        if isinstance(value, str) and value.strip():
+            merged[field_name] = value
+
+    overlay_tests = overlay.get("tests")
+    base_tests = data.get("tests")
+    if isinstance(overlay_tests, list) and isinstance(base_tests, list):
+        merged_tests = []
+        for index, base_test in enumerate(base_tests):
+            if not isinstance(base_test, dict):
+                merged_tests.append(base_test)
+                continue
+            translated_test = dict(base_test)
+            if index < len(overlay_tests) and isinstance(overlay_tests[index], dict):
+                for field_name in ("name", "description"):
+                    value = overlay_tests[index].get(field_name)
+                    if isinstance(value, str) and value.strip():
+                        translated_test[field_name] = value
+            merged_tests.append(translated_test)
+        merged["tests"] = merged_tests
+
+    return merged
+
+
 def load_problem(path: Path) -> Problem:
     """Parse and validate one problem file."""
     try:
@@ -268,6 +364,10 @@ def load_problem(path: Path) -> Problem:
 
     if not isinstance(data, dict):
         raise ProblemError(t("problem.error.top_level_not_object", file=path.name))
+
+    locale = i18n.get_locale()
+    if locale != i18n.DEFAULT_LOCALE:
+        data = _apply_locale_overlay(data, _load_locale_overlay(path, locale))
 
     language_id = str(_require(data, "language", path))
     if language_id not in languages.known_ids():
@@ -330,8 +430,21 @@ class Library:
         return [lang.id for lang in languages.all_languages() if lang.id in seen]
 
 
+def _is_locale_overlay(path: Path) -> bool:
+    """True for a `<stem>.<locale>.json` translation file -- `path` itself is
+    never a standalone problem, only ever read as a sibling of one by
+    `_load_locale_overlay`, so `load_library`'s sweep must step over it
+    rather than trying to load it as a problem in its own right (it has none
+    of the required fields, and would only ever fail)."""
+    stem = path.stem  # "cs_count_vowels.fr_FR" for "cs_count_vowels.fr_FR.json"
+    _, dot, suffix = stem.rpartition(".")
+    return bool(dot) and suffix in i18n.available_locales()
+
+
 def load_library(root: Path) -> Library:
-    """Load every `*.json` under `root`, recursively.
+    """Load every `*.json` under `root`, recursively -- except a translated
+    sibling of a problem (`<stem>.<locale>.json`, see `_is_locale_overlay`),
+    which is content for an existing problem rather than one of its own.
 
     A bad file never takes the app down -- it is collected into `errors` and
     reported in the UI so the author can fix it.
@@ -342,6 +455,8 @@ def load_library(root: Path) -> Library:
         return library
 
     for path in sorted(root.rglob("*.json")):
+        if _is_locale_overlay(path):
+            continue
         try:
             library.problems.append(load_problem(path))
         except ProblemError as exc:

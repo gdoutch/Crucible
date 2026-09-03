@@ -1,0 +1,24 @@
+{
+  "title": "Ne garder que les entiers valides",
+  "statement": "`int.Parse` lève une exception sur tout ce qu'il ne peut pas lire comme un\nentier 32 bits. `int.TryParse` ne le fait pas -- il renvoie `true` ou\n`false` et ne lève jamais d'exception, ce qui est exactement la forme dont\na besoin un filtre « garder ceux qui marchent, ignorer ceux qui ne\nmarchent pas », et c'est exactement pourquoi envelopper `int.Parse` dans\nun `try`/`catch` pour la même tâche traite un résultat ordinaire et\nattendu (ce jeton n'est pas un nombre) comme s'il était exceptionnel.\n\n## Votre fonction\n\n```\npublic static List<int> ParseValidIntegers(List<string> tokens);\n```\n\nRetournez tous les éléments de `tokens` qui s'analysent comme un entier\nsigné 32 bits valide, convertis en `int`, dans leur ordre d'origine. Les\njetons qui ne s'analysent pas sont simplement omis -- pas une erreur, pas\nun `0` à leur place.\n\n## Attention\n\n- **`int.TryParse` tolère les espaces en début et en fin.**\n  `\"  42  \"` s'analyse en `42`, pas un rejet. Découper vous-même le jeton\n  avant d'appeler `TryParse` est inoffensif mais redondant ; supposer que\n  les espaces doivent être traités à la main et les rejeter d'office ne\n  l'est pas.\n- **Une valeur qui déborde `int` échoue à s'analyser, même si chaque\n  caractère qui la compose est un chiffre ordinaire.** `\"2147483648\"` --\n  un de plus que `int.MaxValue` -- n'est pas un `int` valide, et\n  `TryParse` le dit correctement. `int.MinValue` lui-même,\n  `\"-2147483648\"`, *est* valide ; ce n'est que la valeur suivante plus\n  loin, de chaque côté, qui bascule.\n- **`\"3.5\"`, `\"0x1F\"` et `\"1e3\"` ne sont pas des jetons `int` valides.**\n  `TryParse` (appelé sans `NumberStyles` supplémentaire) n'accepte qu'un\n  signe optionnel suivi de chiffres décimaux -- pas de point décimal, pas\n  de préfixe hexadécimal, pas de notation scientifique. Une expression\n  régulière construite pour « ressembler » à ce que `TryParse` accepte est\n  une seconde implémentation, séparée, d'une règle que la méthode applique\n  déjà correctement ; appelez `TryParse` et faites confiance à sa réponse.\n",
+  "tests": [
+    {
+      "name": "tous les jetons valides passent inchangés"
+    },
+    {
+      "name": "les jetons invalides sont abandonnés, pas remplacés par 0"
+    },
+    {
+      "name": "les espaces autour d'un jeton sont tolérés, pas un motif de rejet"
+    },
+    {
+      "name": "int.MinValue s'analyse ; une valeur plus loin ne le fait pas"
+    },
+    {
+      "name": "int.MaxValue plus un déborde et est abandonné"
+    },
+    {
+      "name": "l'hexadécimal, la notation scientifique et les décimaux sont tous rejetés"
+    }
+  ]
+}

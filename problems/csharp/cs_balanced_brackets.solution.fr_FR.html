@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solution détaillée — Parenthèses équilibrées, trois types · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C# · moyen</p>
+  <h1>Parenthèses équilibrées, trois types</h1>
+  <p class="kind">Solution détaillée</p>
+  <p class="lede">Cette page contient la réponse complète et explique
+    pourquoi chaque partie s'y trouve.</p>
+</header>
+
+<h2>Le code</h2>
+
+<pre><code>public static bool IsBalanced(string text)
+{
+    var closesFor = new Dictionary&lt;char, char&gt; { [')'] = '(', [']'] = '[', ['}'] = '{' };
+    var stack = new Stack&lt;char&gt;();
+
+    foreach (char c in text)
+    {
+        if (c == '(' || c == '[' || c == '{')
+        {
+            stack.Push(c);
+        }
+        else if (closesFor.ContainsKey(c))
+        {
+            if (stack.Count == 0 || stack.Pop() != closesFor[c])
+            {
+                return false;
+            }
+        }
+    }
+    return stack.Count == 0;
+}</code></pre>
+
+<h2>Pourquoi la vérification de pile vide vient en premier, dans la même expression</h2>
+
+<div class="trap">
+<p><code>stack.Count == 0 || stack.Pop() != closesFor[c]</code> repose sur
+l'évaluation court-circuitée de <code>||</code> : quand la pile est vide,
+le côté gauche vaut <code>true</code> et <code>Pop()</code> n'est jamais
+appelé du tout, si bien que l'<code>InvalidOperationException</code>
+qu'il lèverait autrement n'en a jamais l'occasion. Écrire les deux
+vérifications comme des instructions séparées fonctionne aussi, tant que
+la vérification de vacuité a bien lieu en premier et retourne bien avant
+d'atteindre l'appel à <code>Pop()</code> -- le risque en les séparant est
+qu'un refactoring ultérieur déplace l'une après l'autre sans que l'ordre
+soit aussi visiblement critique que lorsqu'elles partagent une seule
+expression court-circuitée.</p>
+</div>
+
+<h2>Pourquoi la vérification finale porte sur la pile, pas sur ce qui a été vu pendant la lecture</h2>
+
+<p><code>"(()"</code> ne rencontre jamais de parenthèse fermante en
+désaccord avec ce qui est ouvert -- il n'y a tout simplement pas assez de
+parenthèses fermantes pour atteindre le point de désaccord. Rien dans la
+lecture de gauche à droite ne le remarque jamais ; le seul endroit où cela
+se manifeste est que la pile contient encore un <code>'('</code> non
+fermé une fois <code>text</code> épuisé. C'est exactement ce que vérifie
+<code>return stack.Count == 0;</code> : pas « ai-je jamais vu un
+désaccord », mais « reste-t-il quelque chose en attente d'être fermé ».</p>
+
+<h2>Coût</h2>
+
+<p><strong>O(n)</strong> dans la longueur de `text` -- chaque caractère est
+examiné une fois, et chaque parenthèse fait au plus un empilement ou un
+dépilement.</p>
+
+<footer>
+  <p><a href="cs_balanced_brackets.hint.fr_FR.html">← Retour à l'indice</a> ·
+     Appuyez sur <strong>Ctrl+R</strong> dans Crucible pour un nouveau jeu de
+     données et résolvez-le à nouveau depuis un éditeur vierge.</p>
+</footer>
+
+</main>
+</body>
+</html>

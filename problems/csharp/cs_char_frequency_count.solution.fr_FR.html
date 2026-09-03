@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solution détaillée — Comptage de fréquence des caractères · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C# · moyen</p>
+  <h1>Comptage de fréquence des caractères</h1>
+  <p class="kind">Solution détaillée</p>
+  <p class="lede">Cette page contient la réponse complète et explique
+    pourquoi chaque partie s'y trouve.</p>
+</header>
+
+<h2>Le code</h2>
+
+<pre><code>public static Dictionary&lt;char, int&gt; CountFrequencies(string text)
+{
+    var counts = new Dictionary&lt;char, int&gt;();
+    foreach (char c in text)
+    {
+        counts[c] = counts.GetValueOrDefault(c) + 1;
+    }
+    return counts;
+}</code></pre>
+
+<h2>Pourquoi <code>GetValueOrDefault</code> ne demande aucune branche</h2>
+
+<div class="trap">
+<p><code>counts.GetValueOrDefault(c)</code> retourne la valeur stockée pour
+<code>c</code> si elle existe, et <code>0</code> -- la valeur par défaut du
+type -- sinon, plutôt que de lever une exception comme le fait le simple
+accesseur de l'indexeur. <code>0</code> est exactement la bonne réponse à
+« combien de fois <code>c</code> a-t-il été vu jusqu'ici » lors de sa
+première apparition, ce qui rend <code>counts[c] =
+counts.GetValueOrDefault(c) + 1;</code> correct qu'il s'agisse de la
+première apparition du caractère ou de sa centième : la même ligne gère
+les deux cas, parce que le point de départ pour « ajouter un » est déjà le
+bon dans les deux cas.</p>
+<p>La version que ceci remplace, <code>counts[c]++</code>, n'est pas
+fausse dans l'esprit -- c'est exactement l'opération effectuée ici -- elle
+est fausse parce que la moitié <em>lecture</em> de cette affectation
+composée passe par le simple accesseur de l'indexeur, qui lève une
+<code>KeyNotFoundException</code> sur une clé qui n'a jamais été écrite,
+plutôt que par le plus indulgent <code>GetValueOrDefault</code>.</p>
+</div>
+
+<h2>Pourquoi tout l'alphabet n'a pas besoin d'être pré-rempli</h2>
+
+<p>Une autre correction possible -- initialiser à <code>0</code> chaque
+caractère susceptible d'apparaître avant que la boucle ne s'exécute, pour
+que le simple indexeur ne rencontre jamais de clé manquante -- fonctionne,
+mais demande de connaître tout l'alphabet à l'avance et de pré-remplir une
+entrée pour chacun de ses caractères, dont la plupart ne seront jamais
+réellement utilisés par l'entrée. <code>GetValueOrDefault</code> évite
+d'avoir besoin de cet alphabet : les entrées sont créées paresseusement,
+exactement pour les caractères qui apparaissent réellement, ce qui explique
+aussi pourquoi un <code>text</code> vide produit correctement un dictionnaire vide
+plutôt qu'un dictionnaire rempli de zéros.</p>
+
+<h2>Coût</h2>
+
+<p><strong>O(n)</strong> dans la longueur de `text` -- une recherche et une
+écriture dans le dictionnaire par caractère, toutes deux en O(1) en
+moyenne.</p>
+
+<footer>
+  <p><a href="cs_char_frequency_count.hint.fr_FR.html">← Retour à l'indice</a> ·
+     Appuyez sur <strong>Ctrl+R</strong> dans Crucible pour un nouveau jeu de
+     données et résolvez-le à nouveau depuis un éditeur vierge.</p>
+</footer>
+
+</main>
+</body>
+</html>

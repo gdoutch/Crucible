@@ -999,7 +999,44 @@ code changes -- every call site already asks for a key, not for English text
 solutions. Those are authored, per-problem teaching content -- see
 [Writing a problem](#writing-a-problem) -- not application chrome, and
 translating fifty programming exercises is a different job with a different
-owner than translating "Save draft" and "No compiler available".
+owner than translating "Save draft" and "No compiler available". It is a
+real job, though, not an unsupported one -- see "Translating a problem"
+below for the separate, parallel mechanism that covers it.
+
+### Translating a problem
+
+A problem's prose -- `title`, `statement`, and each test's `name` and
+`description` -- can be translated without touching `crucible/i18n.py` at
+all, by dropping a sibling file next to the problem's JSON:
+
+```
+problems/csharp/cs_count_vowels.json
+problems/csharp/cs_count_vowels.fr_FR.json     translated title/statement/tests
+problems/csharp/cs_count_vowels.hint.fr_FR.html
+problems/csharp/cs_count_vowels.solution.fr_FR.html
+```
+
+The locale is one more dotted qualifier on the filename, matching the
+convention `crucible.guides` already uses for `.hint.html` /
+`.solution.html`. `crucible.problem.load_problem` looks for
+`<stem>.<locale>.json` when the active locale is not `en_GB`, and merges
+whichever fields it finds -- `title`, `statement`, and per-test `name` /
+`description`, matched to the base file's tests by position -- onto the
+English original; a field the overlay omits (or every field, if there is no
+overlay file at all) falls back to English, the same per-key fallback
+`i18n.t` gives app strings. `starter_code`, `harness`, the generator and the
+reference solution are never touched by an overlay: they are code, not
+prose, in whatever language the problem itself is written in.
+`crucible.guides.find` does the equivalent for the two guide pages,
+preferring `<stem>.<kind>.<locale>.html` over the English page when a
+translated one exists.
+
+Translating a problem is optional and per-file -- a problem with no
+overlay, or an overlay that only translates the statement and leaves the
+tests in English, still loads and still works. Today only the C# problems
+under `problems/csharp/` ship a French (`fr_FR`) translation; the other
+languages' problems are untranslated, and stay that way until someone adds
+the same sibling files for them.
 
 ## Command line
 
@@ -1070,6 +1107,7 @@ crucible/
   i18n.py              string lookup: t(key, **kwargs), locale fallback
   locales/
     en_GB.json         every user-facing string, the base locale
+    fr_FR.json         full French translation of the app chrome
   languages/
     __init__.py        registry
     base.py            Language ABC, process runner, result types
@@ -1086,7 +1124,7 @@ problems/
   guides.css           shared by every guide page
   c/                   42 problems, each with .json + .hint.html
   python/              3 problems,             + .solution.html
-  csharp/              15 problems,            + .solution.html
+  csharp/              15 problems,            + .solution.html (+ fr_FR)
   uml/                 2 problems,             + .diagram.html
   safety/              3 problems
 tests/

@@ -1,0 +1,26 @@
+{
+  "title": "Parenthèses équilibrées, trois types",
+  "statement": "`(`, `[` et `{` doivent chacun être fermés par le `)`, `]` ou `}`\ncorrespondant -- et fermés dans le bon ordre : `([)]` n'est pas équilibré\nmême s'il contient un exemplaire de chaque caractère, parce que `[` s'ouvre\n*après* `(` mais se ferme *avant* lui. Une `Stack<T>` est construite\nexactement pour ce genre de problème : la parenthèse ouverte le plus\nrécemment est toujours la première qui doit se fermer.\n\n## Votre fonction\n\n```\npublic static bool IsBalanced(string text);\n```\n\n`text` peut contenir n'importe quels caractères ; seuls `(`, `)`, `[`, `]`,\n`{` et `}` participent à la vérification, et tout autre caractère est\nignoré. Retournez `true` si chaque parenthèse fermante correspond au type\nde la parenthèse ouvrante non fermée la plus récente, et qu'aucune\nparenthèse ouvrante ne reste non fermée à la fin.\n\n## Attention\n\n- **`Stack<T>.Pop()` et `Stack<T>.Peek()` lèvent tous les deux une\n  `InvalidOperationException` sur une pile vide.** Une parenthèse fermante\n  qui arrive sans rien d'ouvert à qui correspondre -- `text` commence par\n  `)`, par exemple -- doit être vérifiée *avant* de dépiler, pas découverte\n  en capturant l'exception que le dépilement lèverait.\n- **Une pile non vide à la fin signifie que quelque chose a été ouvert et\n  jamais fermé.** `\"(()\"` ne rencontre jamais de parenthèse fermante en\n  désaccord -- chaque `)` qu'elle voit correspond correctement -- donc le\n  problème ne peut être détecté qu'en vérifiant que la pile est vide une\n  fois `text` épuisé, pas par quoi que ce soit qui se produit pendant sa\n  lecture.\n- **Les trois types de parenthèses ne sont pas interchangeables.** `\"(]\"`\n  n'est pas équilibré : `(` a été ouvert, `]` arrive, et `]` ferme un `[`,\n  pas un `(` -- dépiler et trouver le mauvais caractère ouvrant est un\n  échec exactement au même titre que n'en trouver aucun.\n",
+  "tests": [
+    {
+      "name": "une chaîne vide est trivialement équilibrée"
+    },
+    {
+      "name": "paires simples équilibrées de chaque type"
+    },
+    {
+      "name": "parenthèses équilibrées imbriquées et séquentielles, mêlées à d'autre texte"
+    },
+    {
+      "name": "une parenthèse ouvrante non fermée à la fin",
+      "description": "« (() » ne provoque jamais de désaccord pendant la lecture -- seule la pile non vide à la fin le détecte."
+    },
+    {
+      "name": "une parenthèse fermante sans rien d'ouvert"
+    },
+    {
+      "name": "types différents : un type ouvert, un autre fermé",
+      "description": "([)] : [ s'ouvre après ( mais se ferme avant lui -- mauvais ordre, pas seulement mauvais compte."
+    }
+  ]
+}

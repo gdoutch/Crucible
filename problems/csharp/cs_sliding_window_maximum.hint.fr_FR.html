@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Indice — Maximum de fenêtre glissante · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C# · difficile</p>
+  <h1>Maximum de fenêtre glissante</h1>
+  <p class="kind">Indice</p>
+  <p class="lede">Un coup de pouce dans la bonne direction. La réponse complète
+    se trouve sur la page de la solution détaillée, donc rien ci-dessous ne
+    la révèle.</p>
+</header>
+
+<h2>La forme de la boucle</h2>
+
+<pre><code>var deque = new LinkedList&lt;int&gt;();  // indices, valeurs décroissantes de l'avant vers l'arrière
+for (int i = 0; i &lt; values.Length; i++) {
+    // 1. évincer de l'avant : les indices sortis de la fenêtre
+    // 2. évincer de l'arrière : les indices dont la valeur &lt;= values[i]
+    // 3. ajouter i à l'arrière
+    // 4. si la fenêtre est pleine, la valeur de l'avant est le max de cette fenêtre
+}</code></pre>
+
+<h2>Pourquoi l'éviction arrière utilise <code>&lt;=</code></h2>
+
+<div class="trap">
+<p>Imaginez deux valeurs égales, l'une déjà dans la deque et
+<code>values[i]</code> qui arrive maintenant avec la même valeur.
+L'ancienne est sur le point de devenir inutile dès qu'elle sort de la
+fenêtre -- et quand cela arrive, la nouvelle, égale, est encore là et est
+tout aussi valable comme réponse. Garder l'ancienne quand même (en
+utilisant <code>&lt;</code> au lieu de <code>&lt;=</code> pour la
+vérification d'éviction) ne produit pas un <em>maximum</em> incorrect --
+les ex æquo ne changent pas quelle est la plus grande valeur -- mais cela
+laisse des indices obsolètes et devenus inutiles s'accumuler dans la deque
+sans jamais être relus, ce qui fait toute la différence entre une deque
+qui reste petite et une deque qui regrossit lentement vers la taille de la
+fenêtre qu'elle était censée éviter de reparcourir.</p>
+</div>
+
+<h2>L'éviction avant se produit avant l'éviction arrière, à chaque itération</h2>
+
+<p>Vérifier si l'indice de tête est sorti de la fenêtre doit se faire en
+premier, avant même de considérer quoi que ce soit sur la valeur
+courante -- sinon un indice de tête qui devrait déjà être parti pourrait
+encore être lu comme « le maximum courant » pour une itération de trop.</p>
+
+<footer>
+  <p>Prêt pour la totale ?
+    <a href="cs_sliding_window_maximum.solution.fr_FR.html">Lire la solution détaillée →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

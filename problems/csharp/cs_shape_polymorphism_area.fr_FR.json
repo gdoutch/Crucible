@@ -1,0 +1,22 @@
+{
+  "title": "Aire totale via une interface",
+  "statement": "Une interface est une promesse que chaque type qui l'implémente tient à sa\npropre façon : demandez à n'importe quel `IShape` son `Area()`, et il\nrépond correctement, sans que le code qui demande ait besoin de savoir ni\nde se soucier de *quelle* forme il tient. C'est tout l'intérêt du\npolymorphisme -- et le moyen le plus facile de le perdre par accident est\nd'écrire du code qui vérifie quand même le type concret.\n\n## L'interface\n\n```\npublic interface IShape\n{\n    double Area();\n}\n```\n\nDeux implémentations sont déjà fournies :\n\n```\npublic class Circle : IShape       // Area() = π × Radius²\npublic class Rectangle : IShape    // Area() = Width × Height\n```\n\n## Votre fonction\n\n```\npublic static double TotalArea(List<IShape> shapes);\n```\n\nRetournez la somme des `Area()` de toutes les formes de `shapes`.\n`shapes` peut être vide, auquel cas le total est `0`.\n\n## Attention\n\n- **Rien ne garantit que `shapes` ne contient que des `Circle` et des\n  `Rectangle`.** N'importe quel type implémentant `IShape` est un élément\n  légal -- y compris des types que cet énoncé ne nomme jamais. Un code qui\n  fait une correspondance de motif sur `is Circle` / `is Rectangle` et\n  retombe sur une valeur par défaut pour tout le reste obtient\n  silencieusement la mauvaise réponse (typiquement `0`, ou une exception\n  levée) pour une forme dont il n'a jamais connu l'identité, alors\n  qu'appeler `Area()` directement aurait fonctionné sans avoir besoin de\n  la connaître.\n- **`shapes.Sum(s => s.Area())` et une simple boucle qui ajoute\n  `shape.Area()` à un total courant sont la même opération** -- choisissez\n  celle qui vous semble la plus claire ; la question de correction ici ne\n  porte pas sur la construction de boucle, elle porte sur le fait\n  d'appeler `Area()` à travers l'interface plutôt que de la contourner.\n",
+  "tests": [
+    {
+      "name": "une liste vide totalise zéro"
+    },
+    {
+      "name": "un seul rectangle"
+    },
+    {
+      "name": "un cercle et un rectangle ensemble"
+    },
+    {
+      "name": "une troisième forme non documentée doit quand même être gérée correctement",
+      "description": "0.5 * 6 * 4 = 12 -- un code qui ne reconnaît que Circle et Rectangle n'a pas de branche pour ce cas et se trompe ; shape.Area() n'a pas besoin qu'on le lui dise."
+    },
+    {
+      "name": "les trois types mélangés dans une seule liste"
+    }
+  ]
+}

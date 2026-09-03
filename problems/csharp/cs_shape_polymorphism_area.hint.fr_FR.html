@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Indice — Aire totale via une interface · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C# · moyen</p>
+  <h1>Aire totale via une interface</h1>
+  <p class="kind">Indice</p>
+  <p class="lede">Un coup de pouce dans la bonne direction. La réponse complète
+    se trouve sur la page de la solution détaillée, donc rien ci-dessous ne
+    la révèle.</p>
+</header>
+
+<h2>Faites confiance à l'interface</h2>
+
+<pre><code>double total = 0;
+foreach (var shape in shapes) {
+    total += shape.Area();
+}
+return total;</code></pre>
+
+<p>C'est toute la fonction. <code>shape.Area()</code> se répartit vers le
+type concret que <code>shape</code> est réellement à l'exécution -- cette
+répartition est exactement ce qu'*est* un appel de méthode d'interface.</p>
+
+<h2>La seule chose à ne pas écrire</h2>
+
+<div class="trap">
+<p>Toute version de « si c'est un <code>Circle</code>, faire ceci ; si
+c'est un <code>Rectangle</code>, faire cela » vérifie quelque chose que
+l'interface vous répond déjà, et ne connaît que les deux types que
+l'énoncé a nommés. Un cas de test fixe fournit une troisième
+implémentation d'<code>IShape</code>, non documentée, spécifiquement pour
+attraper un code qui teste le type concret au lieu d'appeler
+<code>Area()</code> -- la version qui teste le type n'a aucun cas pour
+elle et se trompe ; la version qui appelle simplement
+<code>shape.Area()</code> n'a jamais eu besoin d'en être informée.</p>
+</div>
+
+<footer>
+  <p>Prêt pour la totale ?
+    <a href="cs_shape_polymorphism_area.solution.fr_FR.html">Lire la solution détaillée →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

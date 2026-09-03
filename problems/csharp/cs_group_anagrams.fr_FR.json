@@ -1,0 +1,23 @@
+{
+  "title": "Regrouper les anagrammes",
+  "statement": "Deux mots sont des anagrammes l'un de l'autre si l'un est un réarrangement\ndes lettres de l'autre -- « listen » et « silent », « state » et « taste ».\nRegrouper toute une liste de mots selon cette relation est une tâche\nnaturelle pour un `Dictionary` : l'astuce consiste à choisir une clé qui\nsoit identique pour chaque mot d'un groupe et différente pour chaque paire\nde mots qui ne sont pas anagrammes l'un de l'autre, puis à décider\ndélibérément dans quel ordre les groupes doivent sortir, puisque rien dans\nun `Dictionary` ne le garantit de lui-même.\n\n## Votre fonction\n\n```\npublic static List<List<string>> GroupAnagrams(List<string> words);\n```\n\nRegroupez `words` de sorte que chaque groupe contienne des mots qui sont\nanagrammes les uns des autres (la correspondance est sensible à la casse ;\n« Eat » et « ate » ne sont *pas* des anagrammes ici), et que chaque mot de\nl'entrée apparaisse dans exactement un groupe. `words` peut être vide.\n\n**L'ordre de sortie fait partie du contrat** : les groupes apparaissent\ndans l'ordre où le *premier* mot de chaque groupe apparaît dans `words`,\net à l'intérieur d'un groupe, les mots apparaissent dans l'ordre où ils\nsont apparus dans `words`.\n\n## Attention\n\n- **Les lettres triées d'un mot forment une clé de regroupement\n  naturelle** -- « eat », « tea » et « ate » se trient tous en « aet » --\n  mais l'ordre d'énumération propre à un `Dictionary` n'est pas quelque\n  chose que la spécification du langage promet de faire correspondre à\n  l'ordre d'insertion, sur cet environnement d'exécution ou sur un autre.\n  S'appuyer directement dessus pour l'ordre de sortie revient à s'appuyer\n  sur un détail d'implémentation qui se trouve être vrai aujourd'hui.\n- **Construisez l'ordre de sortie à partir de `words` lui-même, pas à\n  partir du dictionnaire.** Un second passage sur la liste d'origine --\n  émettant un groupe la première fois que sa clé est rencontrée, et\n  l'ignorant pour chaque mot ultérieur qui correspond à la même clé --\n  produit l'ordre que la spécification demande réellement, quel que soit\n  l'ordre dans lequel le dictionnaire aurait rendu les groupes.\n- Un groupe d'un seul mot reste un groupe : `[\"solo\"]` est une entrée\n  valide du résultat, pas un élément à abandonner ou à fusionner avec\n  autre chose.\n",
+  "tests": [
+    {
+      "name": "une liste vide n'a aucun groupe"
+    },
+    {
+      "name": "un seul mot forme son propre groupe"
+    },
+    {
+      "name": "trois mots, dont deux anagrammes",
+      "description": "eat et tea se trient tous deux en « aet » ; tree n'appartient à aucun des deux."
+    },
+    {
+      "name": "l'ordre de sortie suit la première apparition, pas l'ordre trié",
+      "description": "tree est un singleton vu en premier, donc son groupe est en tête même si « eat » se trierait plus tôt alphabétiquement."
+    },
+    {
+      "name": "sensible à la casse : Eat et ate ne forment pas le même groupe"
+    }
+  ]
+}

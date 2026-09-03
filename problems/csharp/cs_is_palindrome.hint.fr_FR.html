@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Indice — Vérification de palindrome · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C# · facile</p>
+  <h1>Vérification de palindrome</h1>
+  <p class="kind">Indice</p>
+  <p class="lede">Un coup de pouce dans la bonne direction. La réponse complète
+    se trouve sur la page de la solution détaillée, donc rien ci-dessous ne
+    la révèle.</p>
+</header>
+
+<h2>Deux pointeurs, qui avancent vers l'intérieur</h2>
+
+<pre><code>int left = 0, right = text.Length - 1;
+while (left &lt; right) {
+    // si text[left] n'est pas alphanumérique, left++ et on réessaie
+    // si text[right] n'est pas alphanumérique, right-- et on réessaie
+    // sinon on les compare (casse normalisée) et on avance les deux vers l'intérieur
+}
+return true;</code></pre>
+
+<p>Il n'est pas nécessaire de construire une nouvelle chaîne pour ne garder
+« que les lettres et les chiffres » -- les deux pointeurs peuvent passer
+outre la ponctuation sur place, un côté à la fois.</p>
+
+<h2>Sauter, ne pas s'arrêter</h2>
+
+<div class="trap">
+<p>Quand <code>text[left]</code> n'est pas alphanumérique, le bon geste est
+<code>left++; continue;</code> -- essayer le caractère *suivant* de ce
+côté, pas abandonner la comparaison. Une solution qui traite un caractère
+de ponctuation comme un désaccord automatique échoue sur « A man, a plan,
+a canal, Panama » dès la première virgule.</p>
+</div>
+
+<p><code>char.IsLetterOrDigit</code> et <code>char.ToLowerInvariant</code>
+sont les deux vérifications qui font tout le travail ici -- la première
+décide de ce qui compte comme « faisant partie du mot », la seconde rend
+la comparaison insensible à la casse.</p>
+
+<footer>
+  <p>Prêt pour la totale ?
+    <a href="cs_is_palindrome.solution.fr_FR.html">Lire la solution détaillée →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

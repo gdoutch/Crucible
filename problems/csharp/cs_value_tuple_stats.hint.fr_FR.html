@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Indice — Min, max et somme sous forme de tuple de valeurs · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C# · facile</p>
+  <h1>Min, max et somme sous forme de tuple de valeurs</h1>
+  <p class="kind">Indice</p>
+  <p class="lede">Un coup de pouce dans la bonne direction. La réponse complète
+    se trouve sur la page de la solution détaillée, donc rien ci-dessous ne
+    la révèle.</p>
+</header>
+
+<h2>Initialisez à partir du tableau, pas d'une constante</h2>
+
+<pre><code>int min = values[0];
+int max = values[0];
+long sum = 0;
+foreach (int v in values) {
+    // mettre à jour min, max, sum
+}
+return (min, max, sum);</code></pre>
+
+<p>Initialiser <code>min</code> et <code>max</code> à partir de
+<code>values[0]</code> signifie que chaque autre élément n'a qu'à prouver
+qu'il est *plus* extrême que ce qui a été vu jusqu'ici -- il n'y a pas
+besoin d'une branche séparée « est-ce le premier élément » à l'intérieur
+de la boucle.</p>
+
+<h2>Le débordement dont le type de retour vous prévient déjà</h2>
+
+<div class="trap">
+<p><code>sum</code> est déclaré <code>long</code> dans le type de retour
+pour une raison précise : accumuler dans une variable locale <code>int</code>
+et ne convertir en <code>long</code> qu'à la toute fin
+(<code>return (min, max, (long)sum);</code>) déborde pendant
+l'accumulation elle-même, avant même que la conversion ne s'exécute -- le
+transtypage arrive trop tard pour sauver une valeur déjà repartie de
+l'autre côté. Déclarez le total courant comme <code>long</code> dès sa
+première affectation.</p>
+</div>
+
+<footer>
+  <p>Prêt pour la totale ?
+    <a href="cs_value_tuple_stats.solution.fr_FR.html">Lire la solution détaillée →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

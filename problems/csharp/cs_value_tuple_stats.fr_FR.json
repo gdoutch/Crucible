@@ -1,0 +1,22 @@
+{
+  "title": "Min, max et somme sous forme de tuple de valeurs",
+  "statement": "Une fonction qui doit renvoyer trois nombres liés à la fois a,\ntraditionnellement, trois mauvaises options : les empaqueter dans un\ntableau et espérer que l'appelant se souvienne de quel indice correspond à\nquoi, définir une classe ad hoc juste pour ramener trois champs, ou prendre\ntrois paramètres `out` qui encombrent le site d'appel. Les **tuples de\nvaleurs** de C# sont la quatrième option, construite exactement pour cela :\nun paquet léger, nommé et temporaire, qui n'existe que le temps d'un\naller-retour.\n\n## Votre fonction\n\n```\npublic static (int Min, int Max, long Sum) Stats(int[] values);\n```\n\n`values` contient au moins un élément. Retournez un tuple de son minimum,\nde son maximum, et de la somme de tous ses éléments.\n\n## Attention\n\n- **La somme est un `long`, les éléments sont des `int`.** `values` peut\n  contenir jusqu'à quelques millions d'éléments, chacun pouvant aller\n  jusqu'à `int.MaxValue` -- sommés en `int`, cela déborde et repart sur un\n  nombre négatif absurde bien avant que le tableau ne soit épuisé.\n  Accumulez dans le `long` que le type de retour vous impose déjà, pas dans\n  un `int` que vous convertiriez ensuite à la fin.\n- **`Min` et `Max` proviennent des valeurs réellement présentes dans le\n  tableau**, pas de `int.MinValue`/`int.MaxValue` utilisés comme points de\n  départ sans vérification -- un tableau qui se trouve être entièrement\n  négatif, ou entièrement positif, est un cas de test fixe précisément\n  parce qu'un mauvais choix de point de départ peut passer inaperçu sur un\n  tableau qui chevauche zéro.\n- Les noms des éléments du tuple (`Min`, `Max`, `Sum`) font partie de la\n  signature -- construisez-le sous la forme `(min, max, sum)` de façon\n  positionnelle, ou `(Min: min, Max: max, Sum: sum)` explicitement ; les\n  deux produisent le même tuple, puisque les noms sont des métadonnées de\n  compilation, pas des données que les valeurs transportent avec elles.\n",
+  "tests": [
+    {
+      "name": "un tableau à un seul élément"
+    },
+    {
+      "name": "un petit tableau mixte"
+    },
+    {
+      "name": "un tableau entièrement négatif -- min/max ne peuvent pas tous deux provenir de int.MaxValue"
+    },
+    {
+      "name": "un tableau entièrement positif -- le cas miroir"
+    },
+    {
+      "name": "une somme qui déborde un int 32 bits mais pas un long 64 bits",
+      "description": "6 000 000 000 dépasse int.MaxValue (~2,1 milliards) -- accumuler en int repart sur un nombre négatif."
+    }
+  ]
+}
