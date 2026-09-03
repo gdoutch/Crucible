@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Sum an Array Without Overflowing · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · Java · easy</p>
+  <h1>Sum an Array Without Overflowing</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>One accumulator, one loop</h2>
+
+<pre><code>long total = 0;
+for (int v : values) {
+    total += v;
+}
+return total;</code></pre>
+
+<p>That is the whole function -- the interesting part is what type
+<code>total</code> is declared as, not the loop itself.</p>
+
+<h2>Java never tells you an int overflowed</h2>
+
+<div class="trap">
+<p>If <code>total</code> starts life as an <code>int</code> and only gets
+widened to <code>long</code> in the <code>return</code> statement, every
+individual <code>+=</code> along the way is still ordinary 32-bit
+addition. Java's `int` arithmetic never throws or warns on overflow --
+it wraps silently to whatever bit pattern falls out, and by the time the
+final widening runs, the wrong value has already been computed and
+stored. Declaring `long total = 0;` from the start means every addition,
+from the first one onward, is already a 64-bit addition.</p>
+</div>
+
+<p>A `for`-each loop (<code>for (int v : values)</code>) reads each element
+without needing an explicit index -- and since the loop body only ever
+reads <code>v</code>, nothing here needs `values` to change.</p>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="java_sum_array.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

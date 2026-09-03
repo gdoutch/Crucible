@@ -1,0 +1,58 @@
+{
+  "id": "java_boxed_integer_equality",
+  "title": "Comparing Boxed Integers Without ==",
+  "language": "java",
+  "difficulty": "fiendish",
+  "topics": [
+    "autoboxing",
+    "equality"
+  ],
+  "timeout_seconds": 5,
+  "statement": "`==` on two `Integer`s compares *references*, not values -- `Integer` is\na reference type, and `==` never stops meaning \"is this the same object\"\njust because autoboxing makes it easy to forget you are holding one. The\nreason this trap is so easy to walk into by accident is that it usually\nlooks correct: the JLS *requires* `Integer.valueOf` to cache and reuse\nobjects for every value from `-128` to `127`, so `==` on two boxed\nintegers in that range genuinely does return `true` when the values are\nequal -- right up until a value outside that range breaks the pattern.\n\n## Your function\n\n```\npublic static int countEqualPairs(List<Integer> values);\n```\n\nReturn how many pairs of indices `(i, j)` with `i < j` have\n`values.get(i)` and `values.get(j)` equal *in value* -- not necessarily\nthe same object. `values` may be empty or contain values well outside the\n`-128`..`127` range.\n\n## Watch out\n\n- **`values.get(i) == values.get(j)` compiles, runs, and passes every\n  test built only from small numbers.** Two `Integer`s both holding `5`\n  are, by the JLS's own caching guarantee, guaranteed to be the exact\n  same cached object -- so `==` happens to agree with `.equals()` for\n  every value in `-128..127`. Two `Integer`s both holding `1000` are\n  *not* guaranteed to be the same object (autoboxing is free to create a\n  new one each time, and typically does outside the cached range), so\n  `==` on them is false even though the values are equal.\n- **`.equals()` compares values, unconditionally, regardless of range.**\n  `values.get(i).equals(values.get(j))` is correct for every input this\n  function could ever be given -- there is no range where it needs help\n  from anything else.\n- **Unboxing before comparing also works, and for the same underlying\n  reason.** `values.get(i).intValue() == values.get(j).intValue()`\n  compares two primitive `int`s, and primitive `==` has only ever meant\n  \"equal value\" -- the trap is specific to comparing two *references* with\n  `==`, not to `==` itself.\n",
+  "starter_code": "import java.util.List;\n\npublic class Solution {\n    /**\n     * Return how many pairs of indices (i, j) with i < j have values.get(i)\n     * and values.get(j) equal in value. values may be empty.\n     */\n    public static int countEqualPairs(List<Integer> values) {\n        // your code here\n        return 0;\n    }\n}\n",
+  "harness": "import java.util.ArrayList;\nimport java.util.List;\nimport java.util.Scanner;\n\nclass Harness {\n    public static void main(String[] args) {\n        Scanner scanner = new Scanner(System.in);\n        while (scanner.hasNextInt()) {\n            int n = scanner.nextInt();\n            List<Integer> values = new ArrayList<>();\n            for (int i = 0; i < n; i++) {\n                values.add(scanner.nextInt());\n            }\n            System.out.println(Solution.countEqualPairs(values));\n        }\n    }\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random lists of values, always outside the -128..127 Integer cache\nrange, so a solution comparing with == fails on generated data too, not\njust on the fixed tests.\"\"\"\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    n = rng.randint(0, 12)\n    pool = [rng.randint(200, 5000) * rng.choice([1, -1]) for _ in range(4)]\n    values = [rng.choice(pool) for _ in range(n)]\n    lines = [str(n)] + [str(v) for v in values]\n    return {\"name\": \"%d values outside the Integer cache range #%d\"\n                    % (n, index),\n            \"stdin\": \" \".join(lines) + \"\\n\"}\n"
+  },
+  "tests": [
+    {
+      "name": "an empty list has no pairs",
+      "stdin": "0\n",
+      "expected_stdout": "0"
+    },
+    {
+      "name": "no duplicates at all",
+      "stdin": "3 1 2 3\n",
+      "expected_stdout": "0"
+    },
+    {
+      "name": "a duplicate within the cached range -- == would happen to work here",
+      "stdin": "3 5 5 3\n",
+      "expected_stdout": "1"
+    },
+    {
+      "name": "a duplicate outside the cached range -- == fails here",
+      "stdin": "2 1000 1000\n",
+      "expected_stdout": "1",
+      "description": "1000 is well outside -128..127. Two boxed Integers holding 1000 are not guaranteed to be the same object, so == on them is typically false even though the values are equal."
+    },
+    {
+      "name": "three equal large values -- every pair among them counts",
+      "stdin": "3 500 500 500\n",
+      "expected_stdout": "3"
+    },
+    {
+      "name": "a negative duplicate outside the cached range",
+      "stdin": "3 -1000 -1000 7\n",
+      "expected_stdout": "1"
+    },
+    {
+      "name": "duplicates both inside and outside the cached range together",
+      "stdin": "4 100 100 200 200\n",
+      "expected_stdout": "2",
+      "description": "100 is cached (a == solution gets this pair right by luck); 200 is not (a == solution gets this pair wrong)."
+    }
+  ],
+  "reference_solution_b64": "aW1wb3J0IGphdmEudXRpbC5MaXN0OwoKcHVibGljIGNsYXNzIFNvbHV0aW9uIHsKICAgIHB1YmxpYyBzdGF0aWMgaW50IGNvdW50RXF1YWxQYWlycyhMaXN0PEludGVnZXI+IHZhbHVlcykgewogICAgICAgIGludCBjb3VudCA9IDA7CiAgICAgICAgZm9yIChpbnQgaSA9IDA7IGkgPCB2YWx1ZXMuc2l6ZSgpOyBpKyspIHsKICAgICAgICAgICAgZm9yIChpbnQgaiA9IGkgKyAxOyBqIDwgdmFsdWVzLnNpemUoKTsgaisrKSB7CiAgICAgICAgICAgICAgICBpZiAodmFsdWVzLmdldChpKS5lcXVhbHModmFsdWVzLmdldChqKSkpIHsKICAgICAgICAgICAgICAgICAgICBjb3VudCsrOwogICAgICAgICAgICAgICAgfQogICAgICAgICAgICB9CiAgICAgICAgfQogICAgICAgIHJldHVybiBjb3VudDsKICAgIH0KfQo="
+}

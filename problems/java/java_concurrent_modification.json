@@ -1,0 +1,53 @@
+{
+  "id": "java_concurrent_modification",
+  "title": "Remove While Iterating, Without ConcurrentModificationException",
+  "language": "java",
+  "difficulty": "fiendish",
+  "topics": [
+    "collections",
+    "iterators"
+  ],
+  "timeout_seconds": 5,
+  "statement": "A `for`-each loop over a `List` is sugar for calling `iterator()` once\nand driving it by hand -- and that iterator keeps its own count of how\nmany structural changes (adds or removes) the list has been through since\nit was created. Call `list.remove(...)` directly, mid-loop, and the\niterator's count falls out of step with the list's own: the very next\n`hasNext()`/`next()` call notices the mismatch and throws\n`ConcurrentModificationException` -- Java's collections *fail fast* on\nthis rather than silently producing a wrong answer.\n\n## Your function\n\n```\npublic static void removeMultiplesOf(List<Integer> values, int n);\n```\n\n`n` is always at least `1`. **Mutate `values` in place**, removing every\nelement that is a multiple of `n` (including `0`, a multiple of\neverything), and keeping the relative order of everything that survives.\n`values` may be empty.\n\n## Watch out\n\n- **`for (Integer v : values) { if (v % n == 0) values.remove(v); }`\n  throws `ConcurrentModificationException` on the very first removal it\n  makes**, not just on some of them -- the for-each loop's implicit\n  iterator has already advanced past the point a direct list mutation\n  invalidates, and the exception fires the next time the loop asks the\n  iterator for anything at all, which is almost always the very next\n  iteration (or the loop's own final check that there is nothing left).\n- **`values.removeIf(predicate)` is built for exactly this and does the\n  whole job in one call**, safely: it is implemented to remove matching\n  elements without leaving any externally-visible iterator in an invalid\n  state, because there never is one -- there is nothing for a candidate\n  to get wrong here beyond writing the right predicate.\n- **An explicit `Iterator<Integer>`, calling *its own* `remove()` method,\n  is the one form of \"remove while iterating\" Java actually allows.**\n  `Iterator.remove()` updates the iterator's own bookkeeping as part of\n  removing, which is precisely what a direct `list.remove(...)` call does\n  not do -- the same underlying operation, safe through one path and not\n  through the other, depending on which object's `remove()` you call.\n",
+  "starter_code": "import java.util.List;\n\npublic class Solution {\n    /**\n     * Remove every element of values that is a multiple of n (n >= 1),\n     * mutating values in place and keeping the relative order of\n     * survivors.\n     */\n    public static void removeMultiplesOf(List<Integer> values, int n) {\n        // your code here\n    }\n}\n",
+  "harness": "import java.util.ArrayList;\nimport java.util.List;\nimport java.util.Scanner;\n\nclass Harness {\n    public static void main(String[] args) {\n        Scanner scanner = new Scanner(System.in);\n        while (scanner.hasNextInt()) {\n            int count = scanner.nextInt();\n            int n = scanner.nextInt();\n            List<Integer> values = new ArrayList<>();\n            for (int i = 0; i < count; i++) {\n                values.add(scanner.nextInt());\n            }\n            Solution.removeMultiplesOf(values, n);\n            StringBuilder sb = new StringBuilder();\n            for (int i = 0; i < values.size(); i++) {\n                if (i > 0) sb.append(\" \");\n                sb.append(values.get(i));\n            }\n            System.out.println(sb);\n        }\n    }\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random arrays and small divisors, weighted so adjacent multiples of n --\nan additional way a hand-rolled iterator fix can still go wrong -- show\nup often.\"\"\"\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    n = rng.randint(2, 5)\n    length = rng.randint(0, 15)\n    values = []\n    for _ in range(length):\n        if rng.random() < 0.5:\n            values.append(rng.randint(-10, 10) * n)  # a multiple of n\n        else:\n            values.append(rng.randint(-10, 10) * n + rng.randint(1, n - 1))\n    lines = [\"%d %d\" % (len(values), n)] + [str(v) for v in values]\n    return {\"name\": \"%d values, removing multiples of %d #%d\"\n                    % (len(values), n, index),\n            \"stdin\": \" \".join(lines) + \"\\n\"}\n"
+  },
+  "tests": [
+    {
+      "name": "an empty list stays empty",
+      "stdin": "0 3\n",
+      "expected_stdout": ""
+    },
+    {
+      "name": "no multiples present -- nothing is removed",
+      "stdin": "4 2\n1 3 5 7\n",
+      "expected_stdout": "1 3 5 7"
+    },
+    {
+      "name": "every element is a multiple -- the result is empty",
+      "stdin": "4 5\n5 10 15 20\n",
+      "expected_stdout": ""
+    },
+    {
+      "name": "a single match in the middle throws for the naive for-each version",
+      "stdin": "5 3\n1 2 3 4 5\n",
+      "expected_stdout": "1 2 4 5",
+      "description": "Only one element (3) matches -- a for-each loop calling list.remove() directly throws ConcurrentModificationException on this alone, not just on multiple removals."
+    },
+    {
+      "name": "only the last element matches",
+      "stdin": "4 4\n1 2 3 4\n",
+      "expected_stdout": "1 2 3",
+      "description": "Even a removal that happens to be the last element in the list still throws for the naive version -- there is no safe position for the bug to hide in."
+    },
+    {
+      "name": "zero is a multiple of everything",
+      "stdin": "5 4\n0 1 4 0 9\n",
+      "expected_stdout": "1 9"
+    }
+  ],
+  "reference_solution_b64": "aW1wb3J0IGphdmEudXRpbC5MaXN0OwoKcHVibGljIGNsYXNzIFNvbHV0aW9uIHsKICAgIHB1YmxpYyBzdGF0aWMgdm9pZCByZW1vdmVNdWx0aXBsZXNPZihMaXN0PEludGVnZXI+IHZhbHVlcywgaW50IG4pIHsKICAgICAgICB2YWx1ZXMucmVtb3ZlSWYodiAtPiB2ICUgbiA9PSAwKTsKICAgIH0KfQo="
+}

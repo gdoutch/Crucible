@@ -205,6 +205,28 @@
         "sigabrt": "SIGABRT (abandon) -- probablement une exception non gérée",
         "killed_by_signal": "tué par le signal {signal}"
       }
+    },
+    "java": {
+      "install_help_windows": "Aucun JDK trouvé.\n\nChoisissez l'option la plus simple pour vous :\n\n  1. Adoptium (Eclipse Temurin) -- un installeur de JDK standard et gratuit.\n     https://adoptium.net\n\n  2. winget      -- depuis une invite de commandes élevée :\n     winget install EclipseAdoptium.Temurin.21.JDK\n\n  3. Visual Studio -- si déjà installé, ouvrez le Visual\n     Studio Installer, cliquez sur Modifier, et cochez « Développement Java ».\n\nRevérifiez depuis le menu Outils une fois installé -- aucun redémarrage nécessaire.\nAssurez-vous que « javac », pas seulement « java », se retrouve dans le PATH --\ncertaines installations (et certains gestionnaires de paquets Linux) proposent\nun paquet JRE seul, capable d'exécuter des programmes mais pas d'en compiler.",
+      "install_help_posix": "Aucun JDK trouvé.\n\n  Debian/Ubuntu :  sudo apt install default-jdk\n  Fedora :         sudo dnf install java-latest-openjdk-devel\n  macOS :          brew install openjdk\n  Toute plateforme : https://adoptium.net\n\nRevérifiez depuis le menu Outils une fois installé.\nAssurez-vous que cela installe un JDK, pas seulement un JRE -- un JRE possède\n« java » mais pas « javac », et peut exécuter des programmes mais pas en compiler.",
+      "summary_not_found": "Java : aucun JDK trouvé",
+      "detail_not_found": "Recherche effectuée dans le PATH, JAVA_HOME et les emplacements d'installation habituels pour javac.",
+      "summary_broken": "Java : javac trouvé, mais ne s'exécute pas",
+      "detail_broken": "javac : {path}\n« javac -version » n'a signalé aucune version.",
+      "summary_no_java": "Java : javac trouvé, mais pas de java correspondant",
+      "detail_no_java": "javac : {path}\nAucun exécutable « java » à côté de lui -- cela ressemble à une installation de JDK cassée ou partielle.",
+      "summary": "Java : JDK {version}",
+      "detail": "javac : {javac}\njava :  {java}",
+      "compile_timeout": "Délai de compilation dépassé après 60 s.",
+      "exit": {
+        "access_violation": "violation d'accès (pointeur invalide / débordement de tampon) -- à l'intérieur de la JVM elle-même, pas du code Java ordinaire",
+        "stack_overflow": "débordement de pile natif à l'intérieur de la JVM elle-même -- un StackOverflowError venant du code Java se serait terminé normalement à la place",
+        "interrupted": "interrompu",
+        "crashed": "plantage : {description}",
+        "sigsegv": "SIGSEGV (erreur de segmentation) -- à l'intérieur de la JVM elle-même, pas du code Java ordinaire",
+        "sigabrt": "SIGABRT (abandon) -- la JVM elle-même a abandonné",
+        "killed_by_signal": "tué par le signal {signal}"
+      }
     }
   },
   "app": {

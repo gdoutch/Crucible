@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Count Words Without split()'s Empty-String Surprise · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · Java · easy</p>
+  <h1>Count Words Without split()'s Empty-String Surprise</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Let Scanner produce only real tokens</h2>
+
+<pre><code>Scanner scanner = new Scanner(text);
+int count = 0;
+while (scanner.hasNext()) {
+    scanner.next();
+    count++;
+}
+return count;</code></pre>
+
+<p><code>new Scanner(text)</code> wraps a string in the same token-reading
+interface you would use to read real input -- `hasNext()` /
+`next()` only ever see genuine, non-empty, whitespace-delimited tokens.</p>
+
+<h2>The one-liner that looks right and is not</h2>
+
+<div class="trap">
+<p><code>text.split("\\s+").length</code> is the instinctive first
+attempt, and it is wrong for exactly the input that matters most to get
+right: an empty (or all-whitespace) `text`. `split` is specified to
+always return at least one element -- "the whole input, unsplit" still
+counts as one piece even when that piece is the empty string -- so
+`"".split("\\s+")` comes back as an array of length `1`, not `0`.
+Trimming first does not help: `"   ".trim()` is `""`, and splitting *that*
+still returns one element.</p>
+</div>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="java_word_count.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

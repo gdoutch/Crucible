@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Two Sum, Indices, in One Pass · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · Java · hard</p>
+  <h1>Two Sum, Indices, in One Pass</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Check before you record</h2>
+
+<pre><code>Map&lt;Integer, Integer&gt; seen = new HashMap&lt;&gt;();
+for (int i = 0; i &lt; values.length; i++) {
+    int complement = target - values[i];
+    if (seen.containsKey(complement)) {
+        return new int[] { seen.get(complement), i };
+    }
+    seen.put(values[i], i);
+}</code></pre>
+
+<h2>Order matters here more than it looks like it should</h2>
+
+<div class="trap">
+<p>If `values[i]` is recorded into `seen` *before* checking for its own
+complement, and `target` happens to be exactly `2 * values[i]`, the
+lookup for `complement` finds the entry that was just added -- for
+*itself*. That returns `{ i, i }`, the same index twice, which is not a
+pair of two distinct elements at all. Checking the map first and only
+inserting afterward means the map, at the moment of any given check, only
+ever contains indices strictly *before* `i` -- so a match is always a
+genuinely different, earlier element.</p>
+</div>
+
+<p>That ordering is also why the match found is always the smaller index:
+by the time index `i` looks itself up, everything in the map arrived
+before it.</p>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="java_two_sum_indices.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

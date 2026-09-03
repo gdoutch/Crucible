@@ -240,6 +240,30 @@ the first build on a machine restores the SDK's reference packages into the
 shared NuGet cache (a few seconds); every build after that, anywhere, reuses
 the cache and takes about as long as a C compile.
 
+## Installing a JDK
+
+The app searches `PATH`, `JAVA_HOME`, then the usual versioned install
+directories (`C:\Program Files\Java\*`, `C:\Program Files\Eclipse
+Adoptium\*`, `/usr/lib/jvm/*`, and similar) for `javac`. This is a genuinely
+separate toolchain from C/C++/C# — nothing else on the machine already
+provides it. Once `javac` is found, `java` is read from the exact same `bin`
+directory next to it, deliberately never re-resolved from `PATH`
+independently: a machine with more than one JDK/JRE installed can easily
+have `javac` and a bare `java` resolve to different, mismatched installs,
+and running freshly-compiled classes on the wrong one fails in ways that
+have nothing to do with the candidate's code.
+
+| Option | How |
+| --- | --- |
+| **Windows** | [Adoptium (Eclipse Temurin)](https://adoptium.net), or `winget install EclipseAdoptium.Temurin.21.JDK` |
+| **Linux** | `sudo apt install default-jdk` / `sudo dnf install java-latest-openjdk-devel` |
+| **macOS** | `brew install openjdk` |
+
+Then *Tools → Re-check compilers*. Make sure the install provides a JDK, not
+just a JRE — a JRE has `java` but no `javac`, and can run a program but not
+compile one, which the app reports as its own distinct status rather than
+"no toolchain found".
+
 ## How a submission is run
 
 Your code and the problem's harness are compiled as **separate translation
@@ -456,9 +480,9 @@ the stylesheet does not load the pages are still ordinary readable HTML.
 
 ## What is in the box
 
-78 problems — 47 in C, 12 in C++, 4 in Python, 15 in C#. Every one of them
-mixes hand-written edge cases with four randomised ones, and ships a hint
-and a worked solution.
+90 problems — 47 in C, 12 in C++, 4 in Python, 15 in C#, 12 in Java. Every
+one of them mixes hand-written edge cases with four randomised ones, and
+ships a hint and a worked solution.
 
 The C set is deliberately weighted towards the things C makes you think about
 and other languages do not: what the pointer points at, who owns the memory,
@@ -473,7 +497,12 @@ between the two: reference parameters and `const&` where C uses raw
 pointers, but the same manual-memory-ownership questions C never lets you
 forget, plus a few entirely new to it (`operator+` has to be the exact
 overload a caller expects, `std::vector::erase` invalidates the iterator
-that produced it).
+that produced it). The Java set asks yet another version of the C# question
+-- what does *this* runtime hand you for free -- with different (and
+sometimes opposite) answers: `int` overflow never throws, ever, on any
+operator; a collection detects and throws on concurrent mutation instead of
+corrupting silently; boxed `Integer`s compare by reference under `==`,
+correctly only by coincidence for small cached values.
 
 Most problems start from an empty function. A few start from a *full* one that
 is already wrong — the editor opens on plausible code carrying one planted
@@ -503,6 +532,9 @@ with the `debugging` topic.
 | | C# | Min, Max and Sum as a Value Tuple | tuples, arrays, loops |
 | | C# | Nullable Value or Fallback | nullable types, operators |
 | | C# | Join a List Into a CSV Line | strings, lists |
+| | Java | Reverse a String (Which You Cannot Mutate) | strings, immutability |
+| | Java | Sum an Array Without Overflowing | arrays, loops, overflow |
+| | Java | Count Words Without split()'s Empty-String Surprise | strings, scanner |
 | **medium** | C | Binary Search | algorithms, arrays, search |
 | | C | Palindrome Check | strings, two pointers, ctype |
 | | C | Remove Duplicates From a Sorted Array | arrays, in-place, two pointers |
@@ -532,6 +564,9 @@ with the `debugging` topic.
 | | C# | Character Frequency Count | dictionaries, strings |
 | | C# | Balanced Brackets, Three Kinds | stacks, strings |
 | | C# | Total Area Through an Interface | interfaces, polymorphism, lists |
+| | Java | Remove Duplicates, Keep First-Seen Order | collections, sets |
+| | Java | Word Frequency Without a Null Pointer Exception | maps, autoboxing, strings |
+| | Java | Balanced Brackets With an ArrayDeque | collections, strings |
 | **hard** | C | Maximum Subarray Sum | algorithms, dynamic programming, arrays |
 | | C | Reverse a Linked List | pointers, linked lists |
 | | C | Edit Distance | dynamic programming, strings |
@@ -544,6 +579,9 @@ with the `debugging` topic.
 | | C# | Sliding Window Maximum | algorithms, linked lists, arrays |
 | | C# | Binary Search With an Insertion-Point Convention | algorithms, search, bitwise |
 | | C# | Interleave Two Sequences, Lazily | iterators, yield, linq |
+| | Java | Two Sum, Indices, in One Pass | hashmaps, arrays |
+| | Java | Kth Largest With a Bounded Min-Heap | priorityqueue, heaps |
+| | Java | A Stack That Tracks Its Own Minimum | stacks, data structures |
 | **fiendish** | C | Compute a CRC-16/CCITT-FALSE Checksum | embedded, bitwise, checksum, error-detection, misra |
 | | C | Decode a COBS-Framed Serial Buffer | embedded, framing, bitwise, error-detection |
 | | C | Fixed-Capacity LRU Cache (No Dynamic Allocation) | data-structures, embedded, pointers, linked lists |
@@ -554,6 +592,9 @@ with the `debugging` topic.
 | | C++ | Deep-Copying a Struct That Owns a Pointer | pointers, structs, ownership |
 | | C# | Division With Two Distinct Failure Modes | arithmetic, enums, tuples, overflow |
 | | C# | Mutating Structs Inside a List | structs, value semantics, lists |
+| | Java | Remove While Iterating, Without ConcurrentModificationException | collections, iterators |
+| | Java | Comparing Boxed Integers Without == | autoboxing, equality |
+| | Java | Division Java Will Not Warn You About | arithmetic, overflow, records |
 
 A few are worth calling out for what they are really testing:
 
@@ -996,6 +1037,18 @@ both `c_lang.py` and `cpp_lang.py`, because there is exactly one MSVC
 toolchain and one captured environment per machine, not one per language
 that happens to use it.
 
+`crucible/languages/java_lang.py` looks like neither: there is no shared
+native-compiler infrastructure to reuse, because locating a JDK is a
+different kind of search entirely (`javac` on `PATH`, then `JAVA_HOME`, then
+versioned install directories) with its own small pitfall worth knowing about
+— see [Installing a JDK](#installing-a-jdk) for why `java` is read from
+right beside the `javac` that was found rather than resolved independently.
+Its harness/solution split works differently too: Java requires a file's
+*public* top-level class to match the filename, so `Harness.java` declares
+a package-private `class Harness` instead of a public one, which is exactly
+what lets it sit next to a file named after its role rather than a class
+inside it.
+
 ## Internationalisation
 
 Every string the app or the CLI shows -- window titles, menu labels, dialog
@@ -1166,6 +1219,7 @@ crucible/
     cpp_lang.py        g++ / clang++ / c++ / MSVC, C's near-twin
     python_lang.py     worked example of a second language
     csharp_lang.py     dotnet build, generated .csproj, native apphost
+    java_lang.py       javac + java, JDK discovery (javac-then-JAVA_HOME)
   ui/
     app.py             main window
     editor.py          editor widget: gutter, highlighting, indentation
@@ -1178,6 +1232,7 @@ problems/
   cpp/                 12 problems,            + .solution.html
   python/              3 problems,             + .solution.html
   csharp/              15 problems,            + .solution.html (+ fr_FR)
+  java/                12 problems,            + .solution.html
   uml/                 2 problems,             + .diagram.html
   safety/              3 problems
 tests/

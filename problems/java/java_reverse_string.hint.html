@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Reverse a String (Which You Cannot Mutate) · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · Java · easy</p>
+  <h1>Reverse a String (Which You Cannot Mutate)</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Convert, swap, rebuild</h2>
+
+<pre><code>char[] chars = text.toCharArray();
+int left = 0, right = chars.length - 1;
+while (left &lt; right) {
+    // swap chars[left] and chars[right]
+    left++;
+    right--;
+}
+return new String(chars);</code></pre>
+
+<h2>Why there is no "reverse in place" here</h2>
+
+<div class="trap">
+<p><code>String</code> has no method that changes its own characters --
+there simply is no such operation to call, on any `String`, ever.
+<code>text.toCharArray()</code> is the way out: it copies the characters
+into a brand-new, ordinary, mutable <code>char[]</code> that you are free
+to swap elements of. `text` itself is never touched by anything that
+happens to that array.</p>
+</div>
+
+<p>An empty string and a one-character string both need zero swaps -- the
+same <code>left &lt; right</code> loop condition that stops a longer
+reversal at the right place also stops immediately for either of these,
+with no separate check needed.</p>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="java_reverse_string.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

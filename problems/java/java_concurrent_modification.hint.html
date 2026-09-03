@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Remove While Iterating, Without ConcurrentModificationException · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · Java · fiendish</p>
+  <h1>Remove While Iterating, Without ConcurrentModificationException</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>One call does the whole job</h2>
+
+<pre><code>values.removeIf(v -&gt; v % n == 0);</code></pre>
+
+<p>`List.removeIf` walks the list once, internally, and removes every
+element the predicate accepts -- there is no externally visible iterator
+for anything to invalidate, because the removal happens inside the one
+call that owns the whole operation.</p>
+
+<h2>What throws, and why it is not obvious from reading the loop</h2>
+
+<div class="trap">
+<p>`for (Integer v : values) { if (v % n == 0) values.remove(v); }` looks
+completely ordinary -- nothing about the syntax suggests danger. The
+`for`-each is sugar for calling `values.iterator()` once and driving it
+with `hasNext()`/`next()`; that iterator counts structural modifications
+to the list independently of the list's own size, and `values.remove(v)`
+is a modification the iterator did not make and does not know about. The
+very next time the loop asks the iterator for anything -- which, for a
+list of any real length, is almost immediately -- it notices the
+mismatch and throws `ConcurrentModificationException`. This happens on
+the *first* removal, not only when there is more than one.</p>
+</div>
+
+<p>An explicit `Iterator&lt;Integer&gt;`, calling its *own*
+`.remove()` method instead of the list's, is the one form of removing
+mid-iteration Java actually allows -- because that call updates the
+iterator's own bookkeeping as part of removing.</p>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="java_concurrent_modification.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

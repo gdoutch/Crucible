@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — A Stack That Tracks Its Own Minimum · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · Java · hard</p>
+  <h1>A Stack That Tracks Its Own Minimum</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Two stacks, kept in step</h2>
+
+<pre><code>private Deque&lt;Integer&gt; values = new ArrayDeque&lt;&gt;();
+private Deque&lt;Integer&gt; mins = new ArrayDeque&lt;&gt;();
+
+public void push(int value) {
+    values.push(value);
+    // also push value onto mins, but only if it's <= mins' current top
+    // (or mins is empty)
+}
+
+public void pop() {
+    // pop values; also pop mins, but only if the popped value WAS the
+    // current minimum
+}</code></pre>
+
+<h2>The comparison that has to be `&lt;=`, not `&lt;`</h2>
+
+<div class="trap">
+<p>Picture pushing the same minimum value twice in a row. If the second
+push only goes onto `mins` when it is *strictly less* than the current
+top, the second occurrence is skipped -- `mins` now has only one record of
+a minimum that actually exists twice on `values`. Pop the more recent of
+the two equal values back off, and the code that checks "was the popped
+value the current minimum, so pop `mins` too" says yes -- and removes
+`mins`'s only record of it, even though an equal value is still sitting
+right there on `values`. The fix is one character: push onto `mins`
+whenever the new value is `&lt;=` the current minimum, not only when it is
+strictly smaller.</p>
+</div>
+
+<p>`pop()` only needs to touch `mins` when the value actually being
+removed from `values` equals `mins`'s current top -- a popped value that
+was never the minimum should leave `mins` alone entirely.</p>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="java_min_stack.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

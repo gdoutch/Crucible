@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Comparing Boxed Integers Without == · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · Java · fiendish</p>
+  <h1>Comparing Boxed Integers Without ==</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Compare values, not references</h2>
+
+<pre><code>int count = 0;
+for (int i = 0; i &lt; values.size(); i++) {
+    for (int j = i + 1; j &lt; values.size(); j++) {
+        if (values.get(i).equals(values.get(j))) {
+            count++;
+        }
+    }
+}
+return count;</code></pre>
+
+<h2>Why a small-number test would not have caught this</h2>
+
+<div class="trap">
+<p>`values.get(i) == values.get(j)` compiles -- `Integer` is a reference
+type, and `==` between two references is always legal, it just means
+"same object", not "same value". The trap is that it also often *looks*
+correct: the JLS requires `Integer.valueOf` to cache and reuse a single
+object for every value from `-128` to `127`, so two `Integer`s in that
+range holding equal values genuinely are the same object, and `==`
+correctly returns `true` by coincidence. Outside that range, autoboxing is
+free to (and typically does) create a fresh `Integer` object every time,
+so two boxed `1000`s are two different objects with equal values -- and
+`==` between them is `false`.</p>
+</div>
+
+<p>`.equals()` compares the actual `int` values stored inside, regardless
+of whether the two `Integer` objects happen to be the same instance or
+not -- there is no range where it needs help from anything else.</p>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="java_boxed_integer_equality.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

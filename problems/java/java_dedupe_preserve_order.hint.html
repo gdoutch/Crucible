@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Remove Duplicates, Keep First-Seen Order · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · Java · medium</p>
+  <h1>Remove Duplicates, Keep First-Seen Order</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>One constructor call, twice</h2>
+
+<pre><code>return new ArrayList&lt;&gt;(new LinkedHashSet&lt;&gt;(values));</code></pre>
+
+<p>That is the entire function. The inner `new LinkedHashSet&lt;&gt;(values)`
+does the deduplicating *and* the order-preserving; the outer
+`new ArrayList&lt;&gt;(...)` just converts the result to the `List` return
+type asked for.</p>
+
+<h2>Which `Set` you reach for is the whole exercise</h2>
+
+<div class="trap">
+<p>`new HashSet&lt;&gt;(values)` also removes duplicates -- and gives you
+back an iteration order with no relationship to insertion order at all,
+because `HashSet` orders its elements by where they land in its hash
+table, not by when they arrived. `LinkedHashSet` is the same `Set`
+contract, plus a linked list threaded through the entries in insertion
+order, which is what its iterator actually walks. Constructing either one
+from `values` inserts each element once, in order, and a `Set`'s own rules
+already reject a second `add` of an equal value -- the only thing that
+differs between the two classes is what order you get back afterward.</p>
+</div>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="java_dedupe_preserve_order.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

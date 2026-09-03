@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Division Java Will Not Warn You About · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · Java · fiendish</p>
+  <h1>Division Java Will Not Warn You About</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Check both special cases before dividing at all</h2>
+
+<pre><code>if (b == 0) {
+    return new DivideResult(DivideStatus.DIVIDE_BY_ZERO, 0);
+}
+if (a == Integer.MIN_VALUE &amp;&amp; b == -1) {
+    return new DivideResult(DivideStatus.OVERFLOW, 0);
+}
+return new DivideResult(DivideStatus.OK, a / b);</code></pre>
+
+<h2>There is no exception waiting to be caught here</h2>
+
+<div class="trap">
+<p>It is tempting to wrap `a / b` in a `try` and catch
+`ArithmeticException`, on the theory that "division has problems,
+exceptions report problems". That works for `b == 0` -- Java does throw
+`ArithmeticException` for that one -- and does *nothing at all* for
+`Integer.MIN_VALUE / -1`. Unlike some other languages, Java's `int`
+arithmetic never checks for overflow, on any operator, ever: `/` for this
+specific pair of operands simply computes `Integer.MIN_VALUE` again (the
+bit pattern that falls out of the hardware operation) and returns it as
+an entirely ordinary, unremarkable-looking `int`. There is no exception,
+no error, nothing to catch -- a `try`/`catch` built to detect this case
+catches nothing, ever, because nothing is ever thrown.</p>
+</div>
+
+<p>The only way to detect it is to check for it explicitly, with an `if`,
+*before* the division runs -- the same discipline the `b == 0` check
+already uses, just for a condition Java itself will not flag.</p>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="java_safe_divide.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

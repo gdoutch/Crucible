@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Balanced Brackets With an ArrayDeque · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · Java · medium</p>
+  <h1>Balanced Brackets With an ArrayDeque</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>import java.util.ArrayDeque;
+import java.util.Deque;
+
+public class Solution {
+    public static boolean isBalanced(String text) {
+        Deque&lt;Character&gt; openBrackets = new ArrayDeque&lt;&gt;();
+        for (char c : text.toCharArray()) {
+            if (c == '(' || c == '[' || c == '{') {
+                openBrackets.push(c);
+            } else if (c == ')' || c == ']' || c == '}') {
+                if (openBrackets.isEmpty()) {
+                    return false;
+                }
+                char top = openBrackets.pop();
+                if ((c == ')' &amp;&amp; top != '(') ||
+                    (c == ']' &amp;&amp; top != '[') ||
+                    (c == '}' &amp;&amp; top != '{')) {
+                    return false;
+                }
+            }
+        }
+        return openBrackets.isEmpty();
+    }
+}</code></pre>
+
+<h2>Why `Deque`, not `java.util.Stack`</h2>
+
+<div class="trap">
+<p>`Stack` is one of the original, pre-collections-framework classes --
+it extends `Vector`, which means every operation (including ones this
+function never needs, like random-access indexing) inherits `Vector`'s
+synchronization overhead, paid on every single call regardless of whether
+more than one thread is ever involved. `Deque`, implemented here by
+`ArrayDeque`, provides the same `push`/`pop`/`peek` stack operations with
+none of that overhead, which is exactly why the JDK's own documentation
+for `Stack` recommends `Deque` for new code. Nothing about the algorithm
+changes between the two -- only which class provides it.</p>
+</div>
+
+<h2>Why the empty check comes before `pop()`</h2>
+
+<p>`ArrayDeque.pop()` and `.peek()` throw `NoSuchElementException` on an
+empty deque -- a genuine, documented, catchable exception, unlike some
+other languages' equivalent operations, but still not something this
+function is allowed to let escape: its contract is to *return* `false`
+for a closing bracket with nothing open to match, not to throw. Checking
+`openBrackets.isEmpty()` first is what turns "there is nothing to pop"
+into a normal `false` return instead of a thrown exception.</p>
+
+<h2>Why the final check is on the deque, not on anything seen while scanning</h2>
+
+<p>`"(()"` never encounters a closing bracket that disagrees with what is
+open -- there simply are not enough closing brackets to reach the point of
+disagreement. Nothing about scanning left to right ever notices that; the
+only place it shows up is that the deque still has an unclosed `'('` on
+it once `text` runs out. That is exactly what
+`return openBrackets.isEmpty();` checks: not "did I ever see a mismatch",
+but "is there anything still waiting to be closed".</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(n)</strong> in the length of `text` -- each character is
+looked at once, and each bracket does at most one push or one pop.</p>
+
+<footer>
+  <p><a href="java_balanced_brackets.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

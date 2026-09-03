@@ -1,0 +1,53 @@
+{
+  "id": "java_balanced_brackets",
+  "title": "Balanced Brackets With an ArrayDeque",
+  "language": "java",
+  "difficulty": "medium",
+  "topics": [
+    "collections",
+    "strings"
+  ],
+  "timeout_seconds": 5,
+  "statement": "`(`, `[` and `{` each need to be closed by the matching `)`, `]` or `}` --\nand closed in the right order: `([)]` is not balanced even though it has\none of each character, because the `[` opens *after* the `(` but closes\n*before* it does. A stack is built for exactly this shape of problem: the\nmost recently opened bracket is always the first one that has to close.\n\n## Your function\n\n```\npublic static boolean isBalanced(String text);\n```\n\n`text` may contain any characters; only `(`, `)`, `[`, `]`, `{` and `}`\nparticipate in the check, and every other character is ignored. Return\n`true` if every closing bracket matches the type of the most recently\nunclosed opening bracket, and no opening bracket is left unclosed at the\nend.\n\n## Watch out\n\n- **Use `Deque<Character>`, not `java.util.Stack`.** `Stack` still exists\n  in Java, but it predates the collections framework, extends `Vector`,\n  and carries synchronization overhead this single-threaded function gets\n  no benefit from -- the standard library's own documentation recommends\n  `Deque` (backed by `ArrayDeque`) instead. `Deque` provides `push`,\n  `pop` and `peek` directly, with LIFO stack semantics, so switching costs\n  nothing in how the code reads.\n- **`pop()` and `peek()` on an empty `Deque` throw\n  `NoSuchElementException`.** That is at least a well-defined, catchable\n  exception rather than undefined behaviour -- but this function is asked\n  to return `false` for an unmatched closing bracket, not let an exception\n  propagate out of it. Check `.isEmpty()` *before* calling either one, for\n  a closing bracket that arrives with nothing open to match it.\n- **A stack that is not empty at the end means something was opened and\n  never closed.** `\"(()\"` never sees a closing bracket it disagrees with\n  -- every `)` it does see matches correctly -- so the mismatch can only\n  be caught by checking the stack is empty once `text` is exhausted, not\n  by anything that happens while consuming it.\n",
+  "starter_code": "public class Solution {\n    /**\n     * Decide whether the (), [] and {} brackets in text are balanced.\n     * Characters other than the six bracket characters are ignored\n     * entirely.\n     */\n    public static boolean isBalanced(String text) {\n        // your code here\n        return false;\n    }\n}\n",
+  "harness": "import java.util.Scanner;\n\nclass Harness {\n    public static void main(String[] args) {\n        Scanner scanner = new Scanner(System.in);\n        while (scanner.hasNextLine()) {\n            String line = scanner.nextLine();\n            System.out.println(Solution.isBalanced(line));\n        }\n    }\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random bracket strings, some genuinely balanced (built by nesting), some\ndeliberately broken in one of the three ways the problem describes.\"\"\"\n\n\ndef generate(rng, count):\n    builders = (_balanced, _unclosed, _unopened, _mismatched_type)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\nPAIRS = [(\"(\", \")\"), (\"[\", \"]\"), (\"{\", \"}\")]\n\n\ndef _balanced_string(rng, depth):\n    if depth <= 0 or rng.random() < 0.3:\n        return \"x\" if rng.random() < 0.5 else \"\"\n    open_, close_ = rng.choice(PAIRS)\n    inner = _balanced_string(rng, depth - 1)\n    return open_ + inner + close_ + _balanced_string(rng, depth - 1)\n\n\ndef _case(name, text, description=\"\"):\n    return {\"name\": name, \"stdin\": text + \"\\n\", \"description\": description}\n\n\ndef _balanced(rng, index):\n    text = _balanced_string(rng, rng.randint(1, 4))\n    return _case(\"a balanced string, nested and interspersed with noise #%d\"\n                 % index, text)\n\n\ndef _unclosed(rng, index):\n    text = _balanced_string(rng, rng.randint(1, 3))\n    open_, _ = rng.choice(PAIRS)\n    return _case(\"balanced, plus one trailing unclosed bracket #%d\" % index,\n                 text + open_,\n                 \"Nothing ever mismatches while scanning -- only the stack \"\n                 \"being non-empty at the end catches this.\")\n\n\ndef _unopened(rng, index):\n    text = _balanced_string(rng, rng.randint(1, 3))\n    _, close_ = rng.choice(PAIRS)\n    return _case(\"a closing bracket with nothing open to match #%d\" % index,\n                 close_ + text)\n\n\ndef _mismatched_type(rng, index):\n    (open_a, _), (_, close_b) = rng.sample(PAIRS, 2)\n    return _case(\"an opening and closing bracket of different types #%d\"\n                 % index, open_a + close_b)\n"
+  },
+  "tests": [
+    {
+      "name": "an empty string is trivially balanced",
+      "stdin": "\n",
+      "expected_stdout": "true"
+    },
+    {
+      "name": "simple balanced pairs of each type",
+      "stdin": "()\n[]\n{}\n",
+      "expected_stdout": "true\ntrue\ntrue"
+    },
+    {
+      "name": "nested and sequential balanced brackets, with other text mixed in",
+      "stdin": "func([a, b], {x: 1})\n",
+      "expected_stdout": "true"
+    },
+    {
+      "name": "an unclosed opening bracket at the end",
+      "stdin": "(()\n[a, (b]\n",
+      "expected_stdout": "false\nfalse",
+      "description": "'(()' never mismatches while scanning -- only the final non-empty stack catches it."
+    },
+    {
+      "name": "a closing bracket with nothing open",
+      "stdin": ")\nfoo)\n",
+      "expected_stdout": "false\nfalse"
+    },
+    {
+      "name": "mismatched types: opened one kind, closed another",
+      "stdin": "(]\n([)]\n",
+      "expected_stdout": "false\nfalse",
+      "description": "([)]: [ opens after ( but closes before it -- wrong order, not just wrong count."
+    }
+  ],
+  "reference_solution_b64": "aW1wb3J0IGphdmEudXRpbC5BcnJheURlcXVlOwppbXBvcnQgamF2YS51dGlsLkRlcXVlOwoKcHVibGljIGNsYXNzIFNvbHV0aW9uIHsKICAgIHB1YmxpYyBzdGF0aWMgYm9vbGVhbiBpc0JhbGFuY2VkKFN0cmluZyB0ZXh0KSB7CiAgICAgICAgRGVxdWU8Q2hhcmFjdGVyPiBvcGVuQnJhY2tldHMgPSBuZXcgQXJyYXlEZXF1ZTw+KCk7CiAgICAgICAgZm9yIChjaGFyIGMgOiB0ZXh0LnRvQ2hhckFycmF5KCkpIHsKICAgICAgICAgICAgaWYgKGMgPT0gJygnIHx8IGMgPT0gJ1snIHx8IGMgPT0gJ3snKSB7CiAgICAgICAgICAgICAgICBvcGVuQnJhY2tldHMucHVzaChjKTsKICAgICAgICAgICAgfSBlbHNlIGlmIChjID09ICcpJyB8fCBjID09ICddJyB8fCBjID09ICd9JykgewogICAgICAgICAgICAgICAgaWYgKG9wZW5CcmFja2V0cy5pc0VtcHR5KCkpIHsKICAgICAgICAgICAgICAgICAgICByZXR1cm4gZmFsc2U7CiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICBjaGFyIHRvcCA9IG9wZW5CcmFja2V0cy5wb3AoKTsKICAgICAgICAgICAgICAgIGlmICgoYyA9PSAnKScgJiYgdG9wICE9ICcoJykgfHwKICAgICAgICAgICAgICAgICAgICAoYyA9PSAnXScgJiYgdG9wICE9ICdbJykgfHwKICAgICAgICAgICAgICAgICAgICAoYyA9PSAnfScgJiYgdG9wICE9ICd7JykpIHsKICAgICAgICAgICAgICAgICAgICByZXR1cm4gZmFsc2U7CiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgIH0KICAgICAgICB9CiAgICAgICAgcmV0dXJuIG9wZW5CcmFja2V0cy5pc0VtcHR5KCk7CiAgICB9Cn0K"
+}

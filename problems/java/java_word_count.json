@@ -1,0 +1,54 @@
+{
+  "id": "java_word_count",
+  "title": "Count Words Without split()'s Empty-String Surprise",
+  "language": "java",
+  "difficulty": "easy",
+  "topics": [
+    "strings",
+    "scanner"
+  ],
+  "timeout_seconds": 5,
+  "statement": "`String.split` is the obvious tool for \"break this into words\" -- and it\nhas one behaviour that catches almost everyone once: splitting an empty\nstring does not give you an empty array. `Scanner`, tokenising the same\nstring the way it would tokenise real input, does not have this problem\nat all.\n\n## Your function\n\n```\npublic static int countWords(String text);\n```\n\nReturn how many whitespace-separated words `text` contains. Words may be\nseparated by any run of spaces or tabs, of any length; leading and\ntrailing whitespace do not count as words. `text` may be empty.\n\n## Watch out\n\n- **`\"\".split(\"\\\\s+\")` returns an array of length `1`, not `0`.** Its\n  single element is the empty string -- `split` never produces zero\n  pieces, because \"the whole input, unsplit\" is still one piece even when\n  that piece is empty. `countWords(\"\")` computed as\n  `text.split(\"\\\\s+\").length` comes back `1`, not the `0` this function's\n  contract asks for.\n- **A string that is entirely whitespace has the identical problem**,\n  for the identical reason: trimming it first gives you `\"\"`, and\n  splitting *that* still returns one empty-string element, not zero.\n- **`new Scanner(text)` sidesteps the whole issue.** Its `hasNext()` /\n  `next()` pair only ever produces genuine, non-empty tokens -- an empty\n  or all-whitespace `text` simply has no tokens to produce, and\n  `hasNext()` reports `false` immediately, with no special case needed\n  for either.\n",
+  "starter_code": "public class Solution {\n    /**\n     * Count whitespace-separated words in text. text may be empty.\n     */\n    public static int countWords(String text) {\n        // your code here\n        return 0;\n    }\n}\n",
+  "harness": "import java.util.Scanner;\n\nclass Harness {\n    public static void main(String[] args) {\n        Scanner scanner = new Scanner(System.in);\n        while (scanner.hasNextLine()) {\n            String line = scanner.nextLine();\n            System.out.println(Solution.countWords(line));\n        }\n    }\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random word counts, with runs of whitespace of varying length between\nwords and sometimes around the edges.\"\"\"\n\n\nWORDS = [\"red\", \"blue\", \"north\", \"south\", \"up\", \"down\", \"cat\", \"dog\"]\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    n = rng.randint(0, 8)\n    words = [rng.choice(WORDS) for _ in range(n)]\n    gap = lambda: \" \" * rng.randint(1, 4)\n    text = gap() if rng.random() < 0.3 and words else \"\"\n    text += gap().join(words)\n    if words and rng.random() < 0.3:\n        text += gap()\n    return {\"name\": \"%d words, irregular spacing #%d\" % (n, index),\n            \"stdin\": text + \"\\n\"}\n"
+  },
+  "tests": [
+    {
+      "name": "an empty line has no words",
+      "stdin": "\n",
+      "expected_stdout": "0",
+      "description": "text.split(\"\\\\s+\").length on an empty string is 1, not 0 -- this is the case that catches that."
+    },
+    {
+      "name": "a single word",
+      "stdin": "hello\n",
+      "expected_stdout": "1"
+    },
+    {
+      "name": "words separated by single spaces",
+      "stdin": "the quick brown fox\n",
+      "expected_stdout": "4"
+    },
+    {
+      "name": "runs of multiple spaces between words",
+      "stdin": "a    b     c\n",
+      "expected_stdout": "3",
+      "description": "Three separators, each more than one space wide -- still three words, not more."
+    },
+    {
+      "name": "leading and trailing whitespace do not add words",
+      "stdin": "   padded on both sides   \n",
+      "expected_stdout": "4"
+    },
+    {
+      "name": "a line that is whitespace only has no words",
+      "stdin": "      \n",
+      "expected_stdout": "0",
+      "description": "Trimming first does not fix split's empty-array problem -- trim(\"      \") is \"\", and splitting that still returns one element."
+    }
+  ],
+  "reference_solution_b64": "aW1wb3J0IGphdmEudXRpbC5TY2FubmVyOwoKcHVibGljIGNsYXNzIFNvbHV0aW9uIHsKICAgIHB1YmxpYyBzdGF0aWMgaW50IGNvdW50V29yZHMoU3RyaW5nIHRleHQpIHsKICAgICAgICBTY2FubmVyIHNjYW5uZXIgPSBuZXcgU2Nhbm5lcih0ZXh0KTsKICAgICAgICBpbnQgY291bnQgPSAwOwogICAgICAgIHdoaWxlIChzY2FubmVyLmhhc05leHQoKSkgewogICAgICAgICAgICBzY2FubmVyLm5leHQoKTsKICAgICAgICAgICAgY291bnQrKzsKICAgICAgICB9CiAgICAgICAgcmV0dXJuIGNvdW50OwogICAgfQp9Cg=="
+}

@@ -1,0 +1,52 @@
+{
+  "id": "java_reverse_string",
+  "title": "Reverse a String (Which You Cannot Mutate)",
+  "language": "java",
+  "difficulty": "easy",
+  "topics": [
+    "strings",
+    "immutability"
+  ],
+  "timeout_seconds": 5,
+  "statement": "`String` in Java is immutable: once created, its characters never\nchange, and there is no method on it that rewrites them in place -- not\nfor one character, not for all of them. That is not a missing convenience;\nit is a guarantee the whole language leans on (string literals are safely\nshared, `String` is safe as a `HashMap` key). Reversing a string in Java\nalways means producing a *new* string, never mutating the one you were\ngiven.\n\n## Your function\n\n```\npublic static String reversed(String text);\n```\n\nReturn a new string containing `text`'s characters in reverse order.\n`text` may be empty. `text` itself must be left exactly as it was --\nwhich, for an immutable type, is automatic once you stop trying to\nchange it and start building something new instead.\n\n## Watch out\n\n- **There is no `ReverseInPlace` in Java the way there might be in a\n  language with mutable strings or reference parameters.** Reassigning\n  the parameter itself (`text = something;`) only rebinds the local\n  variable inside this function -- it has no effect the caller can ever\n  see, because Java passes the string *reference* by value: the caller's\n  own reference still points at the original, unreversed string object.\n- **`text.toCharArray()` gives you a mutable `char[]` copy of the\n  characters** -- swap elements of *that* array freely, then build the\n  result with `new String(reversedChars)`. The array is yours; `text`\n  itself is never touched.\n- An empty string and a one-character string both need zero swaps -- a\n  two-pointer loop that stops once the indices meet or cross handles\n  both without a separate check for either.\n",
+  "starter_code": "public class Solution {\n    /**\n     * Return a new string containing text's characters in reverse order.\n     * text may be empty.\n     */\n    public static String reversed(String text) {\n        // your code here\n        return text;\n    }\n}\n",
+  "harness": "import java.util.Scanner;\n\nclass Harness {\n    public static void main(String[] args) {\n        Scanner scanner = new Scanner(System.in);\n        while (scanner.hasNextLine()) {\n            String line = scanner.nextLine();\n            System.out.println(Solution.reversed(line));\n        }\n    }\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random strings of varying length, including empty and single-character\nones.\"\"\"\n\nimport string\n\nALPHABET = string.ascii_letters + string.digits + \" .,!?-'\\\"\"\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    n = rng.randint(0, 40)\n    text = \"\".join(rng.choice(ALPHABET) for _ in range(n))\n    return {\"name\": \"a random %d-character string #%d\" % (n, index),\n            \"stdin\": text + \"\\n\"}\n"
+  },
+  "tests": [
+    {
+      "name": "an empty string reverses to itself",
+      "stdin": "\n",
+      "expected_stdout": ""
+    },
+    {
+      "name": "a single character is unchanged",
+      "stdin": "x\n",
+      "expected_stdout": "x"
+    },
+    {
+      "name": "an even-length string",
+      "stdin": "abcd\n",
+      "expected_stdout": "dcba"
+    },
+    {
+      "name": "an odd-length string",
+      "stdin": "abcde\n",
+      "expected_stdout": "edcba"
+    },
+    {
+      "name": "a palindrome reverses to itself",
+      "stdin": "level\n",
+      "expected_stdout": "level",
+      "description": "Checks the characters were actually rebuilt in reverse, not just returned unchanged -- a function that returns text as-is passes this by accident."
+    },
+    {
+      "name": "spaces and punctuation are ordinary characters",
+      "stdin": "ab cd!\n",
+      "expected_stdout": "!dc ba"
+    }
+  ],
+  "reference_solution_b64": "cHVibGljIGNsYXNzIFNvbHV0aW9uIHsKICAgIHB1YmxpYyBzdGF0aWMgU3RyaW5nIHJldmVyc2VkKFN0cmluZyB0ZXh0KSB7CiAgICAgICAgY2hhcltdIGNoYXJzID0gdGV4dC50b0NoYXJBcnJheSgpOwogICAgICAgIGludCBsZWZ0ID0gMDsKICAgICAgICBpbnQgcmlnaHQgPSBjaGFycy5sZW5ndGggLSAxOwogICAgICAgIHdoaWxlIChsZWZ0IDwgcmlnaHQpIHsKICAgICAgICAgICAgY2hhciB0ZW1wID0gY2hhcnNbbGVmdF07CiAgICAgICAgICAgIGNoYXJzW2xlZnRdID0gY2hhcnNbcmlnaHRdOwogICAgICAgICAgICBjaGFyc1tyaWdodF0gPSB0ZW1wOwogICAgICAgICAgICBsZWZ0Kys7CiAgICAgICAgICAgIHJpZ2h0LS07CiAgICAgICAgfQogICAgICAgIHJldHVybiBuZXcgU3RyaW5nKGNoYXJzKTsKICAgIH0KfQo="
+}

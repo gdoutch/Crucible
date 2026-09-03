@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Word Frequency Without a Null Pointer Exception · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · Java · medium</p>
+  <h1>Word Frequency Without a Null Pointer Exception</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>One line, no branch</h2>
+
+<pre><code>Map&lt;String, Integer&gt; counts = new TreeMap&lt;&gt;();
+Scanner scanner = new Scanner(text);
+while (scanner.hasNext()) {
+    String word = scanner.next();
+    counts.put(word, counts.getOrDefault(word, 0) + 1);
+}
+return counts;</code></pre>
+
+<h2>What breaks if you reach for `get` instead</h2>
+
+<div class="trap">
+<p>`counts.put(word, counts.get(word) + 1);` compiles cleanly and throws
+`NullPointerException` the very first time `word` is seen. `get` returns
+`null` for a missing key -- an entirely ordinary, documented return value
+for a reference type -- and `null + 1` has to auto-unbox that `null` down
+to a primitive `int` in order to perform the addition. Unboxing `null` has
+no number to produce, so it throws instead. This is easy to miss because
+nothing about the line looks dangerous: `Map.get` genuinely does return
+`Integer`, and `Integer + int` genuinely does compile.</p>
+</div>
+
+<p>`getOrDefault(word, 0)` returns `0` -- a real, usable `int`-compatible
+value -- instead of `null`, for exactly the case that would otherwise
+throw. `0` is also the correct starting point for "how many times has
+this word been seen", which is what makes the same one line correct
+whether it is a word's first occurrence or its hundredth.</p>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="java_word_frequency.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

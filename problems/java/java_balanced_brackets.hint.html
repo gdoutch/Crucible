@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Balanced Brackets With an ArrayDeque · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · Java · medium</p>
+  <h1>Balanced Brackets With an ArrayDeque</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Push opens, check-then-pop closes</h2>
+
+<pre><code>Deque&lt;Character&gt; openBrackets = new ArrayDeque&lt;&gt;();
+for (char c : text.toCharArray()) {
+    if (c is an opening bracket) {
+        openBrackets.push(c);
+    } else if (c is a closing bracket) {
+        // is openBrackets empty, or does .pop() not match c?
+        // either one means "unbalanced" -- return false right here
+    }
+    // anything else: ignore it entirely
+}
+return openBrackets.isEmpty();</code></pre>
+
+<h2>Reach for `Deque`, not `java.util.Stack`</h2>
+
+<div class="trap">
+<p>`java.util.Stack` still exists and still works, but it predates the
+collections framework, extends `Vector`, and carries synchronization on
+every operation that this single-threaded function gets no benefit from
+at all -- the standard library's own documentation says to prefer `Deque`
+instead. `Deque` (backed by `ArrayDeque`) provides `push`, `pop` and
+`peek` directly, with the same LIFO stack semantics, so nothing about how
+the code reads has to change to make the switch.</p>
+</div>
+
+<p>`.pop()` and `.peek()` on an empty `Deque` throw
+`NoSuchElementException` -- a real, documented exception, but this
+function needs to return `false` for an unmatched closing bracket, not
+let one propagate. Check `.isEmpty()` first.</p>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="java_balanced_brackets.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

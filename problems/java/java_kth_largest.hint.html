@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Kth Largest With a Bounded Min-Heap · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · Java · hard</p>
+  <h1>Kth Largest With a Bounded Min-Heap</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Keep only the k largest seen so far</h2>
+
+<pre><code>PriorityQueue&lt;Integer&gt; heap = new PriorityQueue&lt;&gt;();
+for (int v : values) {
+    heap.offer(v);
+    if (heap.size() &gt; k) {
+        heap.poll();
+    }
+}
+return heap.peek();</code></pre>
+
+<h2>The default ordering is already the one you want</h2>
+
+<div class="trap">
+<p>`new PriorityQueue&lt;Integer&gt;()` orders by natural ordering, smallest
+first -- `poll()` removes the *smallest* element, not the largest. That
+sounds backwards for "find the largest", but it is exactly right for this
+approach: capping the heap at size `k` and evicting the smallest whenever
+it grows past that keeps precisely the `k` largest values encountered so
+far, and evicting the smallest of *those* is how a new, larger value gets
+to displace the weakest current member of that top-`k`. Reaching for
+`Collections.reverseOrder()` to build a max-heap instead solves a
+different problem than this approach needs solved.</p>
+</div>
+
+<p>Evict only once the heap's size actually exceeds `k` -- checking
+`&gt; k` rather than `&gt;= k` matters, because the second version starts
+evicting before the heap has even finished filling up to `k` elements.</p>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="java_kth_largest.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

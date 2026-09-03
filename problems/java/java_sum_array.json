@@ -1,0 +1,48 @@
+{
+  "id": "java_sum_array",
+  "title": "Sum an Array Without Overflowing",
+  "language": "java",
+  "difficulty": "easy",
+  "topics": [
+    "arrays",
+    "loops",
+    "overflow"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Java arrays are fixed-size and, unlike a `List`, hold primitive `int`s\ndirectly -- no boxing, no autoboxing overhead, just a contiguous block of\n32-bit values. Summing them is the plainest possible loop, and the whole\nexercise is choosing the right type to hold the running total.\n\n## Your function\n\n```\npublic static long sumArray(int[] values);\n```\n\nReturn the sum of every element of `values`. `values` may be empty, in\nwhich case the sum is `0`.\n\n## Watch out\n\n- **The return type is `long`, not `int`.** `values` can hold enough\n  large `int` elements that their true sum does not fit in 32 bits, even\n  though every individual element does. Accumulate into the `long` the\n  return type already commits you to from the very first addition -- not\n  into an `int` total you only widen at the end, by which point an\n  overflow has already happened. Java's `int` arithmetic never throws on\n  overflow; it wraps silently to a nonsense value and keeps going.\n- **`int` array elements do not automatically become `long` during\n  addition just because the total is a `long`.** `total += values[i]` is\n  fine -- the compiler widens `values[i]` to `long` for that specific\n  addition -- but a running total that is itself declared `int` never\n  gets that help, because the widening only happens once, at the point of\n  the addition into an already-`long` variable.\n- An empty array's sum is `0`, not an error -- a loop that simply never\n  executes its body already produces the right answer.\n",
+  "starter_code": "public class Solution {\n    /**\n     * Sum every element of values, which may be empty.\n     */\n    public static long sumArray(int[] values) {\n        // your code here\n        return 0;\n    }\n}\n",
+  "harness": "import java.util.Scanner;\n\nclass Harness {\n    public static void main(String[] args) {\n        Scanner scanner = new Scanner(System.in);\n        while (scanner.hasNextInt()) {\n            int n = scanner.nextInt();\n            int[] values = new int[n];\n            for (int i = 0; i < n; i++) {\n                values[i] = scanner.nextInt();\n            }\n            System.out.println(Solution.sumArray(values));\n        }\n    }\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random arrays, including one deliberately built to overflow a 32-bit\naccumulator but not a 64-bit one.\"\"\"\n\n\ndef generate(rng, count):\n    builders = (_random, _random, _random, _overflow)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, values, description=\"\"):\n    lines = [str(len(values))] + [str(v) for v in values]\n    return {\"name\": name, \"stdin\": \" \".join(lines) + \"\\n\",\n            \"description\": description}\n\n\ndef _random(rng, index):\n    n = rng.randint(0, 20)\n    values = [rng.randint(-1000, 1000) for _ in range(n)]\n    return _case(\"a random %d-element array #%d\" % (n, index), values)\n\n\ndef _overflow(rng, index):\n    values = [rng.randint(1500000000, 2000000000) for _ in range(4)]\n    return _case(\"a sum that overflows a 32-bit int #%d\" % index, values,\n                 \"Four values near 2 billion sum past Integer.MAX_VALUE.\")\n"
+  },
+  "tests": [
+    {
+      "name": "an empty array sums to zero",
+      "stdin": "0\n",
+      "expected_stdout": "0"
+    },
+    {
+      "name": "a single element",
+      "stdin": "1 7\n",
+      "expected_stdout": "7"
+    },
+    {
+      "name": "a small mixed array",
+      "stdin": "5 3 -1 4 -1 5\n",
+      "expected_stdout": "10"
+    },
+    {
+      "name": "all negative values",
+      "stdin": "4 -5 -1 -9 -3\n",
+      "expected_stdout": "-18"
+    },
+    {
+      "name": "a sum that overflows a 32-bit int but not a 64-bit long",
+      "stdin": "3 2000000000 2000000000 2000000000\n",
+      "expected_stdout": "6000000000",
+      "description": "6,000,000,000 is past Integer.MAX_VALUE (~2.1 billion) -- accumulating into a 32-bit int silently wraps to a negative number instead of throwing."
+    }
+  ],
+  "reference_solution_b64": "cHVibGljIGNsYXNzIFNvbHV0aW9uIHsKICAgIHB1YmxpYyBzdGF0aWMgbG9uZyBzdW1BcnJheShpbnRbXSB2YWx1ZXMpIHsKICAgICAgICBsb25nIHRvdGFsID0gMDsKICAgICAgICBmb3IgKGludCB2IDogdmFsdWVzKSB7CiAgICAgICAgICAgIHRvdGFsICs9IHY7CiAgICAgICAgfQogICAgICAgIHJldHVybiB0b3RhbDsKICAgIH0KfQo="
+}

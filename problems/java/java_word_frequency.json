@@ -1,0 +1,49 @@
+{
+  "id": "java_word_frequency",
+  "title": "Word Frequency Without a Null Pointer Exception",
+  "language": "java",
+  "difficulty": "medium",
+  "topics": [
+    "maps",
+    "autoboxing",
+    "strings"
+  ],
+  "timeout_seconds": 5,
+  "statement": "`Map<String, Integer>.get(key)` returns `null` for a key that is not\npresent -- not `0`, not an exception, `null`. That is a perfectly ordinary\nreference-type return value right up until something tries to use it as a\nnumber: `Integer` auto-unboxes to `int` wherever an `int` is expected, and\nunboxing `null` has no sensible number to produce, so it throws instead.\n\n## Your function\n\n```\npublic static Map<String, Integer> wordFrequency(String text);\n```\n\nReturn a map from each distinct whitespace-separated word in `text` to how\nmany times it occurs. `text` may be empty, in which case the result is an\nempty map. Matching is case-sensitive: `\"Cat\"` and `\"cat\"` are different\nwords.\n\n## Watch out\n\n- **`counts.put(word, counts.get(word) + 1);` throws\n  `NullPointerException` the first time `word` is seen.** `counts.get(word)`\n  returns `null` for a word with no entry yet; `null + 1` has to unbox that\n  `null` to a primitive `int` to perform the addition, and unboxing `null`\n  is exactly what throws. This is legal, unremarkable-looking code --\n  nothing about it warns you at compile time.\n- **`counts.getOrDefault(word, 0)` returns `0` for a missing key instead\n  of `null`** -- the identity element for \"add one to the count\", which\n  is what makes `counts.put(word, counts.getOrDefault(word, 0) + 1);`\n  correct for a word's first occurrence and every later one, with the same\n  line handling both.\n- **`Map<String, Integer>.merge(word, 1, Integer::sum)` does the same job\n  in one call**, if you would rather reach for it: insert `1` if `word`\n  is new, otherwise combine the existing value and `1` with the given\n  function. Either `getOrDefault` or `merge` avoids the exception; a\n  version that calls plain `get` and hopes for the best does not.\n",
+  "starter_code": "import java.util.Map;\n\npublic class Solution {\n    /**\n     * Count occurrences of each distinct whitespace-separated word in\n     * text. Matching is case-sensitive. text may be empty.\n     */\n    public static Map<String, Integer> wordFrequency(String text) {\n        // your code here\n        return new java.util.TreeMap<>();\n    }\n}\n",
+  "harness": "import java.util.Map;\nimport java.util.Scanner;\n\nclass Harness {\n    public static void main(String[] args) {\n        Scanner scanner = new Scanner(System.in);\n        while (scanner.hasNextLine()) {\n            String line = scanner.nextLine();\n            Map<String, Integer> counts = Solution.wordFrequency(line);\n            StringBuilder sb = new StringBuilder();\n            boolean first = true;\n            for (Map.Entry<String, Integer> entry : counts.entrySet()) {\n                if (!first) sb.append(\" \");\n                sb.append(entry.getKey()).append(\":\").append(entry.getValue());\n                first = false;\n            }\n            System.out.println(sb);\n        }\n    }\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random sentences built from a small vocabulary, mixed case, so repeats\nand case-sensitivity both show up.\"\"\"\n\n\nWORDS = [\"cat\", \"Cat\", \"dog\", \"the\", \"a\", \"runs\", \"fast\", \"slow\"]\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    n = rng.randint(1, 10)\n    words = [rng.choice(WORDS) for _ in range(n)]\n    return {\"name\": \"%d words from a small vocabulary #%d\" % (n, index),\n            \"stdin\": \" \".join(words) + \"\\n\"}\n"
+  },
+  "tests": [
+    {
+      "name": "an empty line has no words",
+      "stdin": "\n",
+      "expected_stdout": ""
+    },
+    {
+      "name": "every word distinct -- the case a bare get(word)+1 fails first",
+      "stdin": "alpha beta gamma\n",
+      "expected_stdout": "alpha:1 beta:1 gamma:1",
+      "description": "Every word here is a first (and only) occurrence -- exactly the case that throws with a plain get() instead of getOrDefault/merge."
+    },
+    {
+      "name": "a repeated word",
+      "stdin": "cat dog cat\n",
+      "expected_stdout": "cat:2 dog:1"
+    },
+    {
+      "name": "case-sensitive: Cat and cat are different keys",
+      "stdin": "Cat cat CAT cat\n",
+      "expected_stdout": "CAT:1 Cat:1 cat:2",
+      "description": "Three distinct keys by exact case, sorted lexicographically -- capitals sort before lower case in ASCII."
+    },
+    {
+      "name": "words printed in sorted key order",
+      "stdin": "zebra apple mango apple\n",
+      "expected_stdout": "apple:2 mango:1 zebra:1"
+    }
+  ],
+  "reference_solution_b64": "aW1wb3J0IGphdmEudXRpbC5NYXA7CmltcG9ydCBqYXZhLnV0aWwuU2Nhbm5lcjsKaW1wb3J0IGphdmEudXRpbC5UcmVlTWFwOwoKcHVibGljIGNsYXNzIFNvbHV0aW9uIHsKICAgIHB1YmxpYyBzdGF0aWMgTWFwPFN0cmluZywgSW50ZWdlcj4gd29yZEZyZXF1ZW5jeShTdHJpbmcgdGV4dCkgewogICAgICAgIE1hcDxTdHJpbmcsIEludGVnZXI+IGNvdW50cyA9IG5ldyBUcmVlTWFwPD4oKTsKICAgICAgICBTY2FubmVyIHNjYW5uZXIgPSBuZXcgU2Nhbm5lcih0ZXh0KTsKICAgICAgICB3aGlsZSAoc2Nhbm5lci5oYXNOZXh0KCkpIHsKICAgICAgICAgICAgU3RyaW5nIHdvcmQgPSBzY2FubmVyLm5leHQoKTsKICAgICAgICAgICAgY291bnRzLnB1dCh3b3JkLCBjb3VudHMuZ2V0T3JEZWZhdWx0KHdvcmQsIDApICsgMSk7CiAgICAgICAgfQogICAgICAgIHJldHVybiBjb3VudHM7CiAgICB9Cn0K"
+}

@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Remove While Iterating, Without ConcurrentModificationException · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · Java · fiendish</p>
+  <h1>Remove While Iterating, Without ConcurrentModificationException</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>import java.util.List;
+
+public class Solution {
+    public static void removeMultiplesOf(List&lt;Integer&gt; values, int n) {
+        values.removeIf(v -&gt; v % n == 0);
+    }
+}</code></pre>
+
+<h2>Why the natural-looking `for`-each version throws</h2>
+
+<div class="trap">
+<p>`ArrayList`'s iterator keeps its own `expectedModCount`, copied from the
+list's real `modCount` at the moment the iterator was created. Every
+structural change made *through the list itself* -- `add`, `remove`, and
+similar -- increments the list's `modCount` without updating any
+iterator's copy of it. The iterator's `next()` method checks the two
+counts against each other before returning anything, specifically so that
+"the collection changed underneath me in a way I don't know about" is
+detected and reported loudly, rather than silently returning elements
+from a structure that no longer matches what the iterator thinks it does.
+`values.remove(v)` inside a `for`-each loop is exactly that kind of
+change: it goes through `values` directly, the loop's implicit iterator
+never finds out, and the very next `next()` call -- which for a
+non-trivial list happens almost immediately -- throws
+`ConcurrentModificationException` rather than silently producing a wrong
+answer. This is Java's collections framework choosing to fail loudly over
+failing silently.</p>
+</div>
+
+<h2>Why `removeIf` has nothing to detect in the first place</h2>
+
+<p>`List.removeIf` does not hand out an iterator for external code to
+drive at all -- it owns the entire traversal internally, in one call, and
+removes matching elements as part of that single operation rather than as
+a series of separate mutations interleaved with separate reads. There is
+no external iterator whose bookkeeping could fall out of step, because
+there is no external iterator.</p>
+
+<h2>The alternative: an explicit iterator, using its own `remove()`</h2>
+
+<p>For contrast, this also works, and is the one form of "remove while
+iterating" Java actually sanctions:</p>
+
+<pre><code>Iterator&lt;Integer&gt; it = values.iterator();
+while (it.hasNext()) {
+    if (it.next() % n == 0) {
+        it.remove();
+    }
+}</code></pre>
+
+<p>`Iterator.remove()` is specified to remove the last element returned by
+that same iterator's `next()`, and -- critically -- to update that
+iterator's own `expectedModCount` as part of doing so, keeping the two
+counts in sync. It is the one path through which a list can be safely
+mutated during iteration, precisely because the iterator that is doing
+the reading is also the one doing the removing.</p>
+
+<h2>Why zero needs no special case</h2>
+
+<p>`0 % n` is `0` for any nonzero `n`, so the same lambda that flags `4`
+or `6` as multiples of `2` flags every `0` in `values` too, with no need
+to name `0` specifically in the predicate.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(n)</strong> in the length of `values` -- `removeIf` visits
+each element once.</p>
+
+<footer>
+  <p><a href="java_concurrent_modification.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Remove Duplicates, Keep First-Seen Order · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · Java · medium</p>
+  <h1>Remove Duplicates, Keep First-Seen Order</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+
+public class Solution {
+    public static List&lt;Integer&gt; dedupePreserveOrder(List&lt;Integer&gt; values) {
+        return new ArrayList&lt;&gt;(new LinkedHashSet&lt;&gt;(values));
+    }
+}</code></pre>
+
+<h2>Why `LinkedHashSet`, specifically, is the correct choice</h2>
+
+<div class="trap">
+<p>`HashSet` and `LinkedHashSet` share the exact same `Set` contract --
+no duplicate elements, membership tested via `equals`/`hashCode` -- and
+differ only in what their iterator promises about order. `HashSet` makes
+no promise at all: its iteration order follows the internal hash table's
+bucket layout, which has nothing to do with insertion order and can even
+change between runs. `LinkedHashSet` additionally maintains a doubly
+linked list threading through its entries in the order they were
+inserted, and its iterator walks *that* instead of the hash buckets. For
+"deduplicate, keep first-seen order", that is not a workaround bolted onto
+a `Set` -- it is the one property `LinkedHashSet` exists to add on top of
+`HashSet`'s.</p>
+</div>
+
+<h2>Why the constructor alone is enough</h2>
+
+<p>`new LinkedHashSet&lt;&gt;(values)` iterates `values` once, in order,
+calling `add` for each element. A `Set`'s `add` is specified to do nothing
+(and report `false`) when the element is already present -- so the first
+occurrence of each distinct value is recorded, in the position it arrived
+at, and every later occurrence is silently rejected without disturbing
+what is already there. There is no additional loop or membership check to
+write by hand; the constructor already performs exactly that sequence of
+operations.</p>
+
+<h2>Why the final `ArrayList` wrap does not affect ordering</h2>
+
+<p>`new ArrayList&lt;&gt;(collection)` copies its argument's elements in
+whatever order that argument's own iterator produces them -- for a
+`LinkedHashSet`, that is the insertion order already established by the
+step above. The conversion to `List` is the last, order-preserving step,
+not a second place order could go wrong.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(n)</strong> average in the length of `values` -- each element
+does one hash-set insert (O(1) average) plus, for a first occurrence, one
+linked-list append; converting to an `ArrayList` at the end is a single
+O(k) copy of the k distinct survivors.</p>
+
+<footer>
+  <p><a href="java_dedupe_preserve_order.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

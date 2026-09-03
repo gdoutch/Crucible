@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Count Words Without split()'s Empty-String Surprise · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · Java · easy</p>
+  <h1>Count Words Without split()'s Empty-String Surprise</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>import java.util.Scanner;
+
+public class Solution {
+    public static int countWords(String text) {
+        Scanner scanner = new Scanner(text);
+        int count = 0;
+        while (scanner.hasNext()) {
+            scanner.next();
+            count++;
+        }
+        return count;
+    }
+}</code></pre>
+
+<h2>Why `String.split` gets the empty-input case wrong</h2>
+
+<div class="trap">
+<p>`String.split(regex)` is documented to split around matches of the
+regex and return the resulting substrings as an array -- and for a string
+with no matches at all (an empty string has nothing for `\s+` to match),
+the "resulting substrings" are defined to be the whole input as a single
+element. That single element happens to be `""`, but it is still one
+array entry, not zero. The same reasoning applies to a `text` that is
+entirely whitespace: nothing about calling `.trim()` first changes what
+`split` does *after* trimming -- `trim()` just turns `"   "` into `""`
+before the identical one-element-array behaviour kicks in.</p>
+</div>
+
+<h2>Why `Scanner` does not have this problem</h2>
+
+<p>`Scanner.hasNext()` and `Scanner.next()` are specified in terms of
+finding an actual token -- a maximal run of non-whitespace characters --
+and reporting whether one exists. An empty or all-whitespace `text` simply
+has no such run anywhere in it, so `hasNext()` returns `false`
+immediately and the loop body never executes, leaving `count` at its
+initial `0`. There is no intermediate array representation with its own
+"at least one element" rule to work around -- the tokens are produced one
+at a time, and there are exactly as many of them as there really are
+words.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(n)</strong> in the length of `text` -- `Scanner` scans the
+characters once to find token boundaries, and each token found is one
+`next()` call.</p>
+
+<footer>
+  <p><a href="java_word_count.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

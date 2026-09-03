@@ -1,0 +1,42 @@
+{
+  "id": "java_min_stack",
+  "title": "A Stack That Tracks Its Own Minimum",
+  "language": "java",
+  "difficulty": "hard",
+  "topics": [
+    "stacks",
+    "data structures"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Scanning the whole stack to find its minimum every time `getMin()` is\ncalled works, but it is O(n) per call on a structure whose other\noperations are all O(1). Keeping a **second** stack, storing the running\nminimum alongside every push, turns `getMin()` into an O(1) lookup too --\nas long as it stays exactly in step with what has actually been pushed\nand popped.\n\n## Your class\n\nComplete `Solution`, a stack of `int`s supporting:\n\n```\npublic void push(int value);\npublic void pop();\npublic int top();\npublic int getMin();\n```\n\nAll four run in **O(1)**. `pop()`, `top()` and `getMin()` are never called\non an empty stack -- every operation sequence in a test leaves at least\none element before calling any of them.\n\n## Watch out\n\n- **A value that *ties* the current minimum still has to be pushed onto\n  the min-tracking stack, not skipped.** The condition for pushing onto\n  it is `value <= currentMin`, not `value < currentMin`. Skip the tie and\n  the min-tracking stack ends up with only one entry for two equal\n  minimums; pop the more recent of those two equal values back off the\n  main stack, and the min-tracking stack pops its *only* record of that\n  minimum away with it -- even though an equal value is still sitting\n  right there on the main stack.\n- **`pop()` on the main stack has to pop the min-tracking stack too, but\n  only when the value being removed is the current tracked minimum.** A\n  popped value that was never the minimum should leave the min-tracking\n  stack untouched -- popping it unconditionally on every `pop()` call\n  desynchronises the two stacks after the first element that was pushed\n  without also being pushed onto the min-tracking stack.\n- **Compare against the min-tracking stack's own top when deciding\n  whether to push a new value onto it**, not against some other stored\n  value -- `mins.peek()` is always \"the minimum as of right now\", which is\n  exactly the number a newly pushed value needs comparing against.\n",
+  "starter_code": "import java.util.ArrayDeque;\nimport java.util.Deque;\n\npublic class Solution {\n    private Deque<Integer> values = new ArrayDeque<>();\n\n    public void push(int value) {\n        // your code here\n    }\n\n    public void pop() {\n        // your code here\n    }\n\n    public int top() {\n        // your code here\n        return 0;\n    }\n\n    public int getMin() {\n        // your code here\n        return 0;\n    }\n}\n",
+  "harness": "import java.util.Scanner;\n\nclass Harness {\n    public static void main(String[] args) {\n        Scanner scanner = new Scanner(System.in);\n        while (scanner.hasNextInt()) {\n            int opCount = scanner.nextInt();\n            Solution stack = new Solution();\n            StringBuilder output = new StringBuilder();\n            for (int i = 0; i < opCount; i++) {\n                String op = scanner.next();\n                switch (op) {\n                    case \"PUSH\":\n                        stack.push(scanner.nextInt());\n                        break;\n                    case \"POP\":\n                        stack.pop();\n                        break;\n                    case \"TOP\":\n                        if (output.length() > 0) output.append(\" \");\n                        output.append(stack.top());\n                        break;\n                    case \"GETMIN\":\n                        if (output.length() > 0) output.append(\" \");\n                        output.append(stack.getMin());\n                        break;\n                }\n            }\n            System.out.println(output);\n        }\n    }\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random sequences of stack operations, weighted towards pushing\nduplicate and negative values so the minimum-tracking tie case is\nexercised often. Never pops, reads top, or reads the minimum on an\nempty stack.\"\"\"\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    ops = []\n    depth = 0\n    recent = []\n    n_ops = rng.randint(4, 20)\n    for _ in range(n_ops):\n        choices = [\"PUSH\"]\n        if depth > 0:\n            choices += [\"POP\", \"TOP\", \"GETMIN\"]\n        op = rng.choice(choices)\n        if op == \"PUSH\":\n            if recent and rng.random() < 0.35:\n                value = rng.choice(recent)\n            else:\n                value = rng.randint(-10, 10)\n            ops.append(\"PUSH %d\" % value)\n            recent.append(value)\n            depth += 1\n        elif op == \"POP\":\n            ops.append(\"POP\")\n            depth -= 1\n        else:\n            ops.append(op)\n    lines = [str(len(ops))] + ops\n    return {\"name\": \"a random sequence of %d stack operations #%d\"\n                    % (len(ops), index),\n            \"stdin\": \"\\n\".join(lines) + \"\\n\"}\n"
+  },
+  "tests": [
+    {
+      "name": "getMin after a plain push sequence, then pop and re-check",
+      "stdin": "7\nPUSH 5\nPUSH 3\nPUSH 7\nGETMIN\nPOP\nTOP\nGETMIN\n",
+      "expected_stdout": "3 3 3"
+    },
+    {
+      "name": "a tied minimum survives popping the more recent copy",
+      "stdin": "5\nPUSH 2\nPUSH 2\nGETMIN\nPOP\nGETMIN\n",
+      "expected_stdout": "2 2",
+      "description": "Two equal minimums are pushed; popping one must not lose track of the other. A version using < instead of <= for the tie check loses the minimum here."
+    },
+    {
+      "name": "a new minimum, duplicated, then popped back off twice",
+      "stdin": "10\nPUSH 5\nPUSH 1\nPUSH -3\nGETMIN\nPUSH -3\nGETMIN\nPOP\nGETMIN\nPOP\nGETMIN\n",
+      "expected_stdout": "-3 -3 -3 1"
+    },
+    {
+      "name": "top reflects the most recent push or pop, independent of getMin",
+      "stdin": "5\nPUSH 10\nPUSH 20\nTOP\nPOP\nTOP\n",
+      "expected_stdout": "20 10"
+    }
+  ],
+  "reference_solution_b64": "aW1wb3J0IGphdmEudXRpbC5BcnJheURlcXVlOwppbXBvcnQgamF2YS51dGlsLkRlcXVlOwoKcHVibGljIGNsYXNzIFNvbHV0aW9uIHsKICAgIHByaXZhdGUgRGVxdWU8SW50ZWdlcj4gdmFsdWVzID0gbmV3IEFycmF5RGVxdWU8PigpOwogICAgcHJpdmF0ZSBEZXF1ZTxJbnRlZ2VyPiBtaW5zID0gbmV3IEFycmF5RGVxdWU8PigpOwoKICAgIHB1YmxpYyB2b2lkIHB1c2goaW50IHZhbHVlKSB7CiAgICAgICAgdmFsdWVzLnB1c2godmFsdWUpOwogICAgICAgIGlmIChtaW5zLmlzRW1wdHkoKSB8fCB2YWx1ZSA8PSBtaW5zLnBlZWsoKSkgewogICAgICAgICAgICBtaW5zLnB1c2godmFsdWUpOwogICAgICAgIH0KICAgIH0KCiAgICBwdWJsaWMgdm9pZCBwb3AoKSB7CiAgICAgICAgaW50IHJlbW92ZWQgPSB2YWx1ZXMucG9wKCk7CiAgICAgICAgaWYgKCFtaW5zLmlzRW1wdHkoKSAmJiByZW1vdmVkID09IG1pbnMucGVlaygpKSB7CiAgICAgICAgICAgIG1pbnMucG9wKCk7CiAgICAgICAgfQogICAgfQoKICAgIHB1YmxpYyBpbnQgdG9wKCkgewogICAgICAgIHJldHVybiB2YWx1ZXMucGVlaygpOwogICAgfQoKICAgIHB1YmxpYyBpbnQgZ2V0TWluKCkgewogICAgICAgIHJldHVybiBtaW5zLnBlZWsoKTsKICAgIH0KfQo="
+}

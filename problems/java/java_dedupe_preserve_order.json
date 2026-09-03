@@ -1,0 +1,47 @@
+{
+  "id": "java_dedupe_preserve_order",
+  "title": "Remove Duplicates, Keep First-Seen Order",
+  "language": "java",
+  "difficulty": "medium",
+  "topics": [
+    "collections",
+    "sets"
+  ],
+  "timeout_seconds": 5,
+  "statement": "`HashSet` removes duplicates but makes no promise at all about what order\nit iterates its elements in -- that order comes from where each value\nlands in the hash table, not from when it was inserted. `LinkedHashSet`\nis the same deduping `Set` contract with one addition: it also threads a\nlinked list through its entries in insertion order, and iterates that\ninstead. For \"deduplicate, keep first-seen order\", that is not a\nworkaround -- it is exactly what the type is for.\n\n## Your function\n\n```\npublic static List<Integer> dedupePreserveOrder(List<Integer> values);\n```\n\nReturn `values` with every element after its first occurrence removed, in\nthe same order the surviving elements first appeared in `values`.\n`values` may be empty.\n\n## Watch out\n\n- **`new HashSet<>(values)` would deduplicate correctly and scramble the\n  order.** It is the easy type to reach for out of habit, and the bug it\n  introduces will not show up on a small, lucky test by hand -- only on\n  data where the \"wrong\" order is visibly different from the right one.\n- **`new LinkedHashSet<>(values)` does the entire job -- deduplicating\n  *and* preserving first-seen order -- in one constructor call.** Feeding\n  it `values` in order inserts each element once (a `Set`'s own contract\n  silently rejects a second `add` of an equal value) and its iteration\n  order is exactly that insertion order.\n- **The return type is `List<Integer>`, not a `Set`.** `new\n  ArrayList<>(theLinkedHashSet)` converts it back, walking the set in its\n  (insertion) order to build the list -- this conversion is not where\n  order could go wrong, since it is the last step, not the deduplication\n  itself.\n",
+  "starter_code": "import java.util.List;\n\npublic class Solution {\n    /**\n     * Return values with every element after its first occurrence\n     * removed, in first-seen order. values may be empty.\n     */\n    public static List<Integer> dedupePreserveOrder(List<Integer> values) {\n        // your code here\n        return values;\n    }\n}\n",
+  "harness": "import java.util.ArrayList;\nimport java.util.List;\nimport java.util.Scanner;\n\nclass Harness {\n    public static void main(String[] args) {\n        Scanner scanner = new Scanner(System.in);\n        while (scanner.hasNextInt()) {\n            int n = scanner.nextInt();\n            List<Integer> values = new ArrayList<>();\n            for (int i = 0; i < n; i++) {\n                values.add(scanner.nextInt());\n            }\n            List<Integer> result = Solution.dedupePreserveOrder(values);\n            StringBuilder sb = new StringBuilder();\n            for (int i = 0; i < result.size(); i++) {\n                if (i > 0) sb.append(\" \");\n                sb.append(result.get(i));\n            }\n            System.out.println(sb);\n        }\n    }\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random arrays over a small alphabet of values, so repeats are frequent\nand the first-seen order is meaningfully tested.\"\"\"\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    n = rng.randint(0, 20)\n    values = [rng.randint(0, 6) for _ in range(n)]\n    lines = [str(n)] + [str(v) for v in values]\n    return {\"name\": \"%d values from a small pool, repeats likely #%d\"\n                    % (n, index),\n            \"stdin\": \" \".join(lines) + \"\\n\"}\n"
+  },
+  "tests": [
+    {
+      "name": "an empty list stays empty",
+      "stdin": "0\n",
+      "expected_stdout": ""
+    },
+    {
+      "name": "no duplicates at all",
+      "stdin": "4 1 2 3 4\n",
+      "expected_stdout": "1 2 3 4"
+    },
+    {
+      "name": "every element is the same value",
+      "stdin": "5 7 7 7 7 7\n",
+      "expected_stdout": "7"
+    },
+    {
+      "name": "order follows first appearance, not numeric order",
+      "stdin": "6 3 1 3 2 1 3\n",
+      "expected_stdout": "3 1 2",
+      "description": "3 appears first even though 1 and 2 are smaller -- the result is not sorted, and a plain HashSet would not reliably preserve this order either."
+    },
+    {
+      "name": "duplicates scattered throughout",
+      "stdin": "8 5 1 5 2 1 5 3 2\n",
+      "expected_stdout": "5 1 2 3"
+    }
+  ],
+  "reference_solution_b64": "aW1wb3J0IGphdmEudXRpbC5BcnJheUxpc3Q7CmltcG9ydCBqYXZhLnV0aWwuTGlua2VkSGFzaFNldDsKaW1wb3J0IGphdmEudXRpbC5MaXN0OwoKcHVibGljIGNsYXNzIFNvbHV0aW9uIHsKICAgIHB1YmxpYyBzdGF0aWMgTGlzdDxJbnRlZ2VyPiBkZWR1cGVQcmVzZXJ2ZU9yZGVyKExpc3Q8SW50ZWdlcj4gdmFsdWVzKSB7CiAgICAgICAgcmV0dXJuIG5ldyBBcnJheUxpc3Q8PihuZXcgTGlua2VkSGFzaFNldDw+KHZhbHVlcykpOwogICAgfQp9Cg=="
+}

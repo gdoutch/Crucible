@@ -1,0 +1,47 @@
+{
+  "id": "java_two_sum_indices",
+  "title": "Two Sum, Indices, in One Pass",
+  "language": "java",
+  "difficulty": "hard",
+  "topics": [
+    "hashmaps",
+    "arrays"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Checking every pair of elements for one that sums to a target is the\nhonest, obvious solution -- and it is O(n²). A `HashMap` turns it into a\nsingle O(n) pass by flipping the question around: instead of asking \"does\nsome later element complete a pair with this one\", ask \"have I already\nseen the element that would complete a pair with this one\" -- a question\na hash map answers in O(1).\n\n## Your function\n\n```\npublic static int[] twoSumIndices(int[] values, int target);\n```\n\n`values` contains **exactly one** pair of indices `i < j` with\n`values[i] + values[j] == target`. Return `new int[] { i, j }` for that\npair, with the smaller index first.\n\n## Watch out\n\n- **Check the map for the complement *before* recording the current\n  element in it, not after.** `target - values[i]` is what you are\n  looking for; if you insert `values[i]` into the map first and check\n  second, an element can find *itself* as a match whenever\n  `2 * values[i] == target`, producing `{ i, i }` -- the same index\n  twice, not a real pair of two distinct elements.\n- **The map only ever needs to hold `value -> index` for elements already\n  visited.** Because the complement check happens before the current\n  element is added, any match found is guaranteed to point at an earlier\n  index -- which is exactly why the pair comes back in `{ smaller,\n  larger }` order without needing a separate comparison to sort the two\n  indices afterward.\n- **Repeated values are not a special case.** `values` containing the\n  same number more than once is fine as long as each occurrence is at its\n  own index -- the map is keyed by value, but a later occurrence of an\n  already-seen value simply overwrites that value's stored index with the\n  more recent one, which is still a perfectly valid earlier-than-now\n  index for anything that matches it going forward.\n",
+  "starter_code": "public class Solution {\n    /**\n     * values contains exactly one pair of indices i < j with\n     * values[i] + values[j] == target. Return new int[] { i, j }.\n     */\n    public static int[] twoSumIndices(int[] values, int target) {\n        // your code here\n        return new int[] { -1, -1 };\n    }\n}\n",
+  "harness": "import java.util.Scanner;\n\nclass Harness {\n    public static void main(String[] args) {\n        Scanner scanner = new Scanner(System.in);\n        while (scanner.hasNextInt()) {\n            int n = scanner.nextInt();\n            int target = scanner.nextInt();\n            int[] values = new int[n];\n            for (int i = 0; i < n; i++) {\n                values[i] = scanner.nextInt();\n            }\n            int[] result = Solution.twoSumIndices(values, target);\n            System.out.println(result[0] + \" \" + result[1]);\n        }\n    }\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random arrays built by picking a pair first and filling in unrelated\nnoise around it, so the fixed target always has exactly one true pair.\"\"\"\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    a = rng.randint(-50, 50)\n    b = rng.randint(-50, 50)\n    target = a + b\n    values = [a, b]\n    n_extra = rng.randint(0, 8)\n    for _ in range(n_extra):\n        while True:\n            v = rng.randint(-50, 50)\n            if v + a != target and v + b != target:\n                values.append(v)\n                break\n    rng.shuffle(values)\n    lines = [\"%d %d\" % (len(values), target)] + [str(v) for v in values]\n    return {\"name\": \"%d values, one true pair summing to %d #%d\"\n                    % (len(values), target, index),\n            \"stdin\": \" \".join(lines) + \"\\n\"}\n"
+  },
+  "tests": [
+    {
+      "name": "the pair is the first two elements",
+      "stdin": "4 9\n2 7 11 15\n",
+      "expected_stdout": "0 1"
+    },
+    {
+      "name": "the pair is not at the start",
+      "stdin": "3 6\n3 2 4\n",
+      "expected_stdout": "1 2"
+    },
+    {
+      "name": "an element must not pair with itself",
+      "stdin": "3 10\n5 3 5\n",
+      "expected_stdout": "0 2",
+      "description": "target is exactly twice the first element (5). Checking the map before inserting the current element is what stops this from matching index 0 against itself."
+    },
+    {
+      "name": "negative values",
+      "stdin": "4 0\n-3 4 3 90\n",
+      "expected_stdout": "0 2"
+    },
+    {
+      "name": "a repeated value paired with a different occurrence of itself",
+      "stdin": "4 2\n1 5 1 5\n",
+      "expected_stdout": "0 2"
+    }
+  ],
+  "reference_solution_b64": "aW1wb3J0IGphdmEudXRpbC5IYXNoTWFwOwppbXBvcnQgamF2YS51dGlsLk1hcDsKCnB1YmxpYyBjbGFzcyBTb2x1dGlvbiB7CiAgICBwdWJsaWMgc3RhdGljIGludFtdIHR3b1N1bUluZGljZXMoaW50W10gdmFsdWVzLCBpbnQgdGFyZ2V0KSB7CiAgICAgICAgTWFwPEludGVnZXIsIEludGVnZXI+IHNlZW4gPSBuZXcgSGFzaE1hcDw+KCk7CiAgICAgICAgZm9yIChpbnQgaSA9IDA7IGkgPCB2YWx1ZXMubGVuZ3RoOyBpKyspIHsKICAgICAgICAgICAgaW50IGNvbXBsZW1lbnQgPSB0YXJnZXQgLSB2YWx1ZXNbaV07CiAgICAgICAgICAgIGlmIChzZWVuLmNvbnRhaW5zS2V5KGNvbXBsZW1lbnQpKSB7CiAgICAgICAgICAgICAgICByZXR1cm4gbmV3IGludFtdIHsgc2Vlbi5nZXQoY29tcGxlbWVudCksIGkgfTsKICAgICAgICAgICAgfQogICAgICAgICAgICBzZWVuLnB1dCh2YWx1ZXNbaV0sIGkpOwogICAgICAgIH0KICAgICAgICByZXR1cm4gbmV3IGludFtdIHsgLTEsIC0xIH07CiAgICB9Cn0K"
+}

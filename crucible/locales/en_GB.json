@@ -205,6 +205,28 @@
         "sigabrt": "SIGABRT (abort) -- likely an unhandled exception",
         "killed_by_signal": "killed by signal {signal}"
       }
+    },
+    "java": {
+      "install_help_windows": "No JDK found.\n\nPick whichever is easiest for you:\n\n  1. Adoptium (Eclipse Temurin) -- a standard, free JDK installer.\n     https://adoptium.net\n\n  2. winget      -- from an elevated prompt:\n     winget install EclipseAdoptium.Temurin.21.JDK\n\n  3. Visual Studio -- if it is already installed, open the Visual\n     Studio Installer, click Modify, and tick 'Java development'.\n\nRe-check from the Tools menu once installed -- no restart needed.\nMake sure 'javac', not just 'java', ends up on PATH -- some installs\n(and some Linux package managers) offer a JRE-only package that runs\nprograms but cannot compile one.",
+      "install_help_posix": "No JDK found.\n\n  Debian/Ubuntu:  sudo apt install default-jdk\n  Fedora:         sudo dnf install java-latest-openjdk-devel\n  macOS:          brew install openjdk\n  Any platform:   https://adoptium.net\n\nRe-check from the Tools menu once installed.\nMake sure this installs a JDK, not just a JRE -- a JRE has 'java' but\nno 'javac', and can run programs but not compile one.",
+      "summary_not_found": "Java: no JDK found",
+      "detail_not_found": "Searched PATH, JAVA_HOME and the usual install locations for javac.",
+      "summary_broken": "Java: javac found, but would not run",
+      "detail_broken": "javac: {path}\n'javac -version' failed to report a version.",
+      "summary_no_java": "Java: javac found, but no matching java",
+      "detail_no_java": "javac: {path}\nNo 'java' executable next to it -- this looks like a broken or partial JDK install.",
+      "summary": "Java: JDK {version}",
+      "detail": "javac: {javac}\njava:  {java}",
+      "compile_timeout": "Compilation timed out after 60s.",
+      "exit": {
+        "access_violation": "access violation (bad pointer / buffer overrun) -- inside the JVM itself, not ordinary Java code",
+        "stack_overflow": "native stack overflow inside the JVM itself -- a StackOverflowError from Java code would have exited normally instead",
+        "interrupted": "interrupted",
+        "crashed": "crashed: {description}",
+        "sigsegv": "SIGSEGV (segmentation fault) -- inside the JVM itself, not ordinary Java code",
+        "sigabrt": "SIGABRT (abort) -- the JVM itself aborted",
+        "killed_by_signal": "killed by signal {signal}"
+      }
     }
   },
   "app": {

@@ -1,0 +1,55 @@
+{
+  "id": "java_safe_divide",
+  "title": "Division Java Will Not Warn You About",
+  "language": "java",
+  "difficulty": "fiendish",
+  "topics": [
+    "arithmetic",
+    "overflow",
+    "records"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Java's `int` arithmetic never throws on overflow -- `+`, `-`, `*`, `/`\nand `%` all wrap silently, every time, with no `checked` context to opt\ninto the way some other languages have. `b == 0` is the one division\nfailure Java *does* police for you, throwing `ArithmeticException`. The\nother classic division failure -- `Integer.MIN_VALUE / -1`, whose true\nresult does not fit in 32 bits -- is not policed at all: Java just hands\nback `Integer.MIN_VALUE` again, silently, as if nothing had gone wrong.\n\n## The types\n\nProvided by the harness, visible to your solution without an import\n(same package):\n\n```\nenum DivideStatus { OK, DIVIDE_BY_ZERO, OVERFLOW }\nrecord DivideResult(DivideStatus status, int value) {}\n```\n\n## Your function\n\n```\npublic static DivideResult safeDivide(int a, int b);\n```\n\nDivide `a` by `b`, reporting which of three things happened:\n\n- **`b == 0`** -- return `new DivideResult(DivideStatus.DIVIDE_BY_ZERO, 0)`.\n- **`a == Integer.MIN_VALUE && b == -1`** -- return\n  `new DivideResult(DivideStatus.OVERFLOW, 0)`. `Integer.MIN_VALUE` is\n  `-2147483648`; its magnitude has no positive `int` counterpart\n  (`Integer.MAX_VALUE` is only `2147483647`), so the mathematically\n  correct result of this division, `2147483648`, cannot be represented as\n  an `int` at all.\n- **Otherwise** -- return `new DivideResult(DivideStatus.OK, a / b)`,\n  ordinary Java integer division (which truncates towards zero, not\n  towards negative infinity).\n\n## Watch out\n\n- **`Integer.MIN_VALUE / -1` does not throw in Java.** It does not throw\n  `ArithmeticException`, it does not throw anything -- it silently\n  evaluates to `Integer.MIN_VALUE` again, the same wrong-looking value\n  you started with, with nothing in the language telling you an overflow\n  just happened. A solution that only wraps the division in a `try` and\n  catches whatever it can, hoping to detect this case that way, catches\n  nothing: there is no exception to catch. The check has to be an\n  explicit `if`, run *before* the division, not a reaction to anything\n  the division itself does.\n- **This is a genuinely separate failure from `b == 0`.** Nothing about\n  `b == -1` looks like a division by zero, and reporting every problem\n  division as `DIVIDE_BY_ZERO` -- reusing the one case Java actually\n  throws for -- reports the wrong reason for a failure that has nothing\n  to do with zero at all.\n- **Every other input, including `Integer.MIN_VALUE` divided by anything\n  other than `-1`, is `OK`.** `Integer.MIN_VALUE / 1` is\n  `Integer.MIN_VALUE`, representable and unremarkable; it is specifically\n  the combination of `Integer.MIN_VALUE` as the dividend *and* `-1` as the\n  divisor that overflows.\n",
+  "starter_code": "public class Solution {\n    /**\n     * Divide a by b, reporting which of three outcomes occurred:\n     *   b == 0                              -> (DIVIDE_BY_ZERO, 0)\n     *   a == Integer.MIN_VALUE, b == -1      -> (OVERFLOW, 0)\n     *   otherwise                            -> (OK, a / b)\n     */\n    public static DivideResult safeDivide(int a, int b) {\n        // your code here\n        return new DivideResult(DivideStatus.OK, 0);\n    }\n}\n",
+  "harness": "import java.util.Scanner;\n\nenum DivideStatus { OK, DIVIDE_BY_ZERO, OVERFLOW }\n\nrecord DivideResult(DivideStatus status, int value) {}\n\nclass Harness {\n    public static void main(String[] args) {\n        Scanner scanner = new Scanner(System.in);\n        while (scanner.hasNextInt()) {\n            int a = scanner.nextInt();\n            int b = scanner.nextInt();\n            DivideResult result = Solution.safeDivide(a, b);\n            switch (result.status()) {\n                case OK:\n                    System.out.println(\"OK \" + result.value());\n                    break;\n                case DIVIDE_BY_ZERO:\n                    System.out.println(\"DIVIDE_BY_ZERO\");\n                    break;\n                case OVERFLOW:\n                    System.out.println(\"OVERFLOW\");\n                    break;\n            }\n        }\n    }\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random (a, b) pairs, weighted towards the two special cases and the\nvalues immediately next to them, alongside ordinary divisions.\"\"\"\n\nINT_MIN = -2147483648\nINT_MAX = 2147483647\n\n\ndef generate(rng, count):\n    builders = (_ordinary, _near_zero_divisor, _near_overflow)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, rows, description=\"\"):\n    lines = [\"%d %d\" % row for row in rows]\n    return {\"name\": name, \"stdin\": \"\\n\".join(lines) + \"\\n\",\n            \"description\": description}\n\n\ndef _ordinary(rng, index):\n    rows = []\n    for _ in range(4):\n        a = rng.randint(-1000, 1000)\n        b = rng.randint(-1000, 1000)\n        if b == 0:\n            b = 1\n        rows.append((a, b))\n    return _case(\"ordinary divisions, no special case #%d\" % index, rows)\n\n\ndef _near_zero_divisor(rng, index):\n    rows = [\n        (rng.randint(-1000, 1000), 0),\n        (0, 0),\n        (rng.randint(-1000, 1000), rng.choice([1, -1])),\n    ]\n    return _case(\"divisor of zero, plus neighbours #%d\" % index, rows)\n\n\ndef _near_overflow(rng, index):\n    rows = [\n        (INT_MIN, -1),\n        (INT_MIN, 1),\n        (INT_MIN + 1, -1),\n        (INT_MAX, -1),\n    ]\n    return _case(\"Integer.MIN_VALUE / -1 and the values right next to it #%d\"\n                 % index, rows,\n                 \"Only the exact pairing (INT_MIN, -1) overflows -- every \"\n                 \"neighbour of it is OK.\")\n"
+  },
+  "tests": [
+    {
+      "name": "an ordinary division",
+      "stdin": "10 2\n-7 2\n",
+      "expected_stdout": "OK 5\nOK -3",
+      "description": "Java integer division truncates towards zero: -7 / 2 == -3, not -4."
+    },
+    {
+      "name": "divisor of zero",
+      "stdin": "5 0\n-5 0\n0 0\n",
+      "expected_stdout": "DIVIDE_BY_ZERO\nDIVIDE_BY_ZERO\nDIVIDE_BY_ZERO"
+    },
+    {
+      "name": "the exact overflow pairing -- Java does not throw for this one",
+      "stdin": "-2147483648 -1\n",
+      "expected_stdout": "OVERFLOW",
+      "description": "Integer.MIN_VALUE / -1 silently evaluates to Integer.MIN_VALUE in plain Java arithmetic -- there is no exception to catch here."
+    },
+    {
+      "name": "Integer.MIN_VALUE divided by anything except -1 is OK",
+      "stdin": "-2147483648 1\n-2147483648 2\n-2147483648 -2\n",
+      "expected_stdout": "OK -2147483648\nOK -1073741824\nOK 1073741824"
+    },
+    {
+      "name": "the value next to Integer.MIN_VALUE does not overflow on -1",
+      "stdin": "-2147483647 -1\n",
+      "expected_stdout": "OK 2147483647",
+      "description": "-2147483647 is not Integer.MIN_VALUE -- its negation fits in an int, so this is an ordinary division."
+    },
+    {
+      "name": "the two failure modes are reported distinctly, not conflated",
+      "stdin": "-2147483648 -1\n5 0\n",
+      "expected_stdout": "OVERFLOW\nDIVIDE_BY_ZERO"
+    }
+  ],
+  "reference_solution_b64": "cHVibGljIGNsYXNzIFNvbHV0aW9uIHsKICAgIHB1YmxpYyBzdGF0aWMgRGl2aWRlUmVzdWx0IHNhZmVEaXZpZGUoaW50IGEsIGludCBiKSB7CiAgICAgICAgaWYgKGIgPT0gMCkgewogICAgICAgICAgICByZXR1cm4gbmV3IERpdmlkZVJlc3VsdChEaXZpZGVTdGF0dXMuRElWSURFX0JZX1pFUk8sIDApOwogICAgICAgIH0KICAgICAgICBpZiAoYSA9PSBJbnRlZ2VyLk1JTl9WQUxVRSAmJiBiID09IC0xKSB7CiAgICAgICAgICAgIHJldHVybiBuZXcgRGl2aWRlUmVzdWx0KERpdmlkZVN0YXR1cy5PVkVSRkxPVywgMCk7CiAgICAgICAgfQogICAgICAgIHJldHVybiBuZXcgRGl2aWRlUmVzdWx0KERpdmlkZVN0YXR1cy5PSywgYSAvIGIpOwogICAgfQp9Cg=="
+}

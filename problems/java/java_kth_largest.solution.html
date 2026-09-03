@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Kth Largest With a Bounded Min-Heap · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · Java · hard</p>
+  <h1>Kth Largest With a Bounded Min-Heap</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>import java.util.PriorityQueue;
+
+public class Solution {
+    public static int kthLargest(int[] values, int k) {
+        PriorityQueue&lt;Integer&gt; heap = new PriorityQueue&lt;&gt;();
+        for (int v : values) {
+            heap.offer(v);
+            if (heap.size() &gt; k) {
+                heap.poll();
+            }
+        }
+        return heap.peek();
+    }
+}</code></pre>
+
+<h2>Why a min-heap, capped at size k, finds the k-th *largest*</h2>
+
+<div class="trap">
+<p>After processing the whole array this way, the heap holds exactly the
+`k` largest values seen -- every time a value would have pushed the heap
+past size `k`, the current smallest member of the heap was evicted, which
+only ever removes a value that is not larger than everything else
+currently kept. What remains, `k` elements deep, is the top-`k` by
+construction. The smallest element *among those k* -- which is exactly
+what `heap.peek()` reports, because the heap is ordered smallest-first --
+is by definition the k-th largest of the whole array: there are exactly
+`k - 1` elements in the heap larger than it (or equal, for ties), and
+everything evicted along the way was smaller than or equal to something
+that made the final cut.</p>
+</div>
+
+<h2>Why the eviction check is `&gt; k`, not `&gt;= k`</h2>
+
+<p>The heap needs to *reach* size `k` before evicting anything, not stop
+one short of it. `heap.size() &gt; k` only trips once the heap has grown
+to `k + 1` -- meaning it had already spent one iteration holding exactly
+`k` elements -- so the very next eviction brings it right back to `k`.
+`&gt;= k` would start evicting as soon as the heap first reaches size `k`,
+before that k-th element has had a chance to actually be part of the
+"currently held" set, and the heap would never settle at holding the
+intended `k` values.</p>
+
+<h2>Why `peek()`, not iterating the heap directly</h2>
+
+<p>A `PriorityQueue`'s internal array satisfies the heap property (each
+parent is `&lt;=` its children) but is not fully sorted -- iterating it
+with a `for`-each, or converting it to a `List`, visits elements in
+whatever order the internal array happens to hold them, which is not
+sorted order beyond the very first element. `peek()` is guaranteed to
+return the minimum specifically, which is the one element this function
+actually needs to read.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(n log k)</strong> in the length of `values` -- each of the n
+elements does one `offer` and, past the first `k`, one `poll`, both O(log
+k) on a heap bounded at size `k` rather than size n.</p>
+
+<footer>
+  <p><a href="java_kth_largest.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

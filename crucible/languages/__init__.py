@@ -11,6 +11,7 @@ from .base import BuildResult, ExecResult, Language, ToolchainStatus, run_proces
 from .c_lang import CLanguage
 from .cpp_lang import CppLanguage
 from .csharp_lang import CSharpLanguage
+from .java_lang import JavaLanguage
 from .python_lang import PythonLanguage
 
 _LANGUAGES: dict[str, Language] = {}
@@ -20,7 +21,7 @@ def register(language: Language) -> None:
     _LANGUAGES[language.id] = language
 
 
-for _cls in (CLanguage, CppLanguage, PythonLanguage, CSharpLanguage):
+for _cls in (CLanguage, CppLanguage, PythonLanguage, CSharpLanguage, JavaLanguage):
     register(_cls())
 
 
@@ -44,6 +45,6 @@ def known_ids() -> list[str]:
 
 __all__ = [
     "BuildResult", "ExecResult", "Language", "ToolchainStatus", "run_process",
-    "CLanguage", "CppLanguage", "PythonLanguage", "CSharpLanguage",
+    "CLanguage", "CppLanguage", "PythonLanguage", "CSharpLanguage", "JavaLanguage",
     "register", "get", "all_languages", "known_ids",
 ]

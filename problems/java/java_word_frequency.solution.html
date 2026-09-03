@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Word Frequency Without a Null Pointer Exception · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · Java · medium</p>
+  <h1>Word Frequency Without a Null Pointer Exception</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>import java.util.Map;
+import java.util.Scanner;
+import java.util.TreeMap;
+
+public class Solution {
+    public static Map&lt;String, Integer&gt; wordFrequency(String text) {
+        Map&lt;String, Integer&gt; counts = new TreeMap&lt;&gt;();
+        Scanner scanner = new Scanner(text);
+        while (scanner.hasNext()) {
+            String word = scanner.next();
+            counts.put(word, counts.getOrDefault(word, 0) + 1);
+        }
+        return counts;
+    }
+}</code></pre>
+
+<h2>Why `get` throws and `getOrDefault` does not</h2>
+
+<div class="trap">
+<p>`Map&lt;String, Integer&gt;.get(key)` returns `Integer` -- a reference
+type -- and its documented behaviour for a missing key is to return
+`null`, not to throw anything itself. The exception happens one step
+later, at the point something tries to *use* that `null` as a number:
+`null + 1` requires unboxing the `Integer` to a primitive `int` to
+perform the addition, and there is no `int` value that `null` could
+correctly unbox to, so the unboxing itself throws
+`NullPointerException`. `getOrDefault(key, default)` sidesteps this
+entirely by returning the supplied default -- a genuine, already-primitive-
+compatible `0` -- whenever the key is absent, so the addition that follows
+never has a `null` to contend with regardless of whether `word` is new or
+already counted.</p>
+</div>
+
+<h2>Why `Map.merge` would also work</h2>
+
+<p>`counts.merge(word, 1, Integer::sum)` is the same idea expressed
+differently: insert `1` if `word` is not present, otherwise combine the
+existing value and `1` using the given function (`Integer::sum` here).
+Either `getOrDefault` or `merge` avoids ever calling `get` on its own and
+trusting the result to be non-null -- the common thread is that both
+provide their own fallback for a missing key, rather than assuming
+presence.</p>
+
+<h2>Why the words come out sorted</h2>
+
+<p>`TreeMap` keeps its keys in their natural ordering (ascending, for
+`String`) -- iterating it, the way the harness that calls this function
+does to print the result, visits keys lexicographically without this
+function needing to sort anything itself. A `HashMap` would have made no
+such promise.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(n log k)</strong> where n is the number of words in `text`
+and k the number of distinct ones -- each `TreeMap` access
+(`getOrDefault` plus `put`) is an O(log k) tree operation.</p>
+
+<footer>
+  <p><a href="java_word_frequency.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

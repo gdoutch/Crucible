@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Division Java Will Not Warn You About · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · Java · fiendish</p>
+  <h1>Division Java Will Not Warn You About</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>public class Solution {
+    public static DivideResult safeDivide(int a, int b) {
+        if (b == 0) {
+            return new DivideResult(DivideStatus.DIVIDE_BY_ZERO, 0);
+        }
+        if (a == Integer.MIN_VALUE &amp;&amp; b == -1) {
+            return new DivideResult(DivideStatus.OVERFLOW, 0);
+        }
+        return new DivideResult(DivideStatus.OK, a / b);
+    }
+}</code></pre>
+
+<h2>Why Java's silence here is the whole difficulty</h2>
+
+<div class="trap">
+<p>Every arithmetic operator on Java's `int` type -- `+`, `-`, `*`, `/`,
+`%` -- wraps silently on overflow, unconditionally, with no `checked`
+context or compiler flag to opt into stricter behaviour the way some
+other languages offer. `Integer.MIN_VALUE / -1`'s true result,
+`2147483648`, is one more than `Integer.MAX_VALUE` and does not fit in 32
+bits; Java's answer is simply `Integer.MIN_VALUE` again, the bit pattern
+the hardware division instruction happens to produce, returned as an
+entirely normal `int` with nothing marking it as wrong. `b == 0` is
+different: Java's specification calls that out explicitly and mandates
+`ArithmeticException` for it, which is why it is easy to assume *some*
+similar signal exists for the other classic division failure too. It does
+not. The only way to catch `Integer.MIN_VALUE / -1` is to recognise the
+exact pair of operands before the division runs and answer without ever
+letting Java's `/` operator see them.</p>
+</div>
+
+<h2>Why the two failure modes get two different enum values</h2>
+
+<p>`b == 0` and `a == Integer.MIN_VALUE &amp;&amp; b == -1` are unrelated
+questions with unrelated causes -- one is about the divisor alone, the
+other about one specific pairing of dividend and divisor. Reporting both
+as the same status (or reusing `DIVIDE_BY_ZERO` for everything that could
+go wrong, since it is the one Java actually throws for) discards
+information a caller might reasonably want: "there is no mathematical
+answer" and "the answer exists but does not fit in 32 bits" are different
+problems with different implications for whoever is handling the result.</p>
+
+<h2>Why the record and enum live in the harness, not the solution</h2>
+
+<p>`DivideStatus` and `DivideResult` are declared once, as package-private
+top-level types alongside `Harness`'s own class -- Java only requires a
+file's *public* type to match the filename, so a file can freely hold
+several non-public ones. Because `Solution.java` and `Harness.java` are
+compiled together, in the same (default) package, `Solution` can refer to
+both types directly, with no `import` needed -- exactly the same
+same-package visibility that lets `Harness` call `Solution.safeDivide`
+without one either.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(1)</strong> -- two comparisons and, on the ordinary path, one
+division.</p>
+
+<footer>
+  <p><a href="java_safe_divide.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Comparing Boxed Integers Without == · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · Java · fiendish</p>
+  <h1>Comparing Boxed Integers Without ==</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>import java.util.List;
+
+public class Solution {
+    public static int countEqualPairs(List&lt;Integer&gt; values) {
+        int count = 0;
+        for (int i = 0; i &lt; values.size(); i++) {
+            for (int j = i + 1; j &lt; values.size(); j++) {
+                if (values.get(i).equals(values.get(j))) {
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
+}</code></pre>
+
+<h2>Why `==` is sometimes right and sometimes wrong for the exact same code</h2>
+
+<div class="trap">
+<p>`Integer.valueOf(int)` -- what autoboxing calls under the hood for
+`Integer i = 5;` and the like -- is required, by the Java Language
+Specification itself, to return the *same* cached `Integer` instance for
+every value in `-128..127`. That is not an implementation detail that
+happens to hold on one JVM; it is a guarantee every conformant JVM must
+honour. Two `Integer`s both holding `5`, both produced by autoboxing, are
+therefore guaranteed to be `==` to each other -- reference equality and
+value equality coincide, for that range, by specification. Outside
+`-128..127`, the JLS makes no such promise: `Integer.valueOf` is free to
+allocate a new object every time (and in practice, it does), so two
+`Integer`s holding the same large value are ordinary, distinct objects
+with no reason to be `==`. The bug in a `==`-based solution is not that it
+is "sometimes flaky" -- it is entirely deterministic, and entirely a
+function of whether the values involved happen to fall inside or outside
+one specific, documented range.</p>
+</div>
+
+<h2>Why `.equals()` has no such range to worry about</h2>
+
+<p>`Integer.equals(Object)` is implemented to compare the wrapped `int`
+values directly, with no reference to which object either `Integer`
+happens to be. Two `Integer`s holding equal values are `.equals()` to each
+other whether they are the same cached object, two separately allocated
+objects, or anything else -- there is no boundary anywhere in `int`'s
+range where the answer could change based on identity.</p>
+
+<h2>The alternative: unboxing before comparing</h2>
+
+<p><code>values.get(i).intValue() == values.get(j).intValue()</code> also
+works, for a related reason: `intValue()` returns a primitive `int`, and
+primitive `==` in Java has only ever meant "these two numbers are equal"
+-- there is no such thing as reference identity for a primitive. The trap
+is specific to `==` between two *references*, not to the `==` operator in
+general.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(n²)</strong> in the length of `values` -- every pair of
+indices is checked once. A hash-based count (grouping by value first)
+could do this in O(n), but the point of this exercise is the comparison
+itself, not the algorithm around it.</p>
+
+<footer>
+  <p><a href="java_boxed_integer_equality.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

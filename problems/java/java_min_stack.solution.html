@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — A Stack That Tracks Its Own Minimum · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · Java · hard</p>
+  <h1>A Stack That Tracks Its Own Minimum</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>import java.util.ArrayDeque;
+import java.util.Deque;
+
+public class Solution {
+    private Deque&lt;Integer&gt; values = new ArrayDeque&lt;&gt;();
+    private Deque&lt;Integer&gt; mins = new ArrayDeque&lt;&gt;();
+
+    public void push(int value) {
+        values.push(value);
+        if (mins.isEmpty() || value &lt;= mins.peek()) {
+            mins.push(value);
+        }
+    }
+
+    public void pop() {
+        int removed = values.pop();
+        if (!mins.isEmpty() &amp;&amp; removed == mins.peek()) {
+            mins.pop();
+        }
+    }
+
+    public int top() {
+        return values.peek();
+    }
+
+    public int getMin() {
+        return mins.peek();
+    }
+}</code></pre>
+
+<h2>Why the tie check has to be `&lt;=`</h2>
+
+<div class="trap">
+<p>`mins` is not "the history of every distinct minimum" -- it is "one
+entry for every value on `values` that is currently tied for the
+minimum", which is what lets `pop()` decide correctly whether removing the
+top of `values` should also affect `mins`. Pushing `2` when `2` is already
+the minimum has to add a *second* `2` onto `mins`, specifically so that
+popping one of the two `2`s off `values` only removes one of the two
+matching entries on `mins`, leaving the other to correctly report `2` as
+still the minimum. Using `&lt;` instead of `&lt;=` treats the second `2` as
+"not a new minimum" and skips recording it -- so `mins` ends up
+under-counting how many copies of the current minimum are actually on the
+stack, and a single `pop()` can remove `mins`'s only remaining record of a
+value that is still present on `values`.</p>
+</div>
+
+<h2>Why `pop()` checks equality before touching `mins`</h2>
+
+<p>Only a value that is *currently* the minimum has any entry on `mins`
+to remove. `removed == mins.peek()` is precisely that check: if the value
+coming off `values` matches what `mins` currently reports as the minimum,
+one matching entry comes off `mins` too, keeping the two stacks in exact
+step; if the removed value was never the minimum, `mins` was never
+tracking it in the first place; and popping it unconditionally instead
+would desynchronise the two stacks the first time a non-minimum value is
+removed.</p>
+
+<h2>Why `getMin()` and `top()` are both simple `peek()`s</h2>
+
+<p>Because `mins.peek()` is always kept equal to the true minimum of
+whatever is currently on `values` -- by construction, at every push and
+every pop -- reading it is a plain O(1) lookup with no scanning involved.
+`top()` reads `values.peek()` the same way, for the same reason: both
+stacks are always accurate as of the most recent operation, never
+recomputed lazily.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(1)</strong> for every one of `push`, `pop`, `top` and
+`getMin` -- each does a bounded number of `Deque` operations, none of
+which scan the stack's contents.</p>
+
+<footer>
+  <p><a href="java_min_stack.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

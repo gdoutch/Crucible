@@ -1,0 +1,53 @@
+{
+  "id": "java_kth_largest",
+  "title": "Kth Largest With a Bounded Min-Heap",
+  "language": "java",
+  "difficulty": "hard",
+  "topics": [
+    "priorityqueue",
+    "heaps"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Sorting the whole array to find one element is more work than the\nquestion actually needs: a `PriorityQueue` kept at size `k` -- evicting\nits smallest element every time a new one would push it over that size --\nends up holding exactly the `k` largest elements seen, with the smallest\nof *those* sitting right at the top. That smallest-of-the-k-largest is,\nby definition, the k-th largest overall.\n\n## Your function\n\n```\npublic static int kthLargest(int[] values, int k);\n```\n\n`k` is always between `1` and `values.length` (inclusive) -- `k == 1`\nasks for the maximum, `k == values.length` asks for the minimum. Return\nthe k-th largest element of `values`, counting duplicates as separate\nelements (`{5, 5}` with `k = 2` is `5`, not \"no second-largest exists\").\n\n## Watch out\n\n- **`new PriorityQueue<Integer>()` is a *min*-heap by default** --\n  `poll()` removes the smallest element, not the largest. That is exactly\n  what this approach wants: keeping the heap capped at size `k` and\n  evicting the smallest whenever it grows past that means the heap always\n  holds the `k` largest elements encountered so far, and evicting the\n  smallest of *those* is precisely how a new, larger element is allowed\n  to displace the weakest current member of the top-`k`.\n- **Evict only when the size *exceeds* `k`, i.e. `size() > k`, not\n  `size() >= k`.** The second version starts evicting one element too\n  early -- while the heap is still being filled up to its intended size --\n  and the heap never actually settles at holding `k` elements at all.\n- **`peek()`, not `poll()`, once the heap holds the `k` largest values.**\n  `peek()` reads the minimum without removing it, which is what you want\n  to report as the answer; `poll()` would remove it too, and iterating\n  the `PriorityQueue` directly (or converting it to a list) does *not*\n  give elements in sorted order at all -- only repeated `poll()` calls do,\n  because the internal array is heap-ordered, not fully sorted.\n",
+  "starter_code": "import java.util.PriorityQueue;\n\npublic class Solution {\n    /**\n     * k is between 1 and values.length inclusive. Return the k-th\n     * largest element of values (k == 1 is the maximum).\n     */\n    public static int kthLargest(int[] values, int k) {\n        // your code here\n        return 0;\n    }\n}\n",
+  "harness": "import java.util.Scanner;\n\nclass Harness {\n    public static void main(String[] args) {\n        Scanner scanner = new Scanner(System.in);\n        while (scanner.hasNextInt()) {\n            int n = scanner.nextInt();\n            int k = scanner.nextInt();\n            int[] values = new int[n];\n            for (int i = 0; i < n; i++) {\n                values[i] = scanner.nextInt();\n            }\n            System.out.println(Solution.kthLargest(values, k));\n        }\n    }\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random arrays and k values, including k at both ends of its range.\"\"\"\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    n = rng.randint(1, 20)\n    values = [rng.randint(-50, 50) for _ in range(n)]\n    k = rng.choice([1, n, rng.randint(1, n)])\n    lines = [\"%d %d\" % (n, k)] + [str(v) for v in values]\n    return {\"name\": \"%d values, k=%d #%d\" % (n, k, index),\n            \"stdin\": \" \".join(lines) + \"\\n\"}\n"
+  },
+  "tests": [
+    {
+      "name": "k=1 is the maximum",
+      "stdin": "8 1\n3 1 4 1 5 9 2 6\n",
+      "expected_stdout": "9"
+    },
+    {
+      "name": "k=length is the minimum",
+      "stdin": "8 8\n3 1 4 1 5 9 2 6\n",
+      "expected_stdout": "1"
+    },
+    {
+      "name": "k in the middle",
+      "stdin": "8 3\n3 1 4 1 5 9 2 6\n",
+      "expected_stdout": "5",
+      "description": "Sorted descending: 9, 6, 5, 4, 3, 2, 1, 1 -- the 3rd largest is 5."
+    },
+    {
+      "name": "every element is the same value",
+      "stdin": "4 2\n5 5 5 5\n",
+      "expected_stdout": "5"
+    },
+    {
+      "name": "negative values",
+      "stdin": "5 2\n-1 -5 -3 -7 0\n",
+      "expected_stdout": "-1",
+      "description": "Sorted descending: 0, -1, -3, -5, -7 -- the 2nd largest is -1."
+    },
+    {
+      "name": "a single-element array",
+      "stdin": "1 1\n42\n",
+      "expected_stdout": "42"
+    }
+  ],
+  "reference_solution_b64": "aW1wb3J0IGphdmEudXRpbC5Qcmlvcml0eVF1ZXVlOwoKcHVibGljIGNsYXNzIFNvbHV0aW9uIHsKICAgIHB1YmxpYyBzdGF0aWMgaW50IGt0aExhcmdlc3QoaW50W10gdmFsdWVzLCBpbnQgaykgewogICAgICAgIFByaW9yaXR5UXVldWU8SW50ZWdlcj4gaGVhcCA9IG5ldyBQcmlvcml0eVF1ZXVlPD4oKTsKICAgICAgICBmb3IgKGludCB2IDogdmFsdWVzKSB7CiAgICAgICAgICAgIGhlYXAub2ZmZXIodik7CiAgICAgICAgICAgIGlmIChoZWFwLnNpemUoKSA+IGspIHsKICAgICAgICAgICAgICAgIGhlYXAucG9sbCgpOwogICAgICAgICAgICB9CiAgICAgICAgfQogICAgICAgIHJldHVybiBoZWFwLnBlZWsoKTsKICAgIH0KfQo="
+}
