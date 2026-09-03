@@ -77,6 +77,31 @@ def available_locales() -> list[str]:
     return codes
 
 
+def locale_display_name(locale: str) -> str:
+    """How `locale` names itself, in its own language -- "Français" for
+    `fr_FR`, never "French": a language picker lists each option the way
+    someone looking for it would recognise it, not translated into whatever
+    locale happens to be active while the picker is open. This is exactly
+    why it is its own function rather than a `t()` call: `t()` always reads
+    through the *active* locale (falling back to `DEFAULT_LOCALE`), and a
+    French entry read that way while English is active would come back
+    English.
+
+    Reads the `app.locale_name` key from `locale`'s own file specifically,
+    with no fallback to `DEFAULT_LOCALE` -- falling back would print
+    English text next to every other locale's own native name, which is a
+    worse failure than showing the locale code itself. A locale file
+    missing this key -- or missing outright, for a code nothing shipped --
+    is an authoring or caller gap either way; the code (`"fr_FR"`) is the
+    fallback here, not `DEFAULT_LOCALE`'s name.
+    """
+    try:
+        name = _lookup(locale, "app.locale_name")
+    except TranslationError:
+        return locale  # no locales/<code>.json at all
+    return name if isinstance(name, str) and name else locale
+
+
 def _lookup(locale: str, key: str) -> Any:
     """Walk `key` ("app.menu.file.open") through the nested dict a locale
     file parses to. Returns `_MISSING` rather than raising, so callers can

@@ -230,6 +230,7 @@
     }
   },
   "app": {
+    "locale_name": "English",
     "window_title_with_problem": "{app_name} — {title}",
     "menu": {
       "file": {
@@ -280,6 +281,9 @@
         "toggle_theme": "Toggle light / dark theme",
         "larger_font": "Larger editor font",
         "smaller_font": "Smaller editor font"
+      },
+      "language": {
+        "title": "Language"
       },
       "tools": {
         "title": "Tools",
@@ -396,6 +400,8 @@
       "reset_code_message": "Replace your code with the starter code for this problem?\nYour current work will be discarded.",
       "theme_changed_title": "Theme changed",
       "theme_changed_message": "The new theme will be applied next time you start {app_name}.",
+      "language_changed_title": "Language changed",
+      "language_changed_message": "{language} will be used next time you start {app_name}.",
       "compiler_status_line": "{mark} {language}: {summary}",
       "compiler_status_detecting_line": "{badge} {language}: still detecting…",
       "authoring_help_message": "A problem is one JSON file under:\n{root}\n\nRequired fields:\n  title, language, statement, harness, tests,\n  and reference_solution (or reference_solution_b64)\n\nThe harness supplies main(); the candidate supplies the function.\nEach test is {{name, stdin, expected_stdout, description}}.\n\nEvery reference solution is run against the full suite before the\nproblem is offered -- a problem whose reference fails is disabled.\n\nOptional 'generator' adds randomised cases:\n  {{\"count\": 4, \"source\": \"def generate(rng, count): ...\"}}\nIt returns inputs only -- {{name, stdin, description}} -- and the\nexpected output is captured from the reference solution, so the\ntwo can never disagree. Ctrl+R draws a new data set.\n\nSee README.md for the full schema and a worked example.",

@@ -230,6 +230,7 @@
     }
   },
   "app": {
+    "locale_name": "Français",
     "window_title_with_problem": "{app_name} — {title}",
     "menu": {
       "file": {
@@ -280,6 +281,9 @@
         "toggle_theme": "Basculer entre thème clair et sombre",
         "larger_font": "Agrandir la police de l'éditeur",
         "smaller_font": "Réduire la police de l'éditeur"
+      },
+      "language": {
+        "title": "Langue"
       },
       "tools": {
         "title": "Outils",
@@ -396,6 +400,8 @@
       "reset_code_message": "Remplacer votre code par le code de départ de ce problème ?\nVotre travail actuel sera perdu.",
       "theme_changed_title": "Thème modifié",
       "theme_changed_message": "Le nouveau thème sera appliqué au prochain démarrage de {app_name}.",
+      "language_changed_title": "Langue modifiée",
+      "language_changed_message": "{language} sera utilisé au prochain démarrage de {app_name}.",
       "compiler_status_line": "{mark} {language} : {summary}",
       "compiler_status_detecting_line": "{badge} {language} : détection en cours…",
       "authoring_help_message": "Un problème est un fichier JSON situé sous :\n{root}\n\nChamps requis :\n  title, language, statement, harness, tests,\n  et reference_solution (ou reference_solution_b64)\n\nLe harness fournit main() ; le candidat fournit la fonction.\nChaque test est {{name, stdin, expected_stdout, description}}.\n\nChaque solution de référence est exécutée sur la suite complète avant\nque le problème ne soit proposé -- un problème dont la référence échoue\nest désactivé.\n\nLe champ optionnel 'generator' ajoute des cas aléatoires :\n  {{\"count\": 4, \"source\": \"def generate(rng, count): ...\"}}\nIl ne renvoie que des entrées -- {{name, stdin, description}} -- et la\nsortie attendue est capturée depuis la solution de référence, si bien que\nles deux ne peuvent jamais être en désaccord. Ctrl+R tire un nouveau jeu\nde données.\n\nVoir README.md pour le schéma complet et un exemple détaillé.",

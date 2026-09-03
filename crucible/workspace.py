@@ -17,12 +17,20 @@ import os
 import re
 from pathlib import Path
 
+from .i18n import DEFAULT_LOCALE
+
 APP_DIR_NAME = ".crucible"
 
 DEFAULT_SETTINGS = {
     "theme": "dark",
     "font_size": 11,
     "autosave": True,
+    #: Which `crucible.i18n` locale the app's own UI is shown in. Applied at
+    #: startup (see `crucible.__main__.main`), before any window exists, not
+    #: hot-swapped while running -- same reason `theme` isn't: the menus and
+    #: dialogs already built from `t(...)` calls stay in whatever language
+    #: they were built in until the next launch.
+    "locale": DEFAULT_LOCALE,
     #: Window size, pane sizes and which panes are collapsed. Opaque here --
     #: the shape of it belongs to ui/panes.py, and every reader of it treats a
     #: missing or malformed entry as "lay the window out from scratch".

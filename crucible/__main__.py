@@ -24,10 +24,11 @@ for the text itself.
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
-from . import guides, languages, randomise, runner
+from . import guides, i18n, languages, randomise, runner, workspace
 from .i18n import t
 from .problem import Problem, load_library
 
@@ -37,6 +38,24 @@ ROOT = Path(__file__).resolve().parent.parent
 
 def _default_problems_dir() -> Path:
     return ROOT / "problems"
+
+
+def _apply_saved_locale() -> None:
+    """Switch to whichever locale the GUI's *Language* menu last saved,
+    before anything -- the argument parser's own `--help` text included --
+    gets built from `t(...)` calls.
+
+    `CRUCIBLE_LOCALE` wins if set: that is the documented explicit override
+    (for a CI log reader, say), and a stray saved preference on the machine
+    running it should not silently outrank something set on the command
+    line. Only consulted when it is absent, exactly like `i18n`'s own
+    module-level default does.
+    """
+    if "CRUCIBLE_LOCALE" in os.environ:
+        return
+    locale = workspace.load_settings().get("locale", i18n.DEFAULT_LOCALE)
+    if locale in i18n.available_locales():
+        i18n.set_locale(locale)
 
 
 def cmd_toolchains() -> int:
@@ -203,6 +222,8 @@ def cmd_verify(root: Path, seed: int | None) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    _apply_saved_locale()
+
     parser = argparse.ArgumentParser(
         prog="crucible",
         description=t("cli.description"))

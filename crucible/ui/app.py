@@ -13,7 +13,7 @@ from pathlib import Path
 from tkinter import font as tkfont
 from tkinter import messagebox, ttk
 
-from .. import guides, languages, profiles, randomise, runner, workspace
+from .. import guides, i18n, languages, profiles, randomise, runner, workspace
 from ..i18n import t
 from ..problem import DIFFICULTIES, Library, Problem, TestCase, load_library
 from ..randomise import GeneratedSuite
@@ -304,6 +304,21 @@ class CrucibleApp(tk.Tk):
         view_menu.add_command(label=t("app.menu.view.smaller_font"),
                               command=lambda: self._change_font(-1))
         menubar.add_cascade(label=t("app.menu.view.title"), menu=view_menu)
+
+        # One radiobutton per bundled locale, so adding a new
+        # crucible/locales/<code>.json makes it selectable here with no
+        # further wiring. Picking one only saves the choice for next launch
+        # -- see _set_locale for why this doesn't re-render live, the same
+        # reason _toggle_theme doesn't either.
+        language_menu = tk.Menu(menubar, tearoff=0, **opts)
+        self.locale_var = tk.StringVar(value=i18n.get_locale())
+        for locale in i18n.available_locales():
+            language_menu.add_radiobutton(
+                label=i18n.locale_display_name(locale),
+                value=locale, variable=self.locale_var,
+                selectcolor=self.palette.accent,
+                command=lambda loc=locale: self._set_locale(loc))
+        menubar.add_cascade(label=t("app.menu.language.title"), menu=language_menu)
 
         tools_menu = tk.Menu(menubar, tearoff=0, **opts)
         tools_menu.add_command(label=t("app.menu.tools.recheck_compilers"),
@@ -1487,6 +1502,24 @@ class CrucibleApp(tk.Tk):
         messagebox.showinfo(
             t("app.dialog.theme_changed_title"),
             t("app.dialog.theme_changed_message", app_name=APP_NAME),
+            parent=self)
+
+    def _set_locale(self, locale: str) -> None:
+        """Save which locale to start in next time -- deliberately not a
+        live re-render. Every menu, dialog and pane title already on screen
+        was built once, at startup, from `t(...)` calls; re-doing that for a
+        window this size, mid-session, without leaving something half
+        updated, is a lot of machinery for what `_apply_saved_locale` (see
+        `crucible.__main__`) already gets for free on the next launch. The
+        radiobutton itself still flips immediately, via `self.locale_var`,
+        so the choice reads back correctly without needing the rest of the
+        window to follow it."""
+        self.settings["locale"] = locale
+        workspace.save_settings(self.settings)
+        messagebox.showinfo(
+            t("app.dialog.language_changed_title"),
+            t("app.dialog.language_changed_message",
+              language=i18n.locale_display_name(locale), app_name=APP_NAME),
             parent=self)
 
     def _change_font(self, delta: int) -> None:

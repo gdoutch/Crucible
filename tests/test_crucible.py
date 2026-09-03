@@ -22,6 +22,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from crucible import __main__ as crucible_main
 from crucible import guides, i18n, languages, profiles, randomise, runner, workspace
 from crucible.languages.c_lang import CLanguage
 from crucible.languages.csharp_lang import CSharpLanguage
@@ -557,6 +558,36 @@ class TestSeedStorage(unittest.TestCase):
         self.assertEqual(workspace.load_draft("py_two_sum", ".py", root=scoped),
                          "# scoped")
         self.assertEqual(workspace.load_draft("py_two_sum", ".py"), "# default")
+
+
+class TestSettingsLocale(unittest.TestCase):
+    """The Language menu (crucible.ui.app._set_locale) persists its choice
+    through workspace.save_settings/load_settings -- the same file theme
+    and font size already live in, not a separate mechanism of its own."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self._home = os.environ.get("CRUCIBLE_HOME")
+        os.environ["CRUCIBLE_HOME"] = self._tmp.name
+
+    def tearDown(self):
+        if self._home is None:
+            del os.environ["CRUCIBLE_HOME"]
+        else:
+            os.environ["CRUCIBLE_HOME"] = self._home
+        self._tmp.cleanup()
+
+    def test_default_settings_locale_matches_i18n_default(self):
+        self.assertEqual(workspace.DEFAULT_SETTINGS["locale"], i18n.DEFAULT_LOCALE)
+
+    def test_missing_settings_file_defaults_to_en_gb(self):
+        self.assertEqual(workspace.load_settings()["locale"], "en_GB")
+
+    def test_locale_survives_a_round_trip(self):
+        settings = workspace.load_settings()
+        settings["locale"] = "fr_FR"
+        workspace.save_settings(settings)
+        self.assertEqual(workspace.load_settings()["locale"], "fr_FR")
 
 
 # ---------------------------------------------------------------------------
@@ -1283,6 +1314,23 @@ class TestI18n(unittest.TestCase):
     def test_default_locale_is_listed_first(self):
         self.assertEqual(i18n.available_locales()[0], i18n.DEFAULT_LOCALE)
 
+    def test_locale_display_name_is_the_locale_s_own_name_for_itself(self):
+        """A language picker lists 'Français', never 'French' -- each locale
+        names itself, regardless of which locale is currently active."""
+        self.assertEqual(i18n.locale_display_name("en_GB"), "English")
+        self.assertEqual(i18n.locale_display_name("fr_FR"), "Français")
+
+    def test_locale_display_name_does_not_read_through_the_active_locale(self):
+        # fr_FR's own name must come back the same whether English or French
+        # is the currently active locale -- this is exactly what t() would
+        # get wrong (falling back to en_GB's text while fr_FR is active).
+        i18n.set_locale("fr_FR")
+        self.assertEqual(i18n.locale_display_name("fr_FR"), "Français")
+        self.assertEqual(i18n.locale_display_name("en_GB"), "English")
+
+    def test_locale_display_name_falls_back_to_the_code_itself(self):
+        self.assertEqual(i18n.locale_display_name("xx_XX"), "xx_XX")
+
     def test_plain_lookup(self):
         self.assertEqual(i18n.t("app.menu.file.title"), "File")
 
@@ -1451,6 +1499,60 @@ class TestI18n(unittest.TestCase):
         self.assertGreater(checked, 0, "the scan itself found no t() call sites")
         self.assertEqual(missing, [], "key(s) with no entry in en_GB.json:\n"
                                       + "\n".join(missing))
+
+
+# ---------------------------------------------------------------------------
+# GUI locale bootstrap (crucible.__main__._apply_saved_locale)
+# ---------------------------------------------------------------------------
+
+class TestApplySavedLocale(unittest.TestCase):
+    """The Language menu (crucible.ui.app._set_locale) only ever saves a
+    choice to settings.json -- crucible.__main__._apply_saved_locale is what
+    turns that into the active locale, once, before anything is built from a
+    t(...) call. `CRUCIBLE_LOCALE` is the documented explicit override and
+    has to keep winning over a saved preference sitting on the machine."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self._home = os.environ.get("CRUCIBLE_HOME")
+        os.environ["CRUCIBLE_HOME"] = self._tmp.name
+        self._env_locale = os.environ.pop("CRUCIBLE_LOCALE", None)
+        self._original_locale = i18n.get_locale()
+        self.addCleanup(i18n.set_locale, self._original_locale)
+
+    def tearDown(self):
+        if self._home is None:
+            del os.environ["CRUCIBLE_HOME"]
+        else:
+            os.environ["CRUCIBLE_HOME"] = self._home
+        if self._env_locale is not None:
+            os.environ["CRUCIBLE_LOCALE"] = self._env_locale
+        elif "CRUCIBLE_LOCALE" in os.environ:
+            del os.environ["CRUCIBLE_LOCALE"]
+        self._tmp.cleanup()
+
+    def test_applies_the_saved_locale(self):
+        workspace.save_settings({"locale": "fr_FR"})
+        i18n.set_locale("en_GB")
+        crucible_main._apply_saved_locale()
+        self.assertEqual(i18n.get_locale(), "fr_FR")
+
+    def test_env_var_overrides_the_saved_locale(self):
+        workspace.save_settings({"locale": "fr_FR"})
+        os.environ["CRUCIBLE_LOCALE"] = "en_GB"
+        i18n.set_locale("en_GB")
+        crucible_main._apply_saved_locale()
+        self.assertEqual(i18n.get_locale(), "en_GB")  # the saved fr_FR never applied
+
+    def test_an_unknown_saved_locale_is_ignored_not_raised(self):
+        workspace.save_settings({"locale": "xx_XX"})
+        i18n.set_locale("en_GB")
+        crucible_main._apply_saved_locale()  # must not raise
+        self.assertEqual(i18n.get_locale(), "en_GB")
+
+    def test_no_settings_file_leaves_the_default_locale(self):
+        crucible_main._apply_saved_locale()
+        self.assertEqual(i18n.get_locale(), "en_GB")
 
 
 if __name__ == "__main__":

@@ -158,7 +158,7 @@ Everything is stored under `~/.crucible/`:
 
 ```text
 ~/.crucible/
-  settings.json          theme, font size, window layout -- shared by everyone
+  settings.json          theme, font size, display language, window layout -- shared by everyone
   profiles.json           every profile's username and which one is current
   profiles/<id>/
     drafts/                your in-progress code, one file per problem
@@ -1097,6 +1097,19 @@ or by setting `CRUCIBLE_LOCALE=fr_FR` before launch. Nothing about the calling
 code changes -- every call site already asks for a key, not for English text
 -- and a locale that only translates *some* keys still works, falling back to
 `en_GB` key by key rather than needing to be complete before it can ship.
+
+The GUI has a third way that needs neither: the **Language** menu lists
+every bundled locale by its own name for itself (`i18n.locale_display_name`
+-- "Français", never "French", regardless of which locale is currently
+active) and saves the choice to `settings.json`. That save takes effect on
+the *next* launch, not immediately -- the same deliberate choice
+`View → Toggle light / dark theme` already makes, because every menu,
+dialog and pane title on screen was already built once, at startup, from
+`t(...)` calls, and `crucible.__main__._apply_saved_locale` is what reads
+the saved choice back on the way up, before the window (or even the argument
+parser's own `--help` text) is built. `CRUCIBLE_LOCALE` still wins if set --
+an explicit override should not be silently outranked by a preference saved
+on whatever machine happens to be running it.
 
 **What is deliberately not in here**: problem statements, hints and worked
 solutions. Those are authored, per-problem teaching content -- see
