@@ -1,7 +1,9 @@
 # Crucible
 
-A small Tkinter practice harness. Pick a problem, read the test cases, write
-your code, press **Go**, and see which cases pass.
+A small practice harness for C, C++, Python, C# and Java — pick a problem,
+read the test cases, write your code, press **Go**, and see which cases pass.
+Missing your language? Adding one is a single ~60-line subclass — see
+[Adding a language](#adding-a-language).
 
 Built around one rule: **the test cases are always visible, the reference
 solution never is.** Every problem's suite is proved satisfiable by running the
