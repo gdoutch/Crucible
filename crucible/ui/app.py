@@ -747,8 +747,16 @@ class CrucibleApp(tk.Tk):
         present = self._library.languages_present
         names = [languages.get(lid).display_name for lid in present]
         all_languages = t("app.toolbar.all_languages")
-        self.language_box.configure(values=[all_languages] + names)
-        if not self.language_var.get() or self.language_var.get() not in [all_languages] + names:
+        options = [all_languages] + names
+        self.language_box.configure(values=options)
+        # The box was given a fixed width back when "Python" was the longest
+        # entry. A longer display name -- "x86-64 Assembly (MASM)" among
+        # them -- would otherwise sit truncated behind the readonly field
+        # both in the closed box and in the dropdown list, so the width
+        # tracks whatever is actually on offer instead of a guess frozen at
+        # construction time.
+        self.language_box.configure(width=max(len(option) for option in options))
+        if not self.language_var.get() or self.language_var.get() not in options:
             self.language_var.set(names[0] if len(names) == 1 else all_languages)
 
         self._refresh_toolchain_label()
