@@ -61,10 +61,17 @@ def _apply_saved_locale() -> None:
 def cmd_toolchains() -> int:
     print(t("cli.toolchains.heading"))
     missing = False
+    # The row template pads the name to a minimum width, chosen back when the
+    # longest one was "Python". Pre-padding to the longest name actually
+    # registered keeps the summary column straight however long a later
+    # language's name turns out to be, without widening every row to suit it.
+    width = max(len(language.display_name)
+                for language in languages.all_languages())
     for language in languages.all_languages():
         status = language.toolchain()
         mark = t("cli.toolchains.mark_ok") if status.available else t("cli.toolchains.mark_missing")
-        print(t("cli.toolchains.row", mark=mark, name=language.display_name,
+        print(t("cli.toolchains.row", mark=mark,
+                name=language.display_name.ljust(width),
                 summary=status.summary))
         if status.detail:
             for line in status.detail.splitlines():
@@ -87,13 +94,18 @@ def cmd_list(root: Path) -> int:
         print(t("cli.list.none_found", root=root))
         return 1
     print(t("cli.list.heading", count=len(library.problems), root=root))
+    # Pre-padded for the same reason as the toolchain table: the row template
+    # sets a minimum width that suited the ids it was written against, and a
+    # longer one would otherwise push that column's titles out of line.
+    width = max(len(problem.language_id) for problem in library.problems)
     for problem in library.problems:
         visible = len(problem.visible_tests)
         hidden = len(problem.tests) - visible
         extra = t("cli.list.hidden_suffix", hidden=hidden) if hidden else ""
         random_note = (t("cli.list.randomised_suffix", count=problem.generator.count)
                        if problem.generator else "")
-        print(t("cli.list.row_title", language=problem.language_id, title=problem.title))
+        print(t("cli.list.row_title", language=problem.language_id.ljust(width),
+                title=problem.title))
         print(t("cli.list.row_detail", difficulty=problem.difficulty,
                 visible=visible, extra=extra, random_note=random_note,
                 id=problem.id))

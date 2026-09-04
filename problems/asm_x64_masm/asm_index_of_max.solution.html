@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Index of the Largest Element · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · x86-64 Assembly (MASM) · medium</p>
+  <h1>Index of the Largest Element</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The whole thing</h2>
+
+<pre><code>; int index_of_max(const int *values, int count)
+.code
+index_of_max PROC
+    mov eax, -1                         ; the empty-array answer
+    test edx, edx
+    jle done                            ; count &lt;= 0: nothing to look at
+    xor eax, eax                        ; best index = 0
+    mov r9d, dword ptr [rcx]            ; best value = values[0]
+    mov r8d, 1                          ; i = 1
+next:
+    cmp r8d, edx
+    jge done                            ; while i &lt; count
+    mov r10d, dword ptr [rcx + r8*4]    ; values[i]
+    cmp r10d, r9d
+    jle skip                            ; strictly greater only: ties keep
+    mov r9d, r10d                       ; the earlier index
+    mov eax, r8d
+skip:
+    inc r8d
+    jmp next
+done:
+    ret
+index_of_max ENDP
+end</code></pre>
+
+<h2>Walking it through</h2>
+
+<p>The tie case, <code>1 7 3 7 2</code>, where the answer is <code>1</code>:</p>
+
+<table class="trace">
+  <tr><th>i</th><th>values[i]</th><th>vs best</th><th>Action</th>
+      <th>best value</th><th>eax</th></tr>
+  <tr><td>—</td><td>—</td><td>—</td><td>seed from element 0</td>
+      <td>1</td><td>0</td></tr>
+  <tr><td>1</td><td>7</td><td>7 &gt; 1</td><td>update</td>
+      <td>7</td><td>1</td></tr>
+  <tr><td>2</td><td>3</td><td>3 ≤ 7</td><td>skip</td>
+      <td>7</td><td>1</td></tr>
+  <tr><td>3</td><td>7</td><td>7 ≤ 7</td><td><strong>skip</strong></td>
+      <td>7</td><td>1</td></tr>
+  <tr><td>4</td><td>2</td><td>2 ≤ 7</td><td>skip</td>
+      <td>7</td><td>1</td></tr>
+</table>
+
+<p>Row <code>i = 3</code> is the one that matters. The second <code>7</code>
+  is equal to the best, not greater than it, so <code>jle skip</code> is taken
+  and <code>eax</code> keeps the earlier index. That single flag condition is
+  the entire "first occurrence wins" rule — there is no separate code for it
+  anywhere.</p>
+
+<h2><code>jle</code> is doing two jobs at once</h2>
+
+<p>It is worth being explicit about how much rides on that one mnemonic,
+  because both of this problem's real bugs live there:</p>
+
+<table class="trace">
+  <tr><th>Written as</th><th>Ties</th><th>Negatives</th><th>Verdict</th></tr>
+  <tr><td><code>jle skip</code></td><td>first wins ✓</td><td>signed ✓</td>
+      <td>correct</td></tr>
+  <tr><td><code>jl skip</code></td><td>last wins ✗</td><td>signed ✓</td>
+      <td>fails <em>tie keeps the earlier index</em></td></tr>
+  <tr><td><code>jbe skip</code></td><td>first wins ✓</td><td>unsigned ✗</td>
+      <td>fails <em>all negative</em></td></tr>
+  <tr><td><code>jb skip</code></td><td>last wins ✗</td><td>unsigned ✗</td>
+      <td>fails both</td></tr>
+</table>
+
+<p>All four assemble. All four are plausible at a glance. Only one is right,
+  and the two test cases named in that table are there to tell you which
+  mistake you made rather than merely that you made one.</p>
+
+<div class="trap">
+<p><strong>Why the unsigned version is so convincing.</strong>
+  <code>cmp</code> does not know or care whether its operands are signed — it
+  subtracts and sets flags, and every flag it could possibly need is set every
+  time. The <em>jump</em> chooses an interpretation. So
+  <code>jbe</code> after comparing <code>-9</code> and <code>-2</code> reads
+  them as <code>0xFFFFFFF7</code> and <code>0xFFFFFFFE</code>, decides
+  <code>-9</code> is the smaller of the two, and is perfectly consistent about
+  it — consistently wrong for an <code>int</code>. On an array of positives it
+  agrees with <code>jle</code> on every single input, which is why this bug
+  survives casual testing.</p>
+</div>
+
+<h2>Why <code>eax</code> holds the answer the whole way through</h2>
+
+<p><code>mov eax, -1</code> is the first instruction, before anything has been
+  examined, so the empty-array case needs no branch of its own: the guard
+  jumps to <code>done</code> and <code>ret</code> returns a value that was
+  already correct. Then <code>xor eax, eax</code> overwrites it with
+  <code>0</code> once we know there is at least one element, and from that
+  point <code>eax</code> is simply "the best index so far".</p>
+
+<p>Keeping the answer in the return register for the whole procedure — rather
+  than tracking it somewhere else and moving it at the end — means there is
+  no final <code>mov</code> to forget, and no path out of the procedure that
+  could return a stale value. Every <code>ret</code> is correct by
+  construction because there is only one, and everything that reaches it has
+  maintained the invariant.</p>
+
+<h2>Seeding from element 0</h2>
+
+<p>The loop starts at <code>i = 1</code> because element 0 has already been
+  taken as the incumbent. The alternative — start the best value at
+  <code>80000000h</code> (<code>INT_MIN</code>) and loop from 0 — removes the
+  seed but adds a magic constant, and quietly relies on no element ever being
+  equal to <code>INT_MIN</code>, since such an element would not be strictly
+  greater than the seed and would leave the index at whatever it was
+  initialised to.</p>
+
+<p>Seeding from real data has no such assumption. It needs the count guard,
+  but the null-pointer case demanded that anyway.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(n)</strong> time, one pass, <strong>O(1)</strong> space: four
+  registers, no stack frame, no prologue, no epilogue. There is no way to do
+  better than one pass — you cannot know the largest element without having
+  looked at all of them.</p>
+
+<h2>Two wrong turns worth recognising</h2>
+
+<div class="trap">
+<p><strong>Returning the value instead of the index.</strong> Easy to drift
+  into, because the value is the thing you are actively comparing and the
+  index is only along for the ride. If <em>largest is last</em> gives
+  <code>9</code> where <code>3</code> was expected, this is what happened.</p>
+<p><strong>Comparing <code>r8d</code> against <code>rdx</code>, or indexing
+  with <code>r8d</code>.</strong> The count arrived in <code>edx</code> and
+  the upper half of <code>rdx</code> is undefined, so compare the 32-bit
+  halves — and memory operands need the full 64-bit <code>r8</code>, since
+  addresses are 64-bit. Writing <code>r8d</code> zeroes the top of
+  <code>r8</code> automatically, which is what makes using both forms of the
+  same register safe here rather than merely lucky.</p>
+</div>
+
+<footer>
+  <p><a href="asm_index_of_max.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,44 @@
+{
+  "id": "asm_count_set_bits",
+  "title": "Count Set Bits",
+  "language": "asm_x64_masm",
+  "difficulty": "easy",
+  "topics": [
+    "bit manipulation",
+    "loops"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Count how many bits are set in a 32-bit unsigned value.\n\n## Your procedure\n\n```\nint count_set_bits(unsigned int value);\n```\n\n`count_set_bits(0)` is `0`, `count_set_bits(7)` is `3`, and\n`count_set_bits(0xFFFFFFFF)` is `32`.\n\n## The calling convention\n\nMicrosoft x64. The first four integer or pointer arguments arrive in\nregisters, and a 32-bit result goes back in `eax`:\n\n| | 1st | 2nd | 3rd | 4th | return |\n| --- | --- | --- | --- | --- | --- |\n| 64-bit | `rcx` | `rdx` | `r8` | `r9` | `rax` |\n| 32-bit | `ecx` | `edx` | `r8d` | `r9d` | `eax` |\n\n`rax`, `rcx`, `rdx`, `r8`-`r11` are yours to clobber. `rbx`, `rbp`, `rsi`,\n`rdi` and `r12`-`r15` belong to the caller: use one and you must `push` it on\nthe way in and `pop` it on the way out.\n\nNothing here needs the stack, so nothing here needs a prologue.\n\n## Watch out\n\n- `popcnt` does the whole job in one instruction. It passes these tests and\n  misses the point of the exercise -- shift the bits out yourself.\n- The value is **unsigned**, so shift it right with `shr`, never `sar`.\n  `sar` copies the sign bit down, and a value with the top bit set would\n  then never reach zero: the loop would run forever and the case would come\n  back `TIMEOUT` rather than with a wrong answer.\n- `shr` puts the bit it shifted out into the carry flag, which `jc` and `jnc`\n  can branch on -- one way to do this, though testing the low bit with `and`\n  works just as well.\n",
+  "starter_code": "; int count_set_bits(unsigned int value)\n;\n;   ecx = value (the bits to count)\n;   eax = how many of them are set\n\n.code\ncount_set_bits PROC\n    ; your code here\n    xor eax, eax\n    ret\ncount_set_bits ENDP\nend\n",
+  "harness": "#include <stdio.h>\n\n/* Provided by the candidate in solution.asm */\nint count_set_bits(unsigned int value);\n\nint main(void)\n{\n    unsigned int value;\n    if (scanf(\"%u\", &value) != 1) {\n        return 1;\n    }\n    printf(\"%d\\n\", count_set_bits(value));\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random values for count_set_bits.\n\nThe expected answer is captured from the reference rather than computed here,\nso this only has to produce inputs worth running -- a spread of bit patterns,\nincluding ones with the top bit set, where a signed shift would hang.\n\"\"\"\n\nMASK = 0xFFFFFFFF\n\n\ndef generate(rng, count):\n    builders = (_scattered, _high_bits, _single_bit, _run_of_ones)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, value, description=\"\"):\n    return {\"name\": name, \"stdin\": \"%d\\n\" % (value & MASK),\n            \"description\": description}\n\n\ndef _scattered(rng, index):\n    return _case(\"scattered bits #%d\" % index, rng.randrange(1 << 32))\n\n\ndef _high_bits(rng, index):\n    # Always has the top bit set, which is what separates shr from sar.\n    return _case(\"top bit set #%d\" % index,\n                 (1 << 31) | rng.randrange(1 << 31),\n                 \"The top bit is set, so a signed shift would never \"\n                 \"terminate.\")\n\n\ndef _single_bit(rng, index):\n    position = rng.randrange(32)\n    return _case(\"one bit, at %d #%d\" % (position, index), 1 << position)\n\n\ndef _run_of_ones(rng, index):\n    width = rng.randint(1, 32)\n    start = rng.randint(0, 32 - width)\n    return _case(\"%d adjacent bits #%d\" % (width, index),\n                 ((1 << width) - 1) << start)\n"
+  },
+  "tests": [
+    {
+      "name": "zero",
+      "stdin": "0\n",
+      "expected_stdout": "0",
+      "description": "The loop must not run at all."
+    },
+    {
+      "name": "all ones",
+      "stdin": "4294967295\n",
+      "expected_stdout": "32",
+      "description": "The top bit is set. With `sar` instead of `shr` this case never terminates."
+    },
+    {
+      "name": "top bit only",
+      "stdin": "2147483648\n",
+      "expected_stdout": "1",
+      "description": "One set bit, but it takes 32 shifts to reach it."
+    },
+    {
+      "name": "low three bits",
+      "stdin": "7\n",
+      "expected_stdout": "3"
+    }
+  ],
+  "reference_solution_b64": "OyBpbnQgY291bnRfc2V0X2JpdHModW5zaWduZWQgaW50IHZhbHVlKQouY29kZQpjb3VudF9zZXRfYml0cyBQUk9DCiAgICB4b3IgZWF4LCBlYXggICAgICAgICAgICAgICAgOyBjb3VudCA9IDAKbmV4dDoKICAgIHRlc3QgZWN4LCBlY3gKICAgIGp6IGRvbmUgICAgICAgICAgICAgICAgICAgICA7IG5vIGJpdHMgbGVmdCB0byBsb29rIGF0CiAgICBzaHIgZWN4LCAxICAgICAgICAgICAgICAgICAgOyBsb3cgYml0IGZhbGxzIGludG8gdGhlIGNhcnJ5IGZsYWcKICAgIGpuYyBuZXh0ICAgICAgICAgICAgICAgICAgICA7IGl0IHdhcyAwIC0tIG5vdGhpbmcgdG8gY291bnQKICAgIGluYyBlYXgKICAgIGptcCBuZXh0CmRvbmU6CiAgICByZXQKY291bnRfc2V0X2JpdHMgRU5EUAplbmQK"
+}

@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Count Set Bits · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · x86-64 Assembly (MASM) · easy</p>
+  <h1>Count Set Bits</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>How many of the 32 bits in <code>ecx</code> are <code>1</code>. Sometimes
+  called the <em>population count</em>, or Hamming weight.</p>
+
+<div class="note">
+<p>x86 has had a <code>popcnt</code> instruction since 2008, and
+  <code>popcnt eax, ecx</code> is the entire problem in one line. It passes
+  every test here. It also skips the exercise, which is the loop and the flags
+  — so shift the bits out yourself, the same way the hardware instruction was
+  invented to stop people doing.</p>
+</div>
+
+<h2>The idea in one sentence</h2>
+
+<p>Look at the lowest bit, add it to a running count, shift everything down
+  by one, and stop when there is nothing left.</p>
+
+<p>"Nothing left" is the useful part. You do not need to count to 32: once the
+  value has been shifted down to zero, every remaining bit is a zero and there
+  is nothing more to find. A value of <code>1</code> costs one iteration
+  rather than thirty-two.</p>
+
+<h2>Two ways to look at the lowest bit</h2>
+
+<table class="trace">
+  <tr><th>Approach</th><th>How</th></tr>
+  <tr><td>Mask it off</td>
+      <td>Copy the value into a scratch register, <code>and</code> it with
+        <code>1</code>, and <code>add</code> that to the count. Adds zero or
+        one, so no branch is needed at all.</td></tr>
+  <tr><td>Let the shift tell you</td>
+      <td><code>shr</code> puts the bit it shifted off the bottom into the
+        <strong>carry flag</strong>. <code>jc</code> jumps if it was set,
+        <code>jnc</code> if it was not.</td></tr>
+</table>
+
+<p>Both are fine. The second is the more assembly-flavoured of the two — the
+  bit you need to know about has already been captured as a side effect of the
+  shift you were going to do anyway, so nothing extra has to be computed to
+  find it.</p>
+
+<h2>The trap: <code>shr</code> and <code>sar</code> are not the same</h2>
+
+<div class="trap">
+<p><strong><code>sar</code> on a value with the top bit set never reaches
+  zero.</strong> Both instructions shift right; they differ in what they feed
+  in at the top. <code>shr</code> — the logical shift — feeds in zeros.
+  <code>sar</code> — the arithmetic shift — copies the existing top bit down,
+  because that is what preserves the value of a <em>signed</em> number when
+  you halve it.</p>
+<p>The value here is <code>unsigned</code>. Shift <code>0xFFFFFFFF</code> with
+  <code>sar</code> and it stays <code>0xFFFFFFFF</code> for ever, so a loop
+  that runs "until the value is zero" never ends. Crucible times each case
+  out separately, so the symptom is <code>TIMEOUT</code> on the
+  <em>all ones</em> and <em>top bit set</em> cases while the small values
+  pass — which is a very recognisable signature once you have seen it once.</p>
+</div>
+
+<h2>The shape of the loop</h2>
+
+<pre><code>    ; count = 0
+next:
+    ; if the value is zero, we are done
+    ; shift the low bit out
+    ; if that bit was a 1, add one to the count
+    ; go back to next
+done:
+    ret</code></pre>
+
+<p>The test at the top rather than the bottom is what makes
+  <code>count_set_bits(0)</code> return <code>0</code> without doing any work.
+  <code>test ecx, ecx</code> followed by <code>jz</code> is the idiomatic way
+  to write it.</p>
+
+<details>
+<summary>Still stuck? A bigger nudge</summary>
+
+<p>Using the carry flag, the body is three instructions and two of them are
+  jumps:</p>
+
+<pre><code>.code
+count_set_bits PROC
+    xor eax, eax            ; count = 0
+next:
+    test ecx, ecx
+    jz done                 ; no bits left
+    shr ecx, 1              ; the bit that fell off is now in CF
+    ; two lines here: skip the increment when CF was clear,
+    ; otherwise count it — then jump back to next either way
+done:
+    ret
+count_set_bits ENDP
+end</code></pre>
+
+<p>The neat version needs no explicit "skip" label: <code>jnc next</code>
+  goes straight back round when the bit was zero, so the
+  <code>inc eax</code> that follows only ever runs when it was one.</p>
+
+</details>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li><code>0</code> → <code>0</code>, having never entered the body.</li>
+  <li><code>7</code> → <code>3</code>, and it took three iterations, not
+    thirty-two.</li>
+  <li><code>2147483648</code> (the top bit alone) → <code>1</code>, after 32
+    shifts.</li>
+  <li><code>4294967295</code> (all ones) → <code>32</code>. If this one hangs
+    while the others pass, you wrote <code>sar</code>.</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="asm_count_set_bits.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

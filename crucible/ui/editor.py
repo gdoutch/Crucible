@@ -956,6 +956,15 @@ def _build_pattern(line_comment: str) -> re.Pattern[str]:
         comment = r"//[^\n]*|/\*.*?\*/"
         strings = r'"(?:\\.|[^"\\\n])*"|\'(?:\\.|[^\'\\\n])*\''
         preproc = r"^[ \t]*\#[^\n]*"
+    elif line_comment == ";":
+        # Assembly. No block comments and no escape sequences inside a
+        # string -- a backslash in MASM is just a backslash -- so the string
+        # rules are the simple ones rather than the C ones. The nearest thing
+        # to a preprocessor line is a directive such as `.code` or `.data`,
+        # which the identifier rule below cannot match anyway because of the
+        # leading dot.
+        strings = r'"[^"\n]*"|\'[^\'\n]*\''
+        preproc = r"^[ \t]*\.[A-Za-z]\w*"
     else:
         strings = (r'"""(?:.|\n)*?"""|\'\'\'(?:.|\n)*?\'\'\''
                    r'|"(?:\\.|[^"\\\n])*"|\'(?:\\.|[^\'\\\n])*\'')

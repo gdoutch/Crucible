@@ -18,12 +18,15 @@ import sys
 import tempfile
 import textwrap
 import unittest
+from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from crucible import __main__ as crucible_main
 from crucible import guides, i18n, languages, profiles, randomise, runner, workspace
+from crucible.languages import asm_lang, native_compiler
+from crucible.languages.asm_lang import AsmX64MasmLanguage
 from crucible.languages.c_lang import CLanguage
 from crucible.languages.csharp_lang import CSharpLanguage
 from crucible.problem import ProblemError, load_library, load_problem
@@ -1196,6 +1199,11 @@ class TestLanguageRegistry(unittest.TestCase):
         self.assertIn("c", languages.known_ids())
         self.assertIn("python", languages.known_ids())
 
+    def test_an_assembly_target_is_registered_under_its_own_id(self):
+        """Each assembly target is a language in its own right rather
+        than a variant of a shared "asm" -- see `asm_lang`."""
+        self.assertIn("asm_x64_masm", languages.known_ids())
+
     def test_unknown_language_raises_with_a_helpful_message(self):
         with self.assertRaises(KeyError) as ctx:
             languages.get("cobol")
@@ -1287,6 +1295,75 @@ class TestCSharpDiagnostics(unittest.TestCase):
             self.skipTest(".NET SDK is installed")
         self.assertTrue(status.remedy)
         self.assertIn("sdk", status.remedy.lower())
+
+
+class TestAsmX64MasmDiagnostics(unittest.TestCase):
+    """Testable without an assembler installed."""
+
+    def setUp(self):
+        self.asm = AsmX64MasmLanguage()
+
+    def test_temp_paths_are_stripped_from_diagnostics(self):
+        raw = (f"C:{os.sep}long{os.sep}temp{os.sep}crucible_x{os.sep}"
+               f"solution.asm(4) : error A2006: bad")
+        self.assertEqual(self.asm.clean_diagnostics(raw),
+                         "solution.asm(4) : error A2006: bad")
+
+    def test_tool_filename_echo_is_stripped(self):
+        noisy = (" Assembling: solution.asm\n"
+                 "harness.c\n"
+                 "solution.asm(5) : error A2207: bad\n"
+                 "Generating Code...")
+        self.assertEqual(self.asm._strip_tool_noise(noisy),
+                         "solution.asm(5) : error A2207: bad")
+
+    @unittest.skipUnless(sys.platform == "win32", "Windows NTSTATUS encoding")
+    def test_access_violation_is_described(self):
+        self.assertIn("access violation", self.asm.describe_exit(0xC0000005))
+
+    @unittest.skipUnless(sys.platform == "win32", "Windows NTSTATUS encoding")
+    def test_clean_exit_is_not_called_a_crash(self):
+        self.assertNotIn("crash", self.asm.describe_exit(1))
+
+    def test_a_non_windows_host_is_reported_as_unavailable(self):
+        """The MASM target is Windows-only, and has to say so rather than
+        claim a toolchain it cannot have."""
+        with mock.patch.object(native_compiler, "IS_WINDOWS", False):
+            status = self.asm.detect_toolchain()
+        self.assertFalse(status.available)
+        self.assertIn("Windows", status.summary)
+
+    def test_a_non_x86_64_host_is_reported_as_unavailable(self):
+        """The check that keeps `--verify` honest. An ARM machine with Visual
+        Studio installed can find ml64.exe on disk and cannot use it: without
+        this, the language would claim to be available and every problem in it
+        would then fail in a way that looks like the candidate's fault rather
+        than the machine's."""
+        with mock.patch.object(native_compiler, "IS_WINDOWS", True), \
+                mock.patch.object(asm_lang.platform, "machine",
+                                  return_value="ARM64"):
+            status = self.asm.detect_toolchain()
+        self.assertFalse(status.available)
+        self.assertIn("ARM64", status.detail)
+
+    def test_missing_assembler_reports_a_remedy(self):
+        status = self.asm.toolchain()
+        if status.available:
+            self.skipTest("an assembler is installed")
+        if not nc_available_elsewhere(status):
+            self.skipTest("not applicable on this host")
+        self.assertTrue(status.remedy)
+        self.assertIn("ml64", status.remedy.lower())
+
+
+def nc_available_elsewhere(status) -> bool:
+    """True when the toolchain is missing for a reason a remedy could fix.
+
+    "Windows only" and "wrong architecture" are facts about the machine, not
+    something an install would change, so those two report no remedy on
+    purpose and this test has nothing to check.
+    """
+    return "Windows only" not in status.summary and "x86-64 machine" not in status.summary
 
 
 # ---------------------------------------------------------------------------

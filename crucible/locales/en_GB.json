@@ -227,6 +227,31 @@
         "sigabrt": "SIGABRT (abort) -- the JVM itself aborted",
         "killed_by_signal": "killed by signal {signal}"
       }
+    },
+    "asm_x64_masm": {
+      "install_help": "No assembler found.\n\nThese problems are assembled with ml64.exe, which ships with the\nVisual Studio C++ toolset -- the same one C and C++ use here, so\ninstalling it covers all three.\n\n  1. Visual Studio -- open the Visual Studio Installer, click\n     Modify, and tick 'Desktop development with C++'.\n\n  2. Build Tools for Visual Studio -- the same toolset without\n     the IDE.\n     https://visualstudio.microsoft.com/downloads/\n\nRe-check from the Tools menu once installed -- no restart needed.",
+      "summary_not_windows": "x86-64 Assembly (MASM): Windows only",
+      "detail_not_windows": "ml64.exe ships with Visual Studio and does not run on {system}.\nAssembly for another platform is a different target rather than this one -- the calling convention and the syntax both differ.",
+      "summary_wrong_arch": "x86-64 Assembly (MASM): needs an x86-64 machine",
+      "detail_wrong_arch": "This machine reports {machine}.\nml64.exe assembles x86-64 only, so these problems cannot be built or run here.",
+      "summary": "x86-64 Assembly: MASM (ml64)",
+      "detail": "Assembler: {ml64}\nLinked with: {cl}\nEnvironment initialised from vcvars64.bat",
+      "summary_current_env": "x86-64 Assembly: MASM (ml64, from current environment)",
+      "detail_current_env": "Assembler: {ml64}\nLinked with: {cl}",
+      "summary_no_assembler": "x86-64 Assembly: MSVC found, but no ml64.exe",
+      "detail_no_assembler": "Compiler: {cl}\nNo ml64.exe beside it -- the C++ toolset is installed but its assembler is missing.",
+      "summary_not_found": "x86-64 Assembly: no assembler found",
+      "detail_not_found": "Searched PATH and the Visual Studio installation for ml64.exe and cl.exe.",
+      "build_timeout": "Assembling and linking timed out after 60s.",
+      "exit": {
+        "access_violation": "access violation (a bad address in a mov, or a pointer argument followed past the end of what it points at)",
+        "divide_by_zero": "integer division by zero (idiv by a zero divisor)",
+        "integer_overflow": "the quotient did not fit in the destination register -- idiv faults rather than wrapping (was rdx sign-extended with cdq or cqo first?)",
+        "illegal_instruction": "illegal instruction (did execution run off the end of a procedure without a ret?)",
+        "stack_overflow": "stack overflow (runaway recursion, or a push with no matching pop inside a loop?)",
+        "interrupted": "interrupted",
+        "crashed": "crashed: {description}"
+      }
     }
   },
   "app": {

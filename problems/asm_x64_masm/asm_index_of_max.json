@@ -1,0 +1,52 @@
+{
+  "id": "asm_index_of_max",
+  "title": "Index of the Largest Element",
+  "language": "asm_x64_masm",
+  "difficulty": "medium",
+  "topics": [
+    "loops",
+    "addressing",
+    "branching",
+    "arrays"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Find where the largest value in an array lives, not what it is.\n\n## Your procedure\n\n```\nint index_of_max(const int *values, int count);\n```\n\nReturn the index of the largest element. If the largest value appears more\nthan once, return the index of the **first** one. If `count` is `0`, return\n`-1`.\n\n## The calling convention\n\nMicrosoft x64. The first four integer or pointer arguments arrive in\nregisters, and a 32-bit result goes back in `eax`:\n\n| | 1st | 2nd | 3rd | 4th | return |\n| --- | --- | --- | --- | --- | --- |\n| 64-bit | `rcx` | `rdx` | `r8` | `r9` | `rax` |\n| 32-bit | `ecx` | `edx` | `r8d` | `r9d` | `eax` |\n\n`rax`, `rcx`, `rdx`, `r8`-`r11` are yours to clobber. `rbx`, `rbp`, `rsi`,\n`rdi` and `r12`-`r15` belong to the caller: use one and you must `push` it on\nthe way in and `pop` it on the way out.\n\nNothing here needs the stack, so nothing here needs a prologue.\n\n## Watch out\n\n- Two things have to be carried through the loop, not one: the best value\n  seen so far *and* where it was. Registers are cheap -- use two.\n- \"First one wins\" on a tie is decided by the comparison you branch on.\n  Replacing the current best only when the new value is *strictly* greater\n  keeps the earlier index; replacing on greater-or-equal quietly returns the\n  last one instead.\n- The values are signed, so compare with `jg`/`jle`, not `ja`/`jbe`. The\n  unsigned conditions read `-1` as roughly four billion and will happily\n  call it the largest element in the array.\n- `count == 0` returns `-1` and must not load anything. `values` may be null.\n",
+  "starter_code": "; int index_of_max(const int *values, int count)\n;\n;   rcx = values (the array)\n;   edx = count  (how many elements)\n;   eax = the index you return, or -1 for an empty array\n\n.code\nindex_of_max PROC\n    ; your code here\n    mov eax, -1\n    ret\nindex_of_max ENDP\nend\n",
+  "harness": "#include <stdio.h>\n#include <stdlib.h>\n\n/* Provided by the candidate in solution.asm */\nint index_of_max(const int *values, int count);\n\nint main(void)\n{\n    int count;\n    if (scanf(\"%d\", &count) != 1 || count < 0) {\n        return 1;\n    }\n    int *values = NULL;\n    if (count > 0) {\n        values = malloc((size_t)count * sizeof *values);\n        if (values == NULL) {\n            return 1;\n        }\n        for (int i = 0; i < count; i++) {\n            if (scanf(\"%d\", &values[i]) != 1) {\n                free(values);\n                return 1;\n            }\n        }\n    }\n    printf(\"%d\\n\", index_of_max(values, count));\n    free(values);\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random arrays for index_of_max.\n\nDeliberately weighted towards the two things that go wrong: ties, which the\nfirst-wins rule turns on, and all-negative arrays, where an unsigned\ncomparison gives a confidently wrong answer.\n\"\"\"\n\nLOW, HIGH = -200, 200\n\n\ndef generate(rng, count):\n    builders = (_mixed, _with_a_tie, _all_negative, _max_at_an_end)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, values, description=\"\"):\n    return {\n        \"name\": name,\n        \"stdin\": \"%d\\n%s\\n\" % (len(values),\n                                \" \".join(str(v) for v in values)),\n        \"description\": description,\n    }\n\n\ndef _mixed(rng, index):\n    values = [rng.randint(LOW, HIGH) for _ in range(rng.randint(5, 14))]\n    return _case(\"mixed values #%d\" % index, values)\n\n\ndef _with_a_tie(rng, index):\n    # Build the array below the peak, then plant the same peak twice so the\n    # tie is a fact about the input rather than something to hope for.\n    values = [rng.randint(LOW, HIGH - 1) for _ in range(rng.randint(6, 14))]\n    first, second = sorted(rng.sample(range(len(values)), 2))\n    values[first] = values[second] = HIGH\n    return _case(\"repeated maximum #%d\" % index, values,\n                 \"The largest value appears at %d and %d; the answer is the \"\n                 \"earlier one.\" % (first, second))\n\n\ndef _all_negative(rng, index):\n    values = [rng.randint(LOW, -1) for _ in range(rng.randint(5, 14))]\n    return _case(\"all negative #%d\" % index, values,\n                 \"Every value has its top bit set, so an unsigned comparison \"\n                 \"picks the wrong one.\")\n\n\ndef _max_at_an_end(rng, index):\n    values = [rng.randint(LOW, HIGH - 1) for _ in range(rng.randint(5, 14))]\n    position = 0 if index % 2 else len(values) - 1\n    values[position] = HIGH\n    return _case(\"largest at index %d #%d\" % (position, index), values,\n                 \"The largest element sits at one end of the array.\")\n"
+  },
+  "tests": [
+    {
+      "name": "empty array",
+      "stdin": "0\n",
+      "expected_stdout": "-1",
+      "description": "Return -1 without loading through a null pointer."
+    },
+    {
+      "name": "largest is first",
+      "stdin": "4\n9 1 2 3\n",
+      "expected_stdout": "0",
+      "description": "Nothing after the first element beats it, so the index must stay put."
+    },
+    {
+      "name": "largest is last",
+      "stdin": "4\n1 2 3 9\n",
+      "expected_stdout": "3"
+    },
+    {
+      "name": "tie keeps the earlier index",
+      "stdin": "5\n1 7 3 7 2\n",
+      "expected_stdout": "1",
+      "description": "Both 7s are the largest. Replacing on >= instead of > returns 3 here."
+    },
+    {
+      "name": "all negative",
+      "stdin": "3\n-9 -2 -5\n",
+      "expected_stdout": "1",
+      "description": "An unsigned comparison reads -9 as the largest and answers 0."
+    }
+  ],
+  "reference_solution_b64": "OyBpbnQgaW5kZXhfb2ZfbWF4KGNvbnN0IGludCAqdmFsdWVzLCBpbnQgY291bnQpCi5jb2RlCmluZGV4X29mX21heCBQUk9DCiAgICBtb3YgZWF4LCAtMSAgICAgICAgICAgICAgICAgICAgICAgICA7IHRoZSBlbXB0eS1hcnJheSBhbnN3ZXIKICAgIHRlc3QgZWR4LCBlZHgKICAgIGpsZSBkb25lICAgICAgICAgICAgICAgICAgICAgICAgICAgIDsgY291bnQgPD0gMDogbm90aGluZyB0byBsb29rIGF0CiAgICB4b3IgZWF4LCBlYXggICAgICAgICAgICAgICAgICAgICAgICA7IGJlc3QgaW5kZXggPSAwCiAgICBtb3YgcjlkLCBkd29yZCBwdHIgW3JjeF0gICAgICAgICAgICA7IGJlc3QgdmFsdWUgPSB2YWx1ZXNbMF0KICAgIG1vdiByOGQsIDEgICAgICAgICAgICAgICAgICAgICAgICAgIDsgaSA9IDEKbmV4dDoKICAgIGNtcCByOGQsIGVkeAogICAgamdlIGRvbmUgICAgICAgICAgICAgICAgICAgICAgICAgICAgOyB3aGlsZSBpIDwgY291bnQKICAgIG1vdiByMTBkLCBkd29yZCBwdHIgW3JjeCArIHI4KjRdICAgIDsgdmFsdWVzW2ldCiAgICBjbXAgcjEwZCwgcjlkCiAgICBqbGUgc2tpcCAgICAgICAgICAgICAgICAgICAgICAgICAgICA7IHN0cmljdGx5IGdyZWF0ZXIgb25seTogdGllcyBrZWVwCiAgICBtb3YgcjlkLCByMTBkICAgICAgICAgICAgICAgICAgICAgICA7IHRoZSBlYXJsaWVyIGluZGV4CiAgICBtb3YgZWF4LCByOGQKc2tpcDoKICAgIGluYyByOGQKICAgIGptcCBuZXh0CmRvbmU6CiAgICByZXQKaW5kZXhfb2ZfbWF4IEVORFAKZW5kCg=="
+}

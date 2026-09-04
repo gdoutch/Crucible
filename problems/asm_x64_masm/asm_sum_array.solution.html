@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Sum an Array · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · x86-64 Assembly (MASM) · easy</p>
+  <h1>Sum an Array</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The whole thing</h2>
+
+<pre><code>; int sum_array(const int *values, int count)
+.code
+sum_array PROC
+    xor eax, eax                        ; total = 0
+    test edx, edx
+    jle done                            ; count &lt;= 0: nothing to add
+    xor r8d, r8d                        ; i = 0
+next:
+    add eax, dword ptr [rcx + r8*4]     ; total += values[i]
+    inc r8d
+    cmp r8d, edx
+    jl next                             ; while i &lt; count
+done:
+    ret
+sum_array ENDP
+end</code></pre>
+
+<p>Eight instructions, no stack, no prologue. The C compiler would produce
+  something broadly similar for the same function at <code>-O0</code>, and
+  something rather more clever at <code>-O2</code> — but this is the shape
+  the source is describing.</p>
+
+<h2>Walking it through</h2>
+
+<p>Take the array <code>[10, -3, 7]</code>, so <code>rcx</code> points at the
+  <code>10</code> and <code>edx</code> is <code>3</code>:</p>
+
+<table class="trace">
+  <tr><th>At</th><th>eax</th><th>r8d</th><th>Reads</th><th>Then</th></tr>
+  <tr><td>entry</td><td>?</td><td>?</td><td>—</td>
+      <td><code>xor eax, eax</code> → 0</td></tr>
+  <tr><td>guard</td><td>0</td><td>—</td><td>—</td>
+      <td>3 &gt; 0, so no jump</td></tr>
+  <tr><td>next (1st)</td><td>0</td><td>0</td><td><code>[rcx + 0]</code> = 10</td>
+      <td>eax = 10, i = 1, 1 &lt; 3 → loop</td></tr>
+  <tr><td>next (2nd)</td><td>10</td><td>1</td><td><code>[rcx + 4]</code> = -3</td>
+      <td>eax = 7, i = 2, 2 &lt; 3 → loop</td></tr>
+  <tr><td>next (3rd)</td><td>7</td><td>2</td><td><code>[rcx + 8]</code> = 7</td>
+      <td>eax = 14, i = 3, 3 &lt; 3 is false → fall through</td></tr>
+  <tr><td>done</td><td>14</td><td>3</td><td>—</td><td><code>ret</code></td></tr>
+</table>
+
+<p>Three iterations for three elements, and the loop exits on the comparison
+  rather than on running off the end of anything.</p>
+
+<h2>Why <code>xor eax, eax</code> rather than <code>mov eax, 0</code></h2>
+
+<p>They do the same thing. <code>xor</code> of a register with itself is
+  always zero, and it is the idiom you will see in every compiler's output,
+  for two reasons worth knowing:</p>
+
+<ul>
+  <li><strong>It is shorter.</strong> <code>xor eax, eax</code> encodes in two
+    bytes; <code>mov eax, 0</code> takes five, because the zero is stored in
+    the instruction as a full 32-bit constant.</li>
+  <li><strong>The processor recognises it.</strong> A zeroing xor is
+    special-cased in hardware as "this register now holds zero", with no
+    dependency on whatever the register held before — so it does not have to
+    wait for an earlier instruction that was still computing the old
+    value.</li>
+</ul>
+
+<p>Here it also happens to set up the return value for the empty-array case,
+  which is what lets the guard below it jump straight to <code>ret</code>.</p>
+
+<h2>The guard, and why it comes first</h2>
+
+<div class="trap">
+<p><strong><code>values</code> is <code>NULL</code> when <code>count</code> is
+  <code>0</code>.</strong> The harness does not allocate a zero-length array;
+  it passes a null pointer, exactly as a real caller would. A loop that reads
+  before it checks — the do-while shape, where the test is at the bottom —
+  dereferences address zero on the very first instruction of the body, and
+  Crucible reports <code>access violation</code> rather than a wrong
+  number.</p>
+</div>
+
+<p><code>test edx, edx</code> ANDs the register with itself, discards the
+  result and keeps only the flags — which is the same set of flags
+  <code>cmp edx, 0</code> would produce, in a two-byte instruction instead of
+  a three-byte one. <code>jle</code> then covers <code>0</code> and, for free,
+  any negative count a future caller might pass.</p>
+
+<p><code>jle</code> and not <code>jbe</code>: the count is a signed
+  <code>int</code>. The unsigned conditions (<code>ja</code>,
+  <code>jb</code>, <code>jbe</code>…) read the sign bit as part of the
+  magnitude, so a count of <code>-1</code> would look like about four billion
+  and the guard would let it through.</p>
+
+<h2>The memory operand</h2>
+
+<pre><code>add eax, dword ptr [rcx + r8*4]</code></pre>
+
+<p>One instruction that indexes, scales, adds, loads and accumulates. The
+  general form of an x86 address is
+  <code>[base + index*scale + displacement]</code>, where the scale is 1, 2, 4
+  or 8 — the sizes of the types you would actually want to index — and the
+  address arithmetic happens in the addressing hardware rather than costing
+  instructions of its own.</p>
+
+<p><code>dword ptr</code> is not decoration. <code>eax</code> already implies
+  a 4-byte operand here, so MASM would accept the line without it, but naming
+  the width at the point of the access is worth the six characters: it is the
+  only thing in the instruction that says how much memory is being touched,
+  and on a line where the destination is not a fixed-width register MASM
+  genuinely cannot guess.</p>
+
+<p>The index lives in <code>r8</code> as a 64-bit value because addresses are
+  64-bit, while <code>inc r8d</code> and <code>cmp r8d, edx</code> work on its
+  low half to match the 32-bit <code>count</code>. That mixture is safe
+  because writing any 32-bit register zeroes the upper 32 bits of its 64-bit
+  parent — <code>xor r8d, r8d</code> really does clear the whole of
+  <code>r8</code>. It is a deliberate rule of x86-64 rather than a quirk, and
+  it is why 32-bit forms are the default in compiler output even on a 64-bit
+  machine.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(n)</strong> time, one pass, and <strong>O(1)</strong> space —
+  three registers and no stack frame at all. Nothing was pushed, so nothing
+  has to be popped, and <code>ret</code> can be the last instruction with no
+  epilogue in front of it.</p>
+
+<h2>Two wrong turns worth recognising</h2>
+
+<div class="trap">
+<p><strong>Checking the count at the bottom of the loop.</strong> It reads
+  naturally — add, advance, test, repeat — and it is correct for every input
+  except the empty array, where it reads through a null pointer before it ever
+  reaches the test. This is the same bug in every language; assembly just
+  makes the consequence louder.</p>
+<p><strong>Comparing <code>r8</code> against <code>rdx</code>.</strong> The
+  count arrived in <code>edx</code>, and the top half of <code>rdx</code> is
+  whatever the caller left there. Compare the halves that were actually
+  defined.</p>
+</div>
+
+<footer>
+  <p><a href="asm_sum_array.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

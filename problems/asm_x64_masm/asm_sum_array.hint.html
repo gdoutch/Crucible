@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Sum an Array · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · x86-64 Assembly (MASM) · easy</p>
+  <h1>Sum an Array</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>A running total across <code>count</code> consecutive 32-bit integers
+  starting at <code>rcx</code>. It is a four-line loop. Almost all of the
+  difficulty is in the first two lines, before the loop starts.</p>
+
+<h2>Where the arguments are</h2>
+
+<p>The harness calls your procedure as
+  <code>sum_array(values, count)</code>, and Microsoft's x64 convention puts
+  the first two arguments in <code>rcx</code> and <code>rdx</code>:</p>
+
+<table class="trace">
+  <tr><th>Holds</th><th>Register</th><th>Why that width</th></tr>
+  <tr><td><code>values</code></td><td><code>rcx</code></td>
+      <td>A pointer — 64 bits, so the whole register.</td></tr>
+  <tr><td><code>count</code></td><td><code>edx</code></td>
+      <td>An <code>int</code> — 32 bits, so the low half of <code>rdx</code>.</td></tr>
+  <tr><td>your answer</td><td><code>eax</code></td>
+      <td>An <code>int</code> comes back in the low half of <code>rax</code>.</td></tr>
+</table>
+
+<p>Mixing the widths up is the classic first mistake. <code>rdx</code> holds
+  <code>count</code> in its low 32 bits, but the top 32 are not guaranteed to
+  be anything in particular — so compare against <code>edx</code>, not
+  <code>rdx</code>.</p>
+
+<h2>Reaching element <em>i</em></h2>
+
+<p>The elements are four bytes each and laid out end to end, so element
+  <em>i</em> begins <code>4 * i</code> bytes after the start. You do not have
+  to compute that yourself: an x86 memory operand can do it in the
+  instruction.</p>
+
+<pre><code>dword ptr [rcx + r8*4]</code></pre>
+
+<p>Read that right to left: take the index in <code>r8</code>, multiply by
+  the scale factor <code>4</code>, add the base in <code>rcx</code>, and read
+  <code>dword ptr</code> — four bytes — from the address that gives.
+  The legal scale factors are 1, 2, 4 and 8, which is exactly the set of
+  sizes you would want for a <code>char</code>, a <code>short</code>, an
+  <code>int</code> and a pointer.</p>
+
+<div class="note">
+<p>Use the full 64-bit <code>r8</code> in the address even while you compare
+  its low half <code>r8d</code> against <code>edx</code>. Addresses are
+  64-bit; an index is not. Writing to <code>r8d</code> zeroes the upper half
+  of <code>r8</code> for you, so the two stay consistent without any extra
+  work — which is a genuine convenience of the 32-bit forms, not an accident
+  to rely on nervously.</p>
+</div>
+
+<h2>The shape of the loop</h2>
+
+<pre><code>    ; total = 0
+    ; if count &lt;= 0, skip everything
+    ; i = 0
+next:
+    ; total += values[i]
+    ; i = i + 1
+    ; if i &lt; count, go back to next
+done:
+    ret</code></pre>
+
+<p>Three registers do all of it: one for the total, one for the index, and
+  <code>rcx</code>/<code>edx</code> as they arrived. All of
+  <code>rax</code>, <code>rcx</code>, <code>rdx</code> and
+  <code>r8</code>–<code>r11</code> are yours to overwrite without asking, so
+  there is nothing to push and nothing to pop.</p>
+
+<h2>The trap: the empty array</h2>
+
+<div class="trap">
+<p><strong>When <code>count</code> is <code>0</code>, <code>values</code> is a
+  null pointer.</strong> The harness passes <code>NULL</code> rather than an
+  allocation of nothing, which means a loop written to run its body once
+  before checking — the do-while shape — reads address zero and the case
+  comes back <code>ERROR: access violation</code> instead of
+  <code>0</code>.</p>
+<p>So test <code>count</code> <em>before</em> the first load. In assembly the
+  usual way to test a register against zero is <code>test edx, edx</code>
+  followed by a conditional jump: <code>test</code> sets the flags exactly as
+  <code>cmp edx, 0</code> would, in a shorter instruction. Use a
+  <em>signed</em> condition — the count is an <code>int</code>.</p>
+</div>
+
+<details>
+<summary>Still stuck? A bigger nudge</summary>
+
+<pre><code>.code
+sum_array PROC
+    xor eax, eax            ; total = 0 — and the answer for an empty array
+    test edx, edx
+    jle done                ; nothing to add; eax is already right
+    xor r8d, r8d            ; i = 0
+next:
+    ; one instruction here: add values[i] into the total
+    inc r8d
+    cmp r8d, edx
+    jl next
+done:
+    ret
+sum_array ENDP
+end</code></pre>
+
+<p>One line is missing, and it is the memory operand shown further up. Note
+  that <code>xor eax, eax</code> is doing double duty: it initialises the
+  total, and it is already the correct answer if the count turns out to be
+  zero — which is why the guard can jump straight to <code>done</code>
+  without setting up anything first.</p>
+
+</details>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li>Empty array → <code>0</code>, and nothing was read through
+    <code>rcx</code>.</li>
+  <li>One element → that element, so the loop ran exactly once.</li>
+  <li>Values that cancel to zero → <code>0</code>, which is a real total and
+    not a sign that something was skipped.</li>
+  <li>All negative → a negative total, so you used <code>jl</code> rather
+    than <code>jb</code> when comparing the index, and <code>add</code>
+    rather than anything unsigned-flavoured on the values.</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="asm_sum_array.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

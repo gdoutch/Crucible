@@ -7,6 +7,7 @@ select their language by `id`, and the UI builds its menus from this registry.
 
 from __future__ import annotations
 
+from .asm_lang import AsmX64MasmLanguage
 from .base import BuildResult, ExecResult, Language, ToolchainStatus, run_process
 from .c_lang import CLanguage
 from .cpp_lang import CppLanguage
@@ -21,7 +22,8 @@ def register(language: Language) -> None:
     _LANGUAGES[language.id] = language
 
 
-for _cls in (CLanguage, CppLanguage, PythonLanguage, CSharpLanguage, JavaLanguage):
+for _cls in (CLanguage, CppLanguage, PythonLanguage, CSharpLanguage,
+             JavaLanguage, AsmX64MasmLanguage):
     register(_cls())
 
 
@@ -46,5 +48,6 @@ def known_ids() -> list[str]:
 __all__ = [
     "BuildResult", "ExecResult", "Language", "ToolchainStatus", "run_process",
     "CLanguage", "CppLanguage", "PythonLanguage", "CSharpLanguage", "JavaLanguage",
+    "AsmX64MasmLanguage",
     "register", "get", "all_languages", "known_ids",
 ]

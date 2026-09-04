@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Index of the Largest Element · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · x86-64 Assembly (MASM) · medium</p>
+  <h1>Index of the Largest Element</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p><em>Where</em> the largest value is, not what it is. Those are different
+  answers and the difference is the whole problem: you have to carry the
+  largest value seen so far in order to compare against it, and separately
+  remember the index it came from, because that is what you return.</p>
+
+<h2>Three registers, three jobs</h2>
+
+<table class="trace">
+  <tr><th>Holds</th><th>Suggested</th><th>Notes</th></tr>
+  <tr><td>best index so far</td><td><code>eax</code></td>
+      <td>Keep the answer in the return register and there is nothing to move
+        at the end.</td></tr>
+  <tr><td>best value so far</td><td><code>r9d</code></td>
+      <td>Only exists to be compared against.</td></tr>
+  <tr><td>current index</td><td><code>r8d</code></td>
+      <td>Used both to index memory and to test against
+        <code>edx</code>.</td></tr>
+</table>
+
+<p><code>rax</code>, <code>rcx</code>, <code>rdx</code> and
+  <code>r8</code>–<code>r11</code> are all scratch, so none of these needs
+  saving. Reach for <code>rbx</code> or <code>rsi</code> and you have taken on
+  a <code>push</code>/<code>pop</code> obligation for no reason.</p>
+
+<h2>Where to start the loop</h2>
+
+<p>There are two workable openings, and one of them is meaningfully
+  easier:</p>
+
+<ul>
+  <li><strong>Seed from element 0, then loop from 1.</strong> The best value
+    starts as <code>values[0]</code> and the best index as <code>0</code>, so
+    every comparison in the loop is a real comparison against a real
+    element.</li>
+  <li><strong>Seed with "the smallest possible int", then loop from 0.</strong>
+    Tidier-looking, but you have to write <code>80000000h</code> and be
+    right about it, and it quietly assumes no element can equal
+    <code>INT_MIN</code>.</li>
+</ul>
+
+<p>The first needs the count guard anyway — which you need regardless, because
+  of the empty array — so it costs nothing extra. Take it.</p>
+
+<h2>The trap: the tie</h2>
+
+<div class="trap">
+<p><strong>"First one wins" is decided entirely by which comparison you
+  branch on.</strong> Replace the current best only when the new value is
+  <em>strictly</em> greater, and the first of two equal maxima keeps the
+  title. Replace on greater-<em>or-equal</em> and every later duplicate
+  overwrites it, so you return the last index instead.</p>
+<p>Concretely: with <code>1 7 3 7 2</code> the answer is <code>1</code>. A
+  solution that answers <code>3</code> on that case and is right on every
+  other case has exactly this bug.</p>
+</div>
+
+<h2>The other trap: signed comparison</h2>
+
+<div class="trap">
+<p><strong><code>ja</code> and <code>jg</code> are not interchangeable.</strong>
+  x86 has two complete families of conditional jumps, and the difference is
+  how they read the top bit:</p>
+<ul>
+  <li><code>jg</code>, <code>jge</code>, <code>jl</code>, <code>jle</code> —
+    signed. Used after comparing values that can be negative.</li>
+  <li><code>ja</code>, <code>jae</code>, <code>jb</code>, <code>jbe</code> —
+    unsigned. The top bit is just another magnitude bit.</li>
+</ul>
+<p>These are <code>int</code>s. Use the unsigned family and <code>-1</code>
+  compares as <code>0xFFFFFFFF</code> — about four billion — so the
+  <em>most</em> negative element is confidently reported as the largest. The
+  <em>all negative</em> test case exists to catch precisely this, and it is
+  the case that separates code that happens to work from code that is
+  right.</p>
+</div>
+
+<h2>The shape of it</h2>
+
+<pre><code>    ; answer = -1
+    ; if count &lt;= 0, jump to the end (answer is already -1)
+    ; best index = 0, best value = values[0], i = 1
+next:
+    ; if i &gt;= count, jump to the end
+    ; load values[i]
+    ; if it is not strictly greater than the best, skip the update
+    ; best value = it, best index = i
+skip:
+    ; i = i + 1, go back to next
+done:
+    ret</code></pre>
+
+<p>Note that the <code>-1</code> is set up before the guard, so the
+  empty-array path needs no code of its own — it just falls through to
+  <code>ret</code> with the right answer already in <code>eax</code>.</p>
+
+<details>
+<summary>Still stuck? A bigger nudge</summary>
+
+<pre><code>.code
+index_of_max PROC
+    mov eax, -1
+    test edx, edx
+    jle done
+    xor eax, eax                        ; best index = 0
+    mov r9d, dword ptr [rcx]            ; best value = values[0]
+    mov r8d, 1                          ; start comparing at element 1
+next:
+    cmp r8d, edx
+    jge done
+    mov r10d, dword ptr [rcx + r8*4]    ; values[i]
+    ; two lines missing here: compare against the best, and skip
+    ; the update unless it is strictly greater
+    mov r9d, r10d
+    mov eax, r8d
+skip:
+    inc r8d
+    jmp next
+done:
+    ret
+index_of_max ENDP
+end</code></pre>
+
+<p>The missing comparison is between <code>r10d</code> and <code>r9d</code>,
+  and the jump that follows it lands on <code>skip</code>. Choosing which
+  condition to jump on is the tie rule and the signedness question, both at
+  once — get those two right and the rest is already here.</p>
+
+</details>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li>Empty array → <code>-1</code>, with nothing loaded through
+    <code>rcx</code>.</li>
+  <li>Largest first → <code>0</code>. Nothing later displaced it.</li>
+  <li>Largest last → the final index. The loop really did reach the end.</li>
+  <li><code>1 7 3 7 2</code> → <code>1</code>, not <code>3</code>.</li>
+  <li>All negative → the least negative one, not index <code>0</code>.</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="asm_index_of_max.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

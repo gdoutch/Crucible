@@ -227,6 +227,31 @@
         "sigabrt": "SIGABRT (abandon) -- la JVM elle-même a abandonné",
         "killed_by_signal": "tué par le signal {signal}"
       }
+    },
+    "asm_x64_masm": {
+      "install_help": "Aucun assembleur trouvé.\n\nCes problèmes sont assemblés avec ml64.exe, fourni avec les outils C++\nde Visual Studio -- les mêmes que ceux utilisés ici pour C et C++, une\nseule installation couvre donc les trois.\n\n  1. Visual Studio -- ouvrez le Visual Studio Installer, cliquez sur Modifier,\n     et cochez « Développement Desktop en C++ ».\n\n  2. Build Tools pour Visual Studio -- les mêmes outils, sans l'IDE.\n     https://visualstudio.microsoft.com/downloads/\n\nRevérifiez depuis le menu Outils une fois installé -- aucun redémarrage nécessaire.",
+      "summary_not_windows": "Assembleur x86-64 (MASM) : Windows uniquement",
+      "detail_not_windows": "ml64.exe est fourni avec Visual Studio et ne fonctionne pas sur {system}.\nL'assembleur d'une autre plateforme constitue une cible distincte, et non celle-ci -- la convention d'appel et la syntaxe diffèrent toutes deux.",
+      "summary_wrong_arch": "Assembleur x86-64 (MASM) : nécessite une machine x86-64",
+      "detail_wrong_arch": "Cette machine indique {machine}.\nml64.exe n'assemble que du x86-64 ; ces problèmes ne peuvent donc être ni construits ni exécutés ici.",
+      "summary": "Assembleur x86-64 : MASM (ml64)",
+      "detail": "Assembleur : {ml64}\nLié avec : {cl}\nEnvironnement initialisé à partir de vcvars64.bat",
+      "summary_current_env": "Assembleur x86-64 : MASM (ml64, depuis l'environnement courant)",
+      "detail_current_env": "Assembleur : {ml64}\nLié avec : {cl}",
+      "summary_no_assembler": "Assembleur x86-64 : MSVC trouvé, mais pas ml64.exe",
+      "detail_no_assembler": "Compilateur : {cl}\nAucun ml64.exe à côté -- les outils C++ sont installés mais leur assembleur est absent.",
+      "summary_not_found": "Assembleur x86-64 : aucun assembleur trouvé",
+      "detail_not_found": "Recherche effectuée dans le PATH et l'installation Visual Studio pour ml64.exe et cl.exe.",
+      "build_timeout": "Délai d'assemblage et d'édition de liens dépassé après 60 s.",
+      "exit": {
+        "access_violation": "violation d'accès (adresse invalide dans un mov, ou pointeur suivi au-delà de ce qu'il désigne)",
+        "divide_by_zero": "division entière par zéro (idiv avec un diviseur nul)",
+        "integer_overflow": "le quotient ne tenait pas dans le registre de destination -- idiv provoque une exception au lieu de boucler (rdx a-t-il bien été étendu par cdq ou cqo ?)",
+        "illegal_instruction": "instruction illégale (l'exécution a-t-elle dépassé la fin d'une procédure sans ret ?)",
+        "stack_overflow": "débordement de pile (récursion incontrôlée, ou un push sans pop correspondant dans une boucle ?)",
+        "interrupted": "interrompu",
+        "crashed": "plantage : {description}"
+      }
     }
   },
   "app": {

@@ -1,0 +1,44 @@
+{
+  "id": "asm_sum_array",
+  "title": "Sum an Array",
+  "language": "asm_x64_masm",
+  "difficulty": "easy",
+  "topics": [
+    "loops",
+    "addressing",
+    "arrays"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Add up every element of an array of 32-bit integers.\n\n## Your procedure\n\n```\nint sum_array(const int *values, int count);\n```\n\nReturn the total. An empty array sums to `0`.\n\n## The calling convention\n\nMicrosoft x64. The first four integer or pointer arguments arrive in\nregisters, and a 32-bit result goes back in `eax`:\n\n| | 1st | 2nd | 3rd | 4th | return |\n| --- | --- | --- | --- | --- | --- |\n| 64-bit | `rcx` | `rdx` | `r8` | `r9` | `rax` |\n| 32-bit | `ecx` | `edx` | `r8d` | `r9d` | `eax` |\n\n`rax`, `rcx`, `rdx`, `r8`-`r11` are yours to clobber. `rbx`, `rbp`, `rsi`,\n`rdi` and `r12`-`r15` belong to the caller: use one and you must `push` it on\nthe way in and `pop` it on the way out.\n\nNothing here needs the stack, so nothing here needs a prologue.\n\n## Watch out\n\n- `count` may be `0`, and `values` may then be a null pointer -- so test the\n  count *before* the first load, not after.\n- The elements are 4 bytes wide. `[rcx + r8*4]` walks them with the scale\n  factor doing the arithmetic for you; `dword ptr` says how much to read.\n- The totals here fit comfortably in 32 bits, so `eax` is wide enough.\n",
+  "starter_code": "; int sum_array(const int *values, int count)\n;\n;   rcx = values (the array)\n;   edx = count  (how many elements)\n;   eax = the total you return\n\n.code\nsum_array PROC\n    ; your code here\n    xor eax, eax\n    ret\nsum_array ENDP\nend\n",
+  "harness": "#include <stdio.h>\n#include <stdlib.h>\n\n/* Provided by the candidate in solution.asm */\nint sum_array(const int *values, int count);\n\nint main(void)\n{\n    int count;\n    if (scanf(\"%d\", &count) != 1 || count < 0) {\n        return 1;\n    }\n    int *values = NULL;\n    if (count > 0) {\n        values = malloc((size_t)count * sizeof *values);\n        if (values == NULL) {\n            return 1;\n        }\n        for (int i = 0; i < count; i++) {\n            if (scanf(\"%d\", &values[i]) != 1) {\n                free(values);\n                return 1;\n            }\n        }\n    }\n    printf(\"%d\\n\", sum_array(values, count));\n    free(values);\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random arrays for sum_array: a count, then that many values.\n\nValues are kept small enough that the total cannot come near overflowing a\n32-bit int, so the expected output is a fact about the arithmetic rather than\nabout wrap-around.\n\"\"\"\n\nLOW, HIGH = -500, 500\n\n\ndef generate(rng, count):\n    builders = (_mixed, _all_positive, _all_negative, _single)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _case(name, values, description=\"\"):\n    return {\n        \"name\": name,\n        \"stdin\": \"%d\\n%s\\n\" % (len(values),\n                                \" \".join(str(v) for v in values)),\n        \"description\": description,\n    }\n\n\ndef _mixed(rng, index):\n    values = [rng.randint(LOW, HIGH) for _ in range(rng.randint(4, 15))]\n    return _case(\"mixed signs #%d\" % index, values)\n\n\ndef _all_positive(rng, index):\n    values = [rng.randint(1, HIGH) for _ in range(rng.randint(4, 15))]\n    return _case(\"all positive #%d\" % index, values)\n\n\ndef _all_negative(rng, index):\n    values = [rng.randint(LOW, -1) for _ in range(rng.randint(4, 15))]\n    return _case(\"all negative #%d\" % index, values)\n\n\ndef _single(rng, index):\n    return _case(\"one element #%d\" % index, [rng.randint(LOW, HIGH)],\n                 \"The loop must run exactly once, not zero times and not \"\n                 \"twice.\")\n"
+  },
+  "tests": [
+    {
+      "name": "empty array",
+      "stdin": "0\n",
+      "expected_stdout": "0",
+      "description": "count is 0 and values is NULL -- the count must be tested before anything is loaded."
+    },
+    {
+      "name": "single element",
+      "stdin": "1\n42\n",
+      "expected_stdout": "42"
+    },
+    {
+      "name": "negatives cancel out",
+      "stdin": "4\n-10 5 10 -5\n",
+      "expected_stdout": "0",
+      "description": "A total of zero is a real answer, not an empty array."
+    },
+    {
+      "name": "all negative",
+      "stdin": "3\n-1 -2 -3\n",
+      "expected_stdout": "-6"
+    }
+  ],
+  "reference_solution_b64": "OyBpbnQgc3VtX2FycmF5KGNvbnN0IGludCAqdmFsdWVzLCBpbnQgY291bnQpCi5jb2RlCnN1bV9hcnJheSBQUk9DCiAgICB4b3IgZWF4LCBlYXggICAgICAgICAgICAgICAgICAgICAgICA7IHRvdGFsID0gMAogICAgdGVzdCBlZHgsIGVkeAogICAgamxlIGRvbmUgICAgICAgICAgICAgICAgICAgICAgICAgICAgOyBjb3VudCA8PSAwOiBub3RoaW5nIHRvIGFkZAogICAgeG9yIHI4ZCwgcjhkICAgICAgICAgICAgICAgICAgICAgICAgOyBpID0gMApuZXh0OgogICAgYWRkIGVheCwgZHdvcmQgcHRyIFtyY3ggKyByOCo0XSAgICAgOyB0b3RhbCArPSB2YWx1ZXNbaV0KICAgIGluYyByOGQKICAgIGNtcCByOGQsIGVkeAogICAgamwgbmV4dCAgICAgICAgICAgICAgICAgICAgICAgICAgICAgOyB3aGlsZSBpIDwgY291bnQKZG9uZToKICAgIHJldApzdW1fYXJyYXkgRU5EUAplbmQK"
+}

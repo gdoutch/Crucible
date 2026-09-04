@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Count Set Bits · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · x86-64 Assembly (MASM) · easy</p>
+  <h1>Count Set Bits</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The whole thing</h2>
+
+<pre><code>; int count_set_bits(unsigned int value)
+.code
+count_set_bits PROC
+    xor eax, eax                ; count = 0
+next:
+    test ecx, ecx
+    jz done                     ; no bits left to look at
+    shr ecx, 1                  ; low bit falls into the carry flag
+    jnc next                    ; it was 0 -- nothing to count
+    inc eax
+    jmp next
+done:
+    ret
+count_set_bits ENDP
+end</code></pre>
+
+<p>Six instructions in the loop and no scratch register beyond the count. The
+  argument register <code>ecx</code> is destroyed as we go, which is entirely
+  allowed — it is a scratch register, the caller expects nothing of it after
+  the call, and consuming it is cheaper than copying it somewhere first.</p>
+
+<h2>Walking it through</h2>
+
+<p>Take <code>value = 6</code>, which is <code>110</code> in binary:</p>
+
+<table class="trace">
+  <tr><th>At</th><th>ecx (binary)</th><th>CF</th><th>eax</th><th>Then</th></tr>
+  <tr><td>entry</td><td>110</td><td>—</td><td>0</td><td>not zero, so shift</td></tr>
+  <tr><td>after 1st shr</td><td>11</td><td>0</td><td>0</td>
+      <td><code>jnc</code> taken — back to the top</td></tr>
+  <tr><td>after 2nd shr</td><td>1</td><td>1</td><td>1</td>
+      <td>CF set, so <code>inc</code> ran</td></tr>
+  <tr><td>after 3rd shr</td><td>0</td><td>1</td><td>2</td>
+      <td>CF set, so <code>inc</code> ran</td></tr>
+  <tr><td>top of loop</td><td>0</td><td>—</td><td>2</td>
+      <td><code>jz done</code> — finished</td></tr>
+</table>
+
+<p>Three iterations for a three-bit number, and the answer is <code>2</code>.
+  The loop is driven by the value running out, not by a counter reaching 32,
+  so the work is proportional to the position of the highest set bit rather
+  than to the width of the register.</p>
+
+<h2>The carry flag is the whole trick</h2>
+
+<p><code>shr ecx, 1</code> does two things: it halves the register, and it
+  leaves the bit that fell off the bottom in the carry flag. That second
+  effect is free — the shift had to happen regardless — so the bit is
+  <em>already</em> available to branch on without any masking, comparing or
+  copying.</p>
+
+<p>Then <code>jnc next</code> reads oddly at first, because the loop's back
+  edge is doing the work of an <code>if</code>:</p>
+
+<ul>
+  <li>Bit was <code>0</code> → carry clear → jump straight back to the top.
+    The <code>inc</code> is simply never reached.</li>
+  <li>Bit was <code>1</code> → carry set → fall through to
+    <code>inc eax</code>, then <code>jmp next</code> back to the top.</li>
+</ul>
+
+<p>Written as an explicit "if the bit was set, increment" it would need its
+  own skip label and one more instruction. Folding the common case into the
+  branch you already had is a habit worth picking up; it is why compiled
+  output so often looks jumbled compared to the source it came from.</p>
+
+<h2><code>shr</code>, not <code>sar</code></h2>
+
+<div class="trap">
+<p><strong>This is the one that hangs.</strong> <code>sar</code> shifts right
+  <em>arithmetically</em>, replicating the sign bit downward so that a signed
+  value keeps its sign when halved: <code>-8</code> shifted right becomes
+  <code>-4</code>, not some large positive number. That is exactly right for a
+  signed quantity and exactly wrong here.</p>
+<p>Applied to <code>0xFFFFFFFF</code>, <code>sar</code> produces
+  <code>0xFFFFFFFF</code> again, and does so for ever: the loop's exit
+  condition is never met, the case is killed at the timeout, and the result
+  is <code>TIMEOUT</code> on the two cases with the top bit set while every
+  small value passes. The value here is <code>unsigned int</code>, so
+  <code>shr</code> — the logical shift, feeding in zeros — is the one that
+  matches the type.</p>
+</div>
+
+<h2>The alternative without a branch</h2>
+
+<p>Masking the low bit instead of branching on it is just as valid, and
+  avoids one jump per iteration:</p>
+
+<pre><code>next:
+    test ecx, ecx
+    jz done
+    mov r8d, ecx
+    and r8d, 1              ; 0 or 1
+    add eax, r8d            ; add it either way -- no branch
+    shr ecx, 1
+    jmp next</code></pre>
+
+<p>It costs one scratch register and one more instruction in the body, but
+  every iteration takes the same path. On a modern processor that can matter:
+  a branch whose direction depends on the data is a branch the predictor
+  cannot learn, and the bits of an arbitrary number are about as unpredictable
+  as data gets. For a loop this short it is not worth measuring, but the
+  reasoning is the same one behind <code>cmov</code> and behind
+  <code>popcnt</code> existing at all.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(k)</strong> where <em>k</em> is the position of the highest set
+  bit — at most 32 iterations, and often far fewer. <strong>O(1)</strong>
+  space: one register for the count, and the argument register consumed in
+  place.</p>
+
+<p>There are faster ways. <code>value &amp; (value - 1)</code> clears the
+  lowest set bit, so looping on that runs once per <em>set</em> bit rather
+  than once per bit position, and the SWAR bit-twiddling version counts all 32
+  in a fixed dozen instructions with no loop at all. And then there is
+  <code>popcnt</code>, which is one instruction because someone eventually
+  put this exact loop into silicon.</p>
+
+<h2>A wrong turn worth recognising</h2>
+
+<div class="trap">
+<p><strong>Counting to 32 instead of shifting to zero.</strong> A fixed
+  32-iteration loop gives the right answer for every input, so the tests will
+  not catch it — but it does the maximum work for
+  <code>count_set_bits(1)</code>, and it hides the more useful observation
+  that the loop's real bound is the data, not the register width.</p>
+</div>
+
+<footer>
+  <p><a href="asm_count_set_bits.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

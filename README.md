@@ -1,6 +1,7 @@
 # Crucible
 
-A small practice harness for C, C++, Python, C# and Java — pick a problem,
+A small practice harness for C, C++, Python, C#, Java and x86-64 assembly —
+pick a problem,
 read the test cases, write your code, press **Go**, and see which cases pass.
 Missing your language? Adding one is a single ~60-line subclass — see
 [Adding a language](#adding-a-language).
@@ -27,6 +28,7 @@ python -m crucible
 - [Profiles](#profiles)
 - [Installing a C compiler](#installing-a-c-compiler)
 - [Installing the .NET SDK](#installing-the-net-sdk)
+- [Assembly problems](#assembly-problems)
 - [How a submission is run](#how-a-submission-is-run)
 - [The reference-solution gate](#the-reference-solution-gate)
 - [Randomised test data](#randomised-test-data)
@@ -266,6 +268,45 @@ just a JRE — a JRE has `java` but no `javac`, and can run a program but not
 compile one, which the app reports as its own distinct status rather than
 "no toolchain found".
 
+## Assembly problems
+
+The `asm_x64_masm` problems are **x86-64, MASM syntax, Microsoft x64 calling
+convention** — Windows only, on an x86-64 machine. They need no separate
+install: `ml64.exe` sits in the same toolset directory as `cl.exe` and uses
+the same captured `vcvars` environment, so a Visual Studio install with the
+C++ workload (the one the [C compiler](#installing-a-c-compiler) section
+already asks for) covers assembly too. Anywhere else — Linux, macOS, an ARM
+machine — the toolchain reports itself unavailable and the problems are
+skipped, not failed.
+
+Each problem is one procedure with a C signature, assembled separately and
+linked against a C harness that does the reading and printing:
+
+```text
+solution.asm   <- exactly what you typed
+harness.c      <- problem-supplied main(); declares the prototype it needs
+```
+
+Nothing requires a harness to be written in the problem's own language, and
+parsing stdin in assembly would be a page of boilerplate wrapped around the
+four lines that are the actual exercise. So C does the talking, and the
+argument arrives in `rcx` where the convention says it will.
+
+### Why the language id names a target
+
+Every other language here is written once and runs everywhere. Assembly is
+not: the syntax (MASM, GAS, NASM), the calling convention (Microsoft x64
+passes integer arguments in `rcx, rdx, r8, r9`; System V uses `rdi, rsi,
+rdx, rcx`) and the instruction set itself all differ, and a submission
+written for one combination does not merely read oddly on another — it does
+not assemble.
+
+Rather than teach the problem format about targets, **each target is its own
+language**: `asm_x64_masm` today, with room beside it for `asm_x64_gas` or
+`asm_arm64`. Problems already select a language by id and live in a directory
+per language, so a second target costs a subclass and a directory, and
+nothing in the loader, the runner or the UI has to learn what a target is.
+
 ## How a submission is run
 
 Your code and the problem's harness are compiled as **separate translation
@@ -482,9 +523,9 @@ the stylesheet does not load the pages are still ordinary readable HTML.
 
 ## What is in the box
 
-90 problems — 47 in C, 12 in C++, 4 in Python, 15 in C#, 12 in Java. Every
-one of them mixes hand-written edge cases with four randomised ones, and
-ships a hint and a worked solution.
+93 problems — 47 in C, 12 in C++, 4 in Python, 15 in C#, 12 in Java and 3 in
+x86-64 assembly. Every one of them mixes hand-written edge cases with four
+randomised ones, and ships a hint and a worked solution.
 
 The C set is deliberately weighted towards the things C makes you think about
 and other languages do not: what the pointer points at, who owns the memory,
@@ -505,6 +546,14 @@ sometimes opposite) answers: `int` overflow never throws, ever, on any
 operator; a collection detects and throws on concurrent mutation instead of
 corrupting silently; boxed `Integer`s compare by reference under `==`,
 correctly only by coincidence for small cached values.
+
+The assembly set drops underneath all of them. There is no type system left
+to ask, so the questions become: which register did this argument arrive in,
+how wide is it, and is this comparison signed? Each problem is one procedure
+with a C signature, called by a C harness — so `jle` versus `jbe` is not a
+style note, it is the difference between a passing suite and an array of
+negative numbers whose largest element is confidently the wrong one.
+See [Assembly problems](#assembly-problems) for what they need installed.
 
 Most problems start from an empty function. A few start from a *full* one that
 is already wrong — the editor opens on plausible code carrying one planted
@@ -537,6 +586,8 @@ with the `debugging` topic.
 | | Java | Reverse a String (Which You Cannot Mutate) | strings, immutability |
 | | Java | Sum an Array Without Overflowing | arrays, loops, overflow |
 | | Java | Count Words Without split()'s Empty-String Surprise | strings, scanner |
+| | x86-64 asm | Sum an Array | loops, addressing, arrays |
+| | x86-64 asm | Count Set Bits | bit manipulation, loops |
 | **medium** | C | Binary Search | algorithms, arrays, search |
 | | C | Palindrome Check | strings, two pointers, ctype |
 | | C | Remove Duplicates From a Sorted Array | arrays, in-place, two pointers |
@@ -569,6 +620,7 @@ with the `debugging` topic.
 | | Java | Remove Duplicates, Keep First-Seen Order | collections, sets |
 | | Java | Word Frequency Without a Null Pointer Exception | maps, autoboxing, strings |
 | | Java | Balanced Brackets With an ArrayDeque | collections, strings |
+| | x86-64 asm | Index of the Largest Element | loops, addressing, branching, arrays |
 | **hard** | C | Maximum Subarray Sum | algorithms, dynamic programming, arrays |
 | | C | Reverse a Linked List | pointers, linked lists |
 | | C | Edit Distance | dynamic programming, strings |
@@ -1014,6 +1066,12 @@ class RustLanguage(Language):
 
 Then add it to `_LANGUAGES` in `crucible/languages/__init__.py`.
 
+Where a "language" is really a *target* — one of several syntaxes and
+calling conventions for the same machine — register each target under its own
+id rather than teaching the problem format to hold variants. See
+[Assembly problems](#assembly-problems) for the reasoning, and
+`crucible/languages/asm_lang.py` for what it costs.
+
 `crucible/languages/python_lang.py` is a complete worked example in about sixty
 lines, and it is deliberately not a special case: it goes through the same
 build-then-run pipeline as C, which is what keeps the seam honest. Its `build`
@@ -1174,14 +1232,17 @@ the same sibling files for them.
 python -m unittest discover -s tests -v
 ```
 
-133 tests covering output normalisation and diff hints, problem-schema
+173 tests covering output normalisation and diff hints, problem-schema
 validation (missing fields, bad base64, duplicate test names, unknown
 languages, malformed JSON), the run pipeline (correct, wrong, syntax error,
 runtime exception, timeout, progress callbacks), randomised data (determinism
 per seed, expected output actually coming from the reference, generators that
 raise, loop, print, return rubbish, or try to state the answer), data-set
-storage, the language registry, and the C and C# diagnostic/exit-code helpers
-that can be checked without a toolchain installed.
+storage, the language registry, and the C, C# and assembly diagnostic/exit-code
+helpers that can be checked without a toolchain installed. Two of those pin
+down the assembly target's refusal to claim a host it cannot build for: a
+non-Windows machine and a non-x86-64 one both report unavailable, which is
+what keeps `--verify` skipping those problems rather than failing them.
 
 The guides are covered too: the lookup convention on its own, and then every
 shipped page — both required ones exist, each names its problem, each links to
@@ -1229,12 +1290,13 @@ crucible/
   languages/
     __init__.py        registry
     base.py            Language ABC, process runner, result types
-    native_compiler.py compiler discovery + MSVC capture, shared by c/cpp
+    native_compiler.py compiler discovery + MSVC capture, shared by c/cpp/asm
     c_lang.py          gcc / clang / cc / MSVC, toolchain discovery
     cpp_lang.py        g++ / clang++ / c++ / MSVC, C's near-twin
     python_lang.py     worked example of a second language
     csharp_lang.py     dotnet build, generated .csproj, native apphost
     java_lang.py       javac + java, JDK discovery (javac-then-JAVA_HOME)
+    asm_lang.py        ml64 + cl, one target per language id
   ui/
     app.py             main window
     editor.py          editor widget: gutter, highlighting, indentation
@@ -1248,6 +1310,7 @@ problems/
   python/              3 problems,             + .solution.html
   csharp/              15 problems,            + .solution.html (+ fr_FR)
   java/                12 problems,            + .solution.html
+  asm_x64_masm/        3 problems,             + .solution.html
   uml/                 2 problems,             + .diagram.html
   safety/              3 problems
 tests/
@@ -1266,6 +1329,10 @@ what lets `--verify` and the unit tests run headless.
 - **Hiding the reference is obfuscation only** — see above.
 - Comparison is on stdout. Problems that would need to assert on internal state
   or on memory behaviour need a harness that prints something checkable.
+- **The assembly problems are Windows x86-64 only.** They are assembled with
+  MASM against the Microsoft x64 calling convention, so on any other host the
+  `asm_x64_masm` toolchain reports itself unavailable and the problems are
+  skipped rather than failed — see [Assembly problems](#assembly-problems).
 - Theme changes apply on next launch.
 
 ## License
