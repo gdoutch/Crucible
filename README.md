@@ -1,7 +1,7 @@
 # Crucible
 
-A small practice harness for C, C++, Python, C#, Java and x86-64 assembly —
-pick a problem,
+A small practice harness for C, C++, Python, C#, Java, x86-64 assembly and
+VHDL — pick a problem,
 read the test cases, write your code, press **Go**, and see which cases pass.
 Missing your language? Adding one is a single ~60-line subclass — see
 [Adding a language](#adding-a-language).
@@ -28,6 +28,7 @@ python -m crucible
 - [Profiles](#profiles)
 - [Installing a C compiler](#installing-a-c-compiler)
 - [Installing the .NET SDK](#installing-the-net-sdk)
+- [Installing GHDL](#installing-ghdl)
 - [Assembly problems](#assembly-problems)
 - [How a submission is run](#how-a-submission-is-run)
 - [The reference-solution gate](#the-reference-solution-gate)
@@ -267,6 +268,38 @@ Then *Tools → Re-check compilers*. Make sure the install provides a JDK, not
 just a JRE — a JRE has `java` but no `javac`, and can run a program but not
 compile one, which the app reports as its own distinct status rather than
 "no toolchain found".
+
+## Installing GHDL
+
+VHDL problems are simulated with [GHDL](https://github.com/ghdl/ghdl), a
+free, open-source VHDL simulator — no licence, no seat, nothing to activate.
+The app searches `PATH` for `ghdl`.
+
+| Option | How |
+| --- | --- |
+| **Windows** | [MSYS2](https://www.msys2.org): `pacman -S mingw-w64-ucrt-x86_64-ghdl`, or a prebuilt zip from the [releases page](https://github.com/ghdl/ghdl/releases) |
+| **Linux** | `sudo apt install ghdl` / `sudo dnf install ghdl` |
+| **macOS** | `brew install ghdl` |
+
+Then *Tools → Re-check compilers*.
+
+### Why VHDL problems are combinational-only
+
+Every other language plugin here runs a program: build once, then execute the
+result once per test case, feeding stdin and comparing stdout. VHDL entities
+have ports, not a `main()`, so the fit is not obvious — until you notice that
+`std.textio` predeclares `input`/`output` file objects already bound to the
+simulation process's real stdin/stdout. The problem's testbench (`harness.vhd`)
+reads one line of stimulus, drives it onto the candidate's entity by direct
+instantiation (`entity work.solution`), waits a fixed delay, and writes the
+result straight back out — one elaborated simulation binary, launched once per
+test case exactly like a C harness, so the rest of the app never has to know
+it is looking at a circuit rather than a program.
+
+That mapping only covers **combinational** logic: stimulus in, one settled
+result out, no notion of "the next cycle". A clocked or stateful design (a
+counter, an FSM) needs a waveform over many cycles per test case, which is a
+different execution model this plugin does not attempt.
 
 ## Assembly problems
 
@@ -523,9 +556,9 @@ the stylesheet does not load the pages are still ordinary readable HTML.
 
 ## What is in the box
 
-93 problems — 47 in C, 12 in C++, 4 in Python, 15 in C#, 12 in Java and 3 in
-x86-64 assembly. Every one of them mixes hand-written edge cases with four
-randomised ones, and ships a hint and a worked solution.
+94 problems — 47 in C, 12 in C++, 4 in Python, 15 in C#, 12 in Java, 3 in
+x86-64 assembly and 1 in VHDL. Every one of them mixes hand-written edge cases
+with four randomised ones, and ships a hint and a worked solution.
 
 The C set is deliberately weighted towards the things C makes you think about
 and other languages do not: what the pointer points at, who owns the memory,
@@ -554,6 +587,13 @@ with a C signature, called by a C harness — so `jle` versus `jbe` is not a
 style note, it is the difference between a passing suite and an array of
 negative numbers whose largest element is confidently the wrong one.
 See [Assembly problems](#assembly-problems) for what they need installed.
+
+The VHDL set sits somewhere else again: not a program at all, but a circuit,
+and the question stops being "what does this line do" and becomes "what does
+this line describe, forever, for every possible input at once" — an `if` with
+no covering `else` does not skip an update, it describes a latch. See [Why
+VHDL problems are combinational-only](#why-vhdl-problems-are-combinational-only)
+for how that is tested without a clock.
 
 Most problems start from an empty function. A few start from a *full* one that
 is already wrong — the editor opens on plausible code carrying one planted
@@ -588,6 +628,7 @@ with the `debugging` topic.
 | | Java | Count Words Without split()'s Empty-String Surprise | strings, scanner |
 | | x86-64 asm | Sum an Array | loops, addressing, arrays |
 | | x86-64 asm | Count Set Bits | bit manipulation, loops |
+| | VHDL | Count Set Bits | combinational logic, bit manipulation |
 | **medium** | C | Binary Search | algorithms, arrays, search |
 | | C | Palindrome Check | strings, two pointers, ctype |
 | | C | Remove Duplicates From a Sorted Array | arrays, in-place, two pointers |
@@ -1297,6 +1338,7 @@ crucible/
     csharp_lang.py     dotnet build, generated .csproj, native apphost
     java_lang.py       javac + java, JDK discovery (javac-then-JAVA_HOME)
     asm_lang.py        ml64 + cl, one target per language id
+    vhdl_lang.py       ghdl: analyse, elaborate, run -- one exec per test case
   ui/
     app.py             main window
     editor.py          editor widget: gutter, highlighting, indentation
@@ -1311,6 +1353,7 @@ problems/
   csharp/              15 problems,            + .solution.html (+ fr_FR)
   java/                12 problems,            + .solution.html
   asm_x64_masm/        3 problems,             + .solution.html
+  vhdl/                1 problem,              + .solution.html
   uml/                 2 problems,             + .diagram.html
   safety/              3 problems
 tests/

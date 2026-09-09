@@ -14,6 +14,7 @@ from .cpp_lang import CppLanguage
 from .csharp_lang import CSharpLanguage
 from .java_lang import JavaLanguage
 from .python_lang import PythonLanguage
+from .vhdl_lang import VhdlLanguage
 
 _LANGUAGES: dict[str, Language] = {}
 
@@ -23,7 +24,7 @@ def register(language: Language) -> None:
 
 
 for _cls in (CLanguage, CppLanguage, PythonLanguage, CSharpLanguage,
-             JavaLanguage, AsmX64MasmLanguage):
+             JavaLanguage, AsmX64MasmLanguage, VhdlLanguage):
     register(_cls())
 
 
@@ -48,6 +49,6 @@ def known_ids() -> list[str]:
 __all__ = [
     "BuildResult", "ExecResult", "Language", "ToolchainStatus", "run_process",
     "CLanguage", "CppLanguage", "PythonLanguage", "CSharpLanguage", "JavaLanguage",
-    "AsmX64MasmLanguage",
+    "AsmX64MasmLanguage", "VhdlLanguage",
     "register", "get", "all_languages", "known_ids",
 ]

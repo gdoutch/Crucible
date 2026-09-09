@@ -252,6 +252,18 @@
         "interrupted": "interrompu",
         "crashed": "plantage : {description}"
       }
+    },
+    "vhdl": {
+      "install_help_windows": "Aucun GHDL trouvé.\n\nGHDL est un simulateur VHDL libre et open-source -- aucune licence requise.\n\n  1. MSYS2      -- gestionnaire de paquets complet, le meilleur choix à long terme.\n     https://www.msys2.org  puis :  pacman -S mingw-w64-ucrt-x86_64-ghdl\n\n  2. Archive prête à l'emploi -- binaires Windows précompilés, sans installeur.\n     https://github.com/ghdl/ghdl/releases\n     Décompressez l'archive et ajoutez son dossier bin\\ au PATH.\n\nRevérifiez depuis le menu Outils une fois installé -- aucun redémarrage nécessaire.",
+      "install_help_posix": "Aucun GHDL trouvé.\n\n  Debian/Ubuntu :  sudo apt install ghdl\n  Fedora :         sudo dnf install ghdl\n  macOS :          brew install ghdl\n  Toute plateforme : https://github.com/ghdl/ghdl/releases\n\nRevérifiez depuis le menu Outils une fois installé.",
+      "summary_not_found": "VHDL : aucun GHDL trouvé",
+      "detail_not_found": "Recherche effectuée dans le PATH et les emplacements d'installation habituels pour ghdl.",
+      "summary": "VHDL : GHDL {version}",
+      "detail": "ghdl : {path}",
+      "build_timeout": "Délai d'analyse ou d'élaboration dépassé après 30 s.",
+      "exit": {
+        "runtime_error": "la simulation ne s'est pas terminée proprement (code de sortie {code}) -- voir stderr pour le rapport de GHDL, par exemple un échec d'assertion ou une valeur que std.textio n'a pas pu analyser"
+      }
     }
   },
   "app": {

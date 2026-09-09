@@ -1,0 +1,44 @@
+{
+  "id": "vhdl_count_set_bits",
+  "title": "Count Set Bits",
+  "language": "vhdl",
+  "difficulty": "easy",
+  "topics": [
+    "combinational logic",
+    "bit manipulation"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Count how many bits are set in an 8-bit value -- the same exercise as the\nother *Count Set Bits* problems, in VHDL's own terms.\n\n## Your entity\n\n```\nentity solution is\n    port (\n        value : in  std_logic_vector(7 downto 0);\n        count : out std_logic_vector(3 downto 0)\n    );\nend entity solution;\n```\n\n`value` is the 8 bits to count; `count` is how many of them are `1`, wide\nenough for every possible answer (0 to 8 fits in 4 bits). Port names and\nwidths must match exactly -- the testbench instantiates `solution` directly,\nby name, rather than through a component declaration.\n\n## Input and output\n\nThis is a circuit, not a program, so there is no `scanf`/`printf` here: the\ntestbench reads one line of stdin as an 8-character bit string, drives it\nonto `value`, waits for the outputs to settle, and writes `count` back out\nthe same way -- also a bit string, left-padded with zeros to 4 characters.\n\n`10110000` -> `0011` (three of the eight bits are set).\n\n## Watch out\n\n- This is meant to be pure combinational logic -- one concurrent signal\n  assignment, or a process with `value` in its sensitivity list and no\n  `wait` or clock inside it. Anything clocked has nothing to synchronise\n  with here and will not have settled by the testbench's `wait for 1 ns`.\n- `count` needs a value for every one of the 256 possible inputs. A process\n  that only assigns it inside an `if` with no covering `else` leaves it\n  latched at whatever it last held -- which behaves like a real latch in\n  simulation, not just as a lint warning.\n",
+  "starter_code": "library ieee;\nuse ieee.std_logic_1164.all;\n\nentity solution is\n    port (\n        value : in  std_logic_vector(7 downto 0);\n        count : out std_logic_vector(3 downto 0)\n    );\nend entity solution;\n\narchitecture rtl of solution is\nbegin\n    -- your code here\n    count <= (others => '0');\nend architecture rtl;\n",
+  "harness": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.std_logic_textio.all;\n\nuse std.textio.all;\nuse std.env.all;\n\nentity harness is\nend entity harness;\n\narchitecture sim of harness is\n    signal value_sig : std_logic_vector(7 downto 0);\n    signal count_sig : std_logic_vector(3 downto 0);\nbegin\n    dut : entity work.solution\n        port map (\n            value => value_sig,\n            count => count_sig\n        );\n\n    process\n        variable in_line  : line;\n        variable out_line : line;\n        variable value_in : std_logic_vector(7 downto 0);\n    begin\n        readline(input, in_line);\n        read(in_line, value_in);\n        value_sig <= value_in;\n        wait for 1 ns;\n        write(out_line, count_sig);\n        writeline(output, out_line);\n        finish;\n    end process;\nend architecture sim;\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random 8-bit patterns for the VHDL Count Set Bits testbench.\n\nLike every generator here, only the *input* is produced -- the expected\noutput is captured by running the reference solution's own simulation, so\nthe two can never disagree.\n\"\"\"\n\nWIDTH = 8\n\n\ndef generate(rng, count):\n    builders = (_scattered, _high_bits, _single_bit, _run_of_ones)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _bits(value):\n    return \"\".join(str((value >> b) & 1) for b in range(WIDTH - 1, -1, -1))\n\n\ndef _case(name, value, description=\"\"):\n    return {\"name\": name, \"stdin\": _bits(value) + \"\\n\", \"description\": description}\n\n\ndef _scattered(rng, index):\n    return _case(\"scattered bits #%d\" % index, rng.randrange(1 << WIDTH))\n\n\ndef _high_bits(rng, index):\n    return _case(\"top bit set #%d\" % index,\n                 (1 << (WIDTH - 1)) | rng.randrange(1 << (WIDTH - 1)))\n\n\ndef _single_bit(rng, index):\n    position = rng.randrange(WIDTH)\n    return _case(\"one bit, at %d #%d\" % (position, index), 1 << position)\n\n\ndef _run_of_ones(rng, index):\n    width = rng.randint(1, WIDTH)\n    start = rng.randint(0, WIDTH - width)\n    return _case(\"%d adjacent bits #%d\" % (width, index),\n                 ((1 << width) - 1) << start)\n"
+  },
+  "tests": [
+    {
+      "name": "all zero",
+      "stdin": "00000000\n",
+      "expected_stdout": "0000",
+      "description": "No bits set. Checks the all-else-branches-latch trap on the emptiest input."
+    },
+    {
+      "name": "all ones",
+      "stdin": "11111111\n",
+      "expected_stdout": "1000",
+      "description": "Every bit set -- the one case where the 4-bit answer needs its own top bit."
+    },
+    {
+      "name": "single bit",
+      "stdin": "00000001\n",
+      "expected_stdout": "0001"
+    },
+    {
+      "name": "alternating",
+      "stdin": "10101010\n",
+      "expected_stdout": "0100",
+      "description": "Four bits set, spread out rather than adjacent."
+    }
+  ],
+  "reference_solution_b64": "bGlicmFyeSBpZWVlOwp1c2UgaWVlZS5zdGRfbG9naWNfMTE2NC5hbGw7CnVzZSBpZWVlLm51bWVyaWNfc3RkLmFsbDsKCmVudGl0eSBzb2x1dGlvbiBpcwogICAgcG9ydCAoCiAgICAgICAgdmFsdWUgOiBpbiAgc3RkX2xvZ2ljX3ZlY3Rvcig3IGRvd250byAwKTsKICAgICAgICBjb3VudCA6IG91dCBzdGRfbG9naWNfdmVjdG9yKDMgZG93bnRvIDApCiAgICApOwplbmQgZW50aXR5IHNvbHV0aW9uOwoKYXJjaGl0ZWN0dXJlIHJ0bCBvZiBzb2x1dGlvbiBpcwpiZWdpbgogICAgcHJvY2VzcyAodmFsdWUpCiAgICAgICAgdmFyaWFibGUgdG90YWwgOiBpbnRlZ2VyIHJhbmdlIDAgdG8gODsKICAgIGJlZ2luCiAgICAgICAgdG90YWwgOj0gMDsKICAgICAgICBmb3IgaSBpbiB2YWx1ZSdyYW5nZSBsb29wCiAgICAgICAgICAgIGlmIHZhbHVlKGkpID0gJzEnIHRoZW4KICAgICAgICAgICAgICAgIHRvdGFsIDo9IHRvdGFsICsgMTsKICAgICAgICAgICAgZW5kIGlmOwogICAgICAgIGVuZCBsb29wOwogICAgICAgIGNvdW50IDw9IHN0ZF9sb2dpY192ZWN0b3IodG9fdW5zaWduZWQodG90YWwsIGNvdW50J2xlbmd0aCkpOwogICAgZW5kIHByb2Nlc3M7CmVuZCBhcmNoaXRlY3R1cmUgcnRsOwo="
+}

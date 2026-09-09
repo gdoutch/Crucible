@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Count Set Bits · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · VHDL · easy</p>
+  <h1>Count Set Bits</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>How many of the 8 bits of <code>value</code> are <code>'1'</code> —
+  the population count, wired up as a circuit rather than written as a loop
+  in a program. <code>count</code> needs to be right for every one of the
+  256 possible inputs at once: there is no "next instruction" here, only
+  a description of the wire.</p>
+
+<h2>This is a lookup, not a loop</h2>
+
+<p>A process is allowed to loop internally — <code>for i in value'range
+  loop</code> is completely ordinary VHDL — but what it describes is still
+  combinational hardware, not a sequence of steps that happen over time.
+  Whatever the process computes has to settle to <code>count</code>'s final
+  value the moment <code>value</code> changes, because the testbench only
+  gives it one <code>wait for 1 ns</code> before it reads the answer back.</p>
+
+<div class="note">
+<p>Two shapes both work here. One is a process with <code>value</code> in
+  its sensitivity list, looping over the 8 bits and accumulating a count in
+  a variable. The other has no process at all: eight terms added together
+  with VHDL's <code>+</code> on <code>unsigned</code>, each term being a bit
+  widened to a number that is either 0 or 1. Both describe the same
+  hardware; the loop is just a shorter way to write it.</p>
+</div>
+
+<h2>The trap: every bit needs a target, every path needs an assignment</h2>
+
+<div class="trap">
+<p><strong>An <code>if</code> with no <code>else</code> describes a
+  latch.</strong> If a process only assigns <code>count</code> inside a
+  condition that is not always true, simulation remembers whatever
+  <code>count</code> held from the previous run — exactly the behaviour real
+  synthesis would give you too, since "keep the old value" is what a latch
+  <em>is</em>. Give every branch of every decision somewhere for
+  <code>count</code> to end up, or compute it as one expression with nothing
+  conditional in the way at all.</p>
+</div>
+
+<h2>Getting a number back out of bits</h2>
+
+<p><code>count</code> is a <code>std_logic_vector</code>, not an integer, so
+  a running total kept as a plain VHDL <code>integer</code> variable needs
+  converting before it can be assigned to it. <code>ieee.numeric_std</code>
+  is where that conversion lives — the same package that gives ordinary
+  arithmetic to <code>std_logic_vector</code> in the first place, by way of
+  its <code>unsigned</code> and <code>signed</code> types.</p>
+
+<details>
+<summary>Still stuck? A bigger nudge</summary>
+
+<p>The loop version, with the conversion left as the one blank to fill in:</p>
+
+<pre><code>process (value)
+    variable total : integer range 0 to 8;
+begin
+    total := 0;
+    for i in value'range loop
+        if value(i) = '1' then
+            total := total + 1;
+        end if;
+    end loop;
+    count <= ???;  -- total, turned back into an 4-bit std_logic_vector
+end process;</code></pre>
+
+<p><code>to_unsigned(total, count'length)</code> is the function that does
+  it — the target width, <code>count'length</code>, comes from
+  <code>count</code> itself, so it is never hand-typed as a literal
+  <code>4</code>.</p>
+
+</details>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li><code>00000000</code> → <code>0000</code>. All the branches that give
+    up early still need to reach this on the emptiest input.</li>
+  <li><code>11111111</code> → <code>1000</code>. The only fixed case where
+    the answer needs <code>count</code>'s own top bit.</li>
+  <li><code>10101010</code> → <code>0100</code>: four bits, spread out
+    rather than adjacent, so a run-length shortcut would get this one
+    wrong.</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="vhdl_count_set_bits.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

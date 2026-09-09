@@ -29,6 +29,7 @@ from crucible.languages import asm_lang, native_compiler
 from crucible.languages.asm_lang import AsmX64MasmLanguage
 from crucible.languages.c_lang import CLanguage
 from crucible.languages.csharp_lang import CSharpLanguage
+from crucible.languages.vhdl_lang import VhdlLanguage
 from crucible.problem import ProblemError, load_library, load_problem
 
 PROBLEMS_ROOT = Path(__file__).resolve().parents[1] / "problems"
@@ -1364,6 +1365,57 @@ def nc_available_elsewhere(status) -> bool:
     purpose and this test has nothing to check.
     """
     return "Windows only" not in status.summary and "x86-64 machine" not in status.summary
+
+
+class TestVhdlDiagnostics(unittest.TestCase):
+    """Testable without GHDL installed."""
+
+    def setUp(self):
+        self.vhdl = VhdlLanguage()
+
+    def test_temp_paths_are_stripped_from_diagnostics(self):
+        raw = (f"C:{os.sep}long{os.sep}temp{os.sep}crucible_x{os.sep}"
+               f"solution.vhd:12:5: syntax error")
+        self.assertEqual(self.vhdl.clean_diagnostics(raw),
+                         "solution.vhd:12:5: syntax error")
+
+    def test_harness_paths_are_also_stripped(self):
+        raw = (f"C:{os.sep}long{os.sep}temp{os.sep}crucible_x{os.sep}"
+               f"harness.vhd:9:3: no declaration for \"solution\"")
+        self.assertEqual(self.vhdl.clean_diagnostics(raw),
+                         "harness.vhd:9:3: no declaration for \"solution\"")
+
+    def test_clean_exit_reports_nothing(self):
+        self.assertEqual(self.vhdl.describe_exit(0), "")
+        self.assertEqual(self.vhdl.describe_exit(None), "")
+
+    def test_nonzero_exit_points_at_stderr(self):
+        message = self.vhdl.describe_exit(1)
+        self.assertIn("1", message)
+
+    def test_missing_ghdl_reports_unavailable_with_a_remedy(self):
+        with mock.patch.object(native_compiler, "which", return_value=None):
+            status = self.vhdl.detect_toolchain()
+        self.assertFalse(status.available)
+        self.assertIn("GHDL", status.summary)
+        self.assertTrue(status.remedy)
+        self.assertIn("ghdl", status.remedy.lower())
+
+    def test_found_ghdl_reports_available(self):
+        with mock.patch.object(native_compiler, "which", return_value="/usr/bin/ghdl"), \
+                mock.patch.object(native_compiler, "probe_version", return_value="GHDL 4.1.0"):
+            status = self.vhdl.detect_toolchain()
+        self.assertTrue(status.available)
+        self.assertIn("GHDL 4.1.0", status.summary)
+
+    def test_exec_command_runs_the_fixed_harness_unit(self):
+        with mock.patch.object(native_compiler, "which", return_value="ghdl"):
+            command = self.vhdl.exec_command(Path("."), None)
+        self.assertEqual(command, ["ghdl", "-r", "--std=08", "harness"])
+
+    def test_registered_under_its_own_id(self):
+        self.assertIn("vhdl", languages.known_ids())
+        self.assertIs(languages.get("vhdl").__class__, VhdlLanguage)
 
 
 # ---------------------------------------------------------------------------

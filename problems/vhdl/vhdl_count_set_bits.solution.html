@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Count Set Bits · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · VHDL · easy</p>
+  <h1>Count Set Bits</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The whole thing</h2>
+
+<pre><code>library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+entity solution is
+    port (
+        value : in  std_logic_vector(7 downto 0);
+        count : out std_logic_vector(3 downto 0)
+    );
+end entity solution;
+
+architecture rtl of solution is
+begin
+    process (value)
+        variable total : integer range 0 to 8;
+    begin
+        total := 0;
+        for i in value'range loop
+            if value(i) = '1' then
+                total := total + 1;
+            end if;
+        end loop;
+        count &lt;= std_logic_vector(to_unsigned(total, count'length));
+    end process;
+end architecture rtl;</code></pre>
+
+<p>One process, sensitive to <code>value</code> alone, so it re-evaluates
+  exactly when there is something new to look at and never depends on
+  simulation time beyond that.</p>
+
+<h2>Walking it through</h2>
+
+<p>Take <code>value = "10110000"</code> — bits 7, 5 and 4 are set:</p>
+
+<table class="trace">
+  <tr><th>i</th><th>value(i)</th><th>total after</th></tr>
+  <tr><td>7</td><td>1</td><td>1</td></tr>
+  <tr><td>6</td><td>0</td><td>1</td></tr>
+  <tr><td>5</td><td>1</td><td>2</td></tr>
+  <tr><td>4</td><td>1</td><td>3</td></tr>
+  <tr><td>3</td><td>0</td><td>3</td></tr>
+  <tr><td>2</td><td>0</td><td>3</td></tr>
+  <tr><td>1</td><td>0</td><td>3</td></tr>
+  <tr><td>0</td><td>0</td><td>3</td></tr>
+</table>
+
+<p><code>value'range</code> is <code>7 downto 0</code> because that is how
+  the port itself is declared — the loop walks the bits in that order, but
+  addition does not care about order, so it would give the same total
+  counting the other way too.</p>
+
+<h2>Why a <code>variable</code>, not a <code>signal</code></h2>
+
+<p><code>total</code> is a process variable: it updates the instant the
+  assignment runs, so the loop can read back what it just added on the very
+  next iteration. A signal only takes its new value at the end of the
+  process (or after a <code>wait</code>), so a running total kept in a
+  signal would still be reading last cycle's count on every iteration but
+  the first — the classic signal-vs-variable trap, and exactly why an
+  accumulator inside a loop is one of the few places VHDL style actively
+  prefers a variable.</p>
+
+<h2>Turning a count back into <code>count</code></h2>
+
+<p><code>total</code> is a plain <code>integer</code>; the port is a
+  <code>std_logic_vector</code>. <code>to_unsigned(total, count'length)</code>
+  — from <code>ieee.numeric_std</code> — produces an <code>unsigned</code> of
+  exactly the target width, and <code>std_logic_vector(...)</code> is the
+  ordinary type conversion (not a function call — <code>unsigned</code> and
+  <code>std_logic_vector</code> are both arrays of <code>std_logic</code>
+  underneath) that lands it on the port. <code>count'length</code> rather
+  than a hand-typed <code>4</code> means this line does not need to change
+  if the port ever did.</p>
+
+<h2>The trap: a latch by omission</h2>
+
+<div class="trap">
+<p><strong>Every path through the process assigns <code>count</code>
+  exactly once.</strong> The loop always runs to completion and the
+  assignment sits after it unconditionally, so there is no way to reach the
+  end of the process without a fresh value having been computed. An earlier
+  draft that instead did <code>if total &gt; 0 then count &lt;= ...; end
+  if;</code>, with nothing for the <code>total = 0</code> case, would leave
+  <code>count</code> holding whatever it last held on that input — right by
+  accident the first time a test runs zero through it, from the testbench's
+  own signal initial value being <code>(others =&gt; '0')</code>, and wrong
+  the moment two all-zero-ish cases run back to back with something nonzero
+  in between.</p>
+</div>
+
+<h2>The alternative without a loop</h2>
+
+<p>Concurrent, no process at all — each bit is widened to a one-bit
+  <code>unsigned</code> and the eight are added as numbers:</p>
+
+<pre><code>count <= std_logic_vector(resize(
+    unsigned'(("0000000" & value(7))) +
+    ("0000000" & value(6)) + ("0000000" & value(5)) + ("0000000" & value(4)) +
+    ("0000000" & value(3)) + ("0000000" & value(2)) + ("0000000" & value(1)) +
+    ("0000000" & value(0)),
+    count'length));</code></pre>
+
+<p>Uglier to read and no different once synthesised — a synthesis tool turns
+  the loop version into the same adder tree. The loop earns its place here
+  because it says what is meant instead of how the adders happen to be
+  arranged.</p>
+
+<h2>Cost</h2>
+
+<p>As hardware: an 8-input adder tree, <strong>O(log n)</strong> gate delay
+  in the width of the input rather than <code>O(n)</code> — nothing here
+  runs one bit at a time the way a software loop would. The VHDL
+  <code>for</code> loop only looks sequential; it unrolls into eight parallel
+  terms at elaboration, not eight clock cycles.</p>
+
+<h2>A wrong turn worth recognising</h2>
+
+<div class="trap">
+<p><strong>Reaching for a clock that was never offered.</strong> A process
+  with <code>clk</code> in its sensitivity list, or a <code>wait until
+  rising_edge(clk)</code>, has nothing to synchronise with here — the
+  testbench drives <code>value</code> once and waits a fixed 1 ns, no clock
+  signal exists on either side of the port map, and a clocked description
+  will simply never produce a result in time. This problem is deliberately
+  scoped to combinational logic; a sequential version of the same idea would
+  need a testbench that drives a real waveform over several cycles per test
+  case, which is a different kind of problem from this one.</p>
+</div>
+
+<footer>
+  <p><a href="vhdl_count_set_bits.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>
