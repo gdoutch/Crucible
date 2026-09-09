@@ -116,6 +116,9 @@ class CppLanguage(Language):
             detail=t("languages.cpp.detail_not_found",
                     compilers=", ".join(_GNU_LIKE)),
             remedy=_install_help(),
+            # Same reasoning as c_lang's download_url -- see there.
+            download_url=("https://github.com/skeeto/w64devkit/releases"
+                          if _IS_WINDOWS else ""),
         )
 
     # -- build -------------------------------------------------------------

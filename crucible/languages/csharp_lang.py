@@ -69,6 +69,13 @@ def _install_help() -> str:
              else "languages.csharp.install_help_posix")
 
 
+#: One link works for every platform here -- unlike the GCC-family remedies,
+#: which fork into "here is a zip" on Windows and "here is a package manager
+#: command" on POSIX, the .NET SDK's own download page already does that
+#: fork itself.
+_DOTNET_DOWNLOAD_URL = "https://dotnet.microsoft.com/download"
+
+
 def _which_dotnet() -> str | None:
     """`shutil.which`, falling back to well known install directories."""
     found = shutil.which("dotnet")
@@ -139,6 +146,7 @@ class CSharpLanguage(Language):
                 summary=t("languages.csharp.summary_not_found"),
                 detail=t("languages.csharp.detail_not_found"),
                 remedy=_install_help(),
+                download_url=_DOTNET_DOWNLOAD_URL,
             )
 
         version = _probe_version(dotnet)
@@ -148,6 +156,7 @@ class CSharpLanguage(Language):
                 summary=t("languages.csharp.summary_no_sdk"),
                 detail=t("languages.csharp.detail_no_sdk", path=dotnet),
                 remedy=_install_help(),
+                download_url=_DOTNET_DOWNLOAD_URL,
             )
 
         self._dotnet = dotnet

@@ -18,6 +18,7 @@ from ..i18n import t
 from ..problem import DIFFICULTIES, Library, Problem, TestCase, load_library
 from ..randomise import GeneratedSuite
 from ..runner import ERROR, FAIL, PASS, SKIPPED, TIMEOUT, SubmissionResult, TestOutcome
+from .compiler_status_dialog import show as show_compiler_status
 from .editor import CodeEditor, mono_font
 from .panes import CollapsiblePane, PaneStack
 from .profile_dialog import choose_profile
@@ -1625,26 +1626,12 @@ class CrucibleApp(tk.Tk):
             self._show_toolchains()
 
     def _show_toolchains(self) -> None:
-        lines = []
-        for language in languages.all_languages():
-            status = language.detected_toolchain()
-            if status is None:
-                # Still being looked up. Saying so beats blocking the window
-                # on it just to fill in one line of a dialog.
-                lines.append(t("app.dialog.compiler_status_detecting_line",
-                              badge=BADGE_BAD, language=language.display_name))
-                lines.append("")
-                continue
-            mark = BADGE_OK if status.available else BADGE_BAD
-            lines.append(t("app.dialog.compiler_status_line", mark=mark,
-                          language=language.display_name, summary=status.summary))
-            if status.detail:
-                lines.append("    " + status.detail.replace("\n", "\n    "))
-            if not status.available and status.remedy:
-                lines.append("")
-                lines.append(status.remedy)
-            lines.append("")
-        messagebox.showinfo(t("app.menu.help.compiler_status"), "\n".join(lines).strip(), parent=self)
+        """Help → Compiler status. A page rather than a messagebox: unlike
+        every other dialog here, this one expects the candidate to leave,
+        go install something, and come back -- so it stays open, non-modal,
+        with a Browse button for a compiler auto-detection could not find and
+        a Download link for the one that did not need finding at all."""
+        show_compiler_status(self, self.palette, self.settings)
 
     def _show_authoring_help(self) -> None:
         messagebox.showinfo(

@@ -235,6 +235,10 @@ def cmd_verify(root: Path, seed: int | None) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     _apply_saved_locale()
+    # Before any language's toolchain() is ever called -- see
+    # workspace.apply_compiler_path_overrides for why this alone is enough to
+    # make a manually browsed-to compiler found, with no plugin-specific code.
+    workspace.apply_compiler_path_overrides()
 
     parser = argparse.ArgumentParser(
         prog="crucible",

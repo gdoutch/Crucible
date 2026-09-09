@@ -12,6 +12,7 @@ finds the window the way it was left rather than the way a stranger left it.
 
 from __future__ import annotations
 
+import copy
 import json
 import os
 import re
@@ -35,6 +36,13 @@ DEFAULT_SETTINGS = {
     #: the shape of it belongs to ui/panes.py, and every reader of it treats a
     #: missing or malformed entry as "lay the window out from scratch".
     "layout": {},
+    #: Directories picked by hand from the compiler status page's Browse
+    #: button, one per language id, for a compiler auto-detection could not
+    #: find. See `apply_compiler_path_overrides` -- this is machine state
+    #: rather than a language plugin concern, because every plugin's existing
+    #: `which()`-based search already consults PATH, so prepending onto it
+    #: here is the whole mechanism. No plugin needs its own "browse" code.
+    "compiler_path_overrides": {},
 }
 
 
@@ -129,7 +137,12 @@ def _settings_path() -> Path:
 
 
 def load_settings() -> dict:
-    settings = dict(DEFAULT_SETTINGS)
+    # A deep copy, not `dict(DEFAULT_SETTINGS)`: a shallow copy shares the
+    # *same* nested "layout"/"compiler_path_overrides" dict objects with the
+    # module-level default, so mutating one in place -- which
+    # set_compiler_path_override does -- would silently corrupt
+    # DEFAULT_SETTINGS itself for the rest of the process.
+    settings = copy.deepcopy(DEFAULT_SETTINGS)
     try:
         stored = json.loads(_settings_path().read_text(encoding="utf-8"))
         if isinstance(stored, dict):
@@ -197,3 +210,70 @@ def clear_msvc_env() -> None:
         _msvc_cache_path().unlink()
     except OSError:
         pass
+
+
+# -- manual compiler locations ----------------------------------------------
+#
+# The compiler status page's Browse button does not teach any language plugin
+# to look in a new place -- it prepends the chosen directory onto this
+# process's own PATH, so every plugin's existing `shutil.which` / `nc.which`
+# search finds it exactly the way it would find anything else already on
+# PATH. One mechanism, no plugin-specific "browse" code anywhere.
+
+def set_compiler_path_override(language_id: str, directory: str,
+                               settings: dict) -> None:
+    """Remember `directory` for `language_id` and persist it. `settings` is
+    updated in place (the same dict the caller already holds, e.g.
+    `CrucibleApp.settings`) so the caller's own copy stays in sync.
+
+    Replaces `settings["compiler_path_overrides"]` with a fresh dict rather
+    than mutating whatever is there -- `settings.setdefault(...)` would hand
+    back the *same* dict object `load_settings` copied from
+    `DEFAULT_SETTINGS`, and mutating that in place corrupts the module-level
+    default for the rest of the process. See `load_settings`.
+    """
+    overrides = dict(settings.get("compiler_path_overrides") or {})
+    overrides[language_id] = directory
+    settings["compiler_path_overrides"] = overrides
+    save_settings(settings)
+    apply_compiler_path_overrides(settings)
+
+
+def clear_compiler_path_override(language_id: str, settings: dict) -> None:
+    """Forget a manually chosen directory, reverting to plain auto-detection.
+
+    The directory already prepended onto this process's PATH is deliberately
+    left there -- stripping one entry back out of a live PATH that other code
+    may have since read or copied is not worth the risk of getting it wrong,
+    and a stale entry pointing at a real compiler does no harm. It simply
+    will not be re-applied on the next launch.
+    """
+    overrides = dict(settings.get("compiler_path_overrides") or {})
+    overrides.pop(language_id, None)
+    settings["compiler_path_overrides"] = overrides
+    save_settings(settings)
+
+
+def apply_compiler_path_overrides(settings: dict | None = None) -> None:
+    """Prepend every saved override directory onto this process's PATH.
+
+    Idempotent, so it is safe to call again after every browse action as well
+    as once at startup -- a directory already on PATH is never added twice,
+    which matters here because a long-running session may call this many
+    times and a PATH that grows without bound is its own slow, confusing bug.
+    """
+    overrides = (settings or load_settings()).get("compiler_path_overrides", {})
+    if not isinstance(overrides, dict):
+        return
+    current = os.environ.get("PATH", "")
+    entries = current.split(os.pathsep) if current else []
+    seen = {e.rstrip("\\/").lower() for e in entries}
+    prepend = []
+    for directory in overrides.values():
+        directory = str(directory)
+        key = directory.rstrip("\\/").lower()
+        if directory and key not in seen:
+            prepend.append(directory)
+            seen.add(key)
+    if prepend:
+        os.environ["PATH"] = os.pathsep.join(prepend + entries)

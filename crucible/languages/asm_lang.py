@@ -65,6 +65,11 @@ def _install_help() -> str:
     return t("languages.asm_x64_masm.install_help")
 
 
+#: ml64 ships with the C++ toolset, so the same Build Tools installer that
+#: gets someone a C/C++ compiler also gets them an assembler.
+_BUILD_TOOLS_URL = "https://visualstudio.microsoft.com/downloads/"
+
+
 class AsmX64MasmLanguage(Language):
     id = "asm_x64_masm"
     display_name = "x86-64 Assembly (MASM)"
@@ -164,6 +169,7 @@ class AsmX64MasmLanguage(Language):
                     summary=t("languages.asm_x64_masm.summary_no_assembler"),
                     detail=t("languages.asm_x64_masm.detail_no_assembler", cl=cl),
                     remedy=_install_help(),
+                    download_url=_BUILD_TOOLS_URL,
                 )
 
         return ToolchainStatus(
@@ -171,6 +177,7 @@ class AsmX64MasmLanguage(Language):
             summary=t("languages.asm_x64_masm.summary_not_found"),
             detail=t("languages.asm_x64_masm.detail_not_found"),
             remedy=_install_help(),
+            download_url=_BUILD_TOOLS_URL,
         )
 
     # -- build -------------------------------------------------------------

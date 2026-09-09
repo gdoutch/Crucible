@@ -65,6 +65,12 @@ def _install_help() -> str:
              else "languages.vhdl.install_help_posix")
 
 
+#: The releases page has prebuilt Windows zips; on POSIX the remedy text's
+#: package-manager commands need a terminal rather than a browser tab, the
+#: same reasoning c_lang and cpp_lang use for their own download_url.
+_RELEASES_URL = "https://github.com/ghdl/ghdl/releases"
+
+
 class VhdlLanguage(Language):
     id = "vhdl"
     display_name = "VHDL"
@@ -92,6 +98,7 @@ class VhdlLanguage(Language):
                 summary=t("languages.vhdl.summary_not_found"),
                 detail=t("languages.vhdl.detail_not_found"),
                 remedy=_install_help(),
+                download_url=_RELEASES_URL if nc.IS_WINDOWS else "",
             )
         version = nc.probe_version(path) or "ghdl"
         return ToolchainStatus(

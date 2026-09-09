@@ -26,6 +26,7 @@ python -m crucible
 
 - [Quick start](#quick-start)
 - [Profiles](#profiles)
+- [Compiler status](#compiler-status)
 - [Installing a C compiler](#installing-a-c-compiler)
 - [Installing the .NET SDK](#installing-the-net-sdk)
 - [Installing GHDL](#installing-ghdl)
@@ -175,6 +176,30 @@ The status bar shows who is currently practising and how many problems they
 have solved; **Profile → Current: `<name>`** shows the same thing. Deleting a
 profile (from the switcher) removes its drafts, data sets and solved record
 permanently -- there is no undo.
+
+## Compiler status
+
+*Help → Compiler status* is the interactive version of what the sections
+below describe by hand. It lists every registered language, what
+auto-detection found (or why it did not), and:
+
+- **Download** — the one link worth a click for whatever is missing, next to
+  the same install instructions printed here.
+- **Browse…** — for a compiler already installed somewhere auto-detection
+  does not search (a non-standard drive, a portable extract, an old install
+  kept around on purpose). Point it at the compiler's own executable and
+  Crucible remembers the folder, prepends it onto this process's `PATH`, and
+  re-runs the same search *Tools → Re-check compilers* does — nothing about
+  how a language finds its compiler changes; it just now has one more place
+  already on `PATH` to find it in.
+- **Re-check** / **Re-check all** — the same background re-scan as the Tools
+  menu item, per language or for everything at once.
+
+A folder chosen this way is remembered across launches (**Reset to
+auto-detect** on that language's row forgets it) but is deliberately never
+un-prepended from a running process's `PATH` once added — see
+`workspace.apply_compiler_path_overrides` for why that is the safe side to
+get wrong.
 
 ## Installing a C compiler
 
@@ -1341,6 +1366,7 @@ crucible/
     vhdl_lang.py       ghdl: analyse, elaborate, run -- one exec per test case
   ui/
     app.py             main window
+    compiler_status_dialog.py  Help -> Compiler status: browse, download, re-check
     editor.py          editor widget: gutter, highlighting, indentation
     panes.py           collapsible panes, and the sizing ttk will not do
     profile_dialog.py  the profile picker/switcher dialog

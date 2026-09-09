@@ -439,8 +439,6 @@
       "theme_changed_message": "The new theme will be applied next time you start {app_name}.",
       "language_changed_title": "Language changed",
       "language_changed_message": "{language} will be used next time you start {app_name}.",
-      "compiler_status_line": "{mark} {language}: {summary}",
-      "compiler_status_detecting_line": "{badge} {language}: still detecting…",
       "authoring_help_message": "A problem is one JSON file under:\n{root}\n\nRequired fields:\n  title, language, statement, harness, tests,\n  and reference_solution (or reference_solution_b64)\n\nThe harness supplies main(); the candidate supplies the function.\nEach test is {{name, stdin, expected_stdout, description}}.\n\nEvery reference solution is run against the full suite before the\nproblem is offered -- a problem whose reference fails is disabled.\n\nOptional 'generator' adds randomised cases:\n  {{\"count\": 4, \"source\": \"def generate(rng, count): ...\"}}\nIt returns inputs only -- {{name, stdin, description}} -- and the\nexpected output is captured from the reference solution, so the\ntwo can never disagree. Ctrl+R draws a new data set.\n\nSee README.md for the full schema and a worked example.",
       "no_guide_title": "No {kind} for this problem",
       "no_guide_message": "{title} does not ship a {kind} page.\n\nOne would live at:\n{path}\n\nSee Guides → What are these? for the convention.",
@@ -455,6 +453,23 @@
       "about_message": "{app_name}\n\nA practice harness for compiled and interpreted languages.\nTest cases are always shown in full; reference solutions never are.\n\nProblems: {problems_root}\nProfile:  {username}  ({profile_root})\nPython:   {python_version}",
       "about_no_profile": "(none yet)",
       "could_not_open_folder_title": "Could not open folder"
+    },
+    "compiler_status": {
+      "subtitle": "What Crucible found on this machine, and where to get what it did not.",
+      "checking": "Checking…",
+      "browse_button": "Browse…",
+      "download_button": "Download",
+      "recheck_button": "Re-check",
+      "recheck_all_button": "Re-check all",
+      "close_button": "Close",
+      "override_heading": "Using the folder you chose:",
+      "reset_override_button": "Reset to auto-detect",
+      "browse_dialog_title": "Locate {language}'s compiler",
+      "browse_executables_filter": "Programs",
+      "browse_all_files_filter": "All files",
+      "still_not_found_after_browse": "Still not found in that folder.",
+      "could_not_open_link_title": "Could not open that link",
+      "could_not_open_link_message": "No browser could be launched for:\n{url}"
     }
   },
   "runner": {

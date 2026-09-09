@@ -34,6 +34,13 @@ class ToolchainStatus:
     summary: str
     detail: str = ""
     remedy: str = ""
+    #: One canonical "go get it here" link for the compiler status page's
+    #: Download button -- deliberately not parsed out of `remedy`, which is
+    #: prose meant to be read, not screen-scraped. Left blank wherever a
+    #: single link would not actually help (a POSIX package-manager command
+    #: needs a terminal, not a browser tab; "Windows only" or "wrong
+    #: architecture" are facts about the machine that no download fixes).
+    download_url: str = ""
 
     def __str__(self) -> str:  # pragma: no cover - display helper
         return self.summary

@@ -439,8 +439,6 @@
       "theme_changed_message": "Le nouveau thème sera appliqué au prochain démarrage de {app_name}.",
       "language_changed_title": "Langue modifiée",
       "language_changed_message": "{language} sera utilisé au prochain démarrage de {app_name}.",
-      "compiler_status_line": "{mark} {language} : {summary}",
-      "compiler_status_detecting_line": "{badge} {language} : détection en cours…",
       "authoring_help_message": "Un problème est un fichier JSON situé sous :\n{root}\n\nChamps requis :\n  title, language, statement, harness, tests,\n  et reference_solution (ou reference_solution_b64)\n\nLe harness fournit main() ; le candidat fournit la fonction.\nChaque test est {{name, stdin, expected_stdout, description}}.\n\nChaque solution de référence est exécutée sur la suite complète avant\nque le problème ne soit proposé -- un problème dont la référence échoue\nest désactivé.\n\nLe champ optionnel 'generator' ajoute des cas aléatoires :\n  {{\"count\": 4, \"source\": \"def generate(rng, count): ...\"}}\nIl ne renvoie que des entrées -- {{name, stdin, description}} -- et la\nsortie attendue est capturée depuis la solution de référence, si bien que\nles deux ne peuvent jamais être en désaccord. Ctrl+R tire un nouveau jeu\nde données.\n\nVoir README.md pour le schéma complet et un exemple détaillé.",
       "no_guide_title": "Aucun « {kind} » pour ce problème",
       "no_guide_message": "{title} ne fournit pas de page « {kind} ».\n\nElle se trouverait à :\n{path}\n\nVoir Guides → Qu'est-ce que c'est ? pour la convention.",
@@ -455,6 +453,23 @@
       "about_message": "{app_name}\n\nUn environnement de pratique pour langages compilés et interprétés.\nLes cas de test sont toujours affichés en entier ; les solutions de\nréférence ne le sont jamais.\n\nProblèmes : {problems_root}\nProfil :    {username}  ({profile_root})\nPython :    {python_version}",
       "about_no_profile": "(aucun pour l'instant)",
       "could_not_open_folder_title": "Impossible d'ouvrir le dossier"
+    },
+    "compiler_status": {
+      "subtitle": "Ce que Crucible a trouvé sur cette machine, et où obtenir ce qui manque.",
+      "checking": "Vérification…",
+      "browse_button": "Parcourir…",
+      "download_button": "Télécharger",
+      "recheck_button": "Revérifier",
+      "recheck_all_button": "Tout revérifier",
+      "close_button": "Fermer",
+      "override_heading": "Dossier sélectionné :",
+      "reset_override_button": "Revenir à la détection automatique",
+      "browse_dialog_title": "Localiser le compilateur pour {language}",
+      "browse_executables_filter": "Programmes",
+      "browse_all_files_filter": "Tous les fichiers",
+      "still_not_found_after_browse": "Toujours introuvable dans ce dossier.",
+      "could_not_open_link_title": "Impossible d'ouvrir ce lien",
+      "could_not_open_link_message": "Aucun navigateur n'a pu être lancé pour :\n{url}"
     }
   },
   "runner": {

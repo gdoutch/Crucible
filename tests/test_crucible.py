@@ -594,6 +594,73 @@ class TestSettingsLocale(unittest.TestCase):
         self.assertEqual(workspace.load_settings()["locale"], "fr_FR")
 
 
+class TestCompilerPathOverrides(unittest.TestCase):
+    """The compiler status page's Browse button, minus the file dialog and
+    the Tk window around it -- see crucible.ui.compiler_status_dialog."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self._home = os.environ.get("CRUCIBLE_HOME")
+        os.environ["CRUCIBLE_HOME"] = self._tmp.name
+        self._path = os.environ.get("PATH", "")
+
+    def tearDown(self):
+        if self._home is None:
+            os.environ.pop("CRUCIBLE_HOME", None)
+        else:
+            os.environ["CRUCIBLE_HOME"] = self._home
+        os.environ["PATH"] = self._path
+        self._tmp.cleanup()
+
+    def test_default_settings_has_no_overrides(self):
+        self.assertEqual(workspace.DEFAULT_SETTINGS["compiler_path_overrides"], {})
+
+    def test_set_override_round_trips_through_disk(self):
+        settings = workspace.load_settings()
+        workspace.set_compiler_path_override("c", r"C:\tools\gcc\bin", settings)
+        self.assertEqual(
+            workspace.load_settings()["compiler_path_overrides"]["c"],
+            r"C:\tools\gcc\bin")
+
+    def test_set_override_mutates_the_caller_s_dict_in_place(self):
+        """The dialog holds one long-lived settings dict (the same one
+        CrucibleApp.settings is) rather than reloading after every action, so
+        the call has to update it directly rather than only the file."""
+        settings = workspace.load_settings()
+        workspace.set_compiler_path_override("java", r"C:\jdk\bin", settings)
+        self.assertEqual(settings["compiler_path_overrides"]["java"], r"C:\jdk\bin")
+
+    def test_set_override_prepends_it_onto_this_process_s_path(self):
+        settings = workspace.load_settings()
+        workspace.set_compiler_path_override("vhdl", r"C:\ghdl\bin", settings)
+        entries = os.environ["PATH"].split(os.pathsep)
+        self.assertEqual(entries[0], r"C:\ghdl\bin")
+
+    def test_applying_twice_does_not_duplicate_the_path_entry(self):
+        settings = workspace.load_settings()
+        workspace.set_compiler_path_override("vhdl", r"C:\ghdl\bin", settings)
+        workspace.apply_compiler_path_overrides(settings)
+        workspace.apply_compiler_path_overrides(settings)
+        entries = os.environ["PATH"].split(os.pathsep)
+        self.assertEqual(entries.count(r"C:\ghdl\bin"), 1)
+
+    def test_clear_override_removes_it_from_settings(self):
+        settings = workspace.load_settings()
+        workspace.set_compiler_path_override("c", r"C:\tools\gcc\bin", settings)
+        workspace.clear_compiler_path_override("c", settings)
+        self.assertNotIn("c", workspace.load_settings()["compiler_path_overrides"])
+
+    def test_clear_override_does_not_touch_a_running_process_s_path(self):
+        """Documented in workspace.clear_compiler_path_override: stripping an
+        entry back out of a live PATH is not attempted. A directory that was
+        genuinely found there does no harm sitting on PATH unused; getting
+        the removal wrong would."""
+        settings = workspace.load_settings()
+        workspace.set_compiler_path_override("c", r"C:\tools\gcc\bin", settings)
+        workspace.clear_compiler_path_override("c", settings)
+        self.assertIn(r"C:\tools\gcc\bin", os.environ["PATH"].split(os.pathsep))
+
+
 # ---------------------------------------------------------------------------
 # profiles
 # ---------------------------------------------------------------------------
@@ -1400,6 +1467,23 @@ class TestVhdlDiagnostics(unittest.TestCase):
         self.assertIn("GHDL", status.summary)
         self.assertTrue(status.remedy)
         self.assertIn("ghdl", status.remedy.lower())
+
+    def test_missing_ghdl_carries_a_download_link_on_windows(self):
+        """The compiler status page's Download button needs somewhere to
+        send the browser -- see ToolchainStatus.download_url."""
+        with mock.patch.object(native_compiler, "which", return_value=None), \
+                mock.patch.object(native_compiler, "IS_WINDOWS", True):
+            status = self.vhdl.detect_toolchain()
+        self.assertEqual(status.download_url,
+                         "https://github.com/ghdl/ghdl/releases")
+
+    def test_missing_ghdl_has_no_download_link_off_windows(self):
+        """POSIX's remedy is apt/dnf/brew commands, which a browser tab
+        cannot run -- so there is deliberately nothing for Download to open."""
+        with mock.patch.object(native_compiler, "which", return_value=None), \
+                mock.patch.object(native_compiler, "IS_WINDOWS", False):
+            status = self.vhdl.detect_toolchain()
+        self.assertEqual(status.download_url, "")
 
     def test_found_ghdl_reports_available(self):
         with mock.patch.object(native_compiler, "which", return_value="/usr/bin/ghdl"), \

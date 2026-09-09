@@ -69,6 +69,11 @@ def _install_help() -> str:
              else "languages.java.install_help_posix")
 
 
+#: Adoptium is the one link every platform's remedy text already leads with,
+#: so it is the one that stands alone as the Download button's target too.
+_ADOPTIUM_URL = "https://adoptium.net"
+
+
 def _which_javac() -> str | None:
     """`javac` from PATH, then `JAVA_HOME`, then well-known install roots."""
     found = shutil.which("javac")
@@ -151,6 +156,7 @@ class JavaLanguage(Language):
                 summary=t("languages.java.summary_not_found"),
                 detail=t("languages.java.detail_not_found"),
                 remedy=_install_help(),
+                download_url=_ADOPTIUM_URL,
             )
 
         version = _probe_version(javac)
@@ -160,6 +166,7 @@ class JavaLanguage(Language):
                 summary=t("languages.java.summary_broken"),
                 detail=t("languages.java.detail_broken", path=javac),
                 remedy=_install_help(),
+                download_url=_ADOPTIUM_URL,
             )
 
         java = _java_beside(javac)
@@ -169,6 +176,7 @@ class JavaLanguage(Language):
                 summary=t("languages.java.summary_no_java"),
                 detail=t("languages.java.detail_no_java", path=javac),
                 remedy=_install_help(),
+                download_url=_ADOPTIUM_URL,
             )
 
         self._javac, self._java = javac, java

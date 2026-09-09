@@ -108,6 +108,12 @@ class CLanguage(Language):
             detail=t("languages.c.detail_not_found",
                     compilers=", ".join(_GNU_LIKE)),
             remedy=_install_help(),
+            # w64devkit only -- the other two Windows options in the remedy
+            # text are a package manager command and an existing VS install
+            # to modify, neither of which a single link would help with. No
+            # POSIX link either: apt/dnf/brew need a terminal, not a browser.
+            download_url=("https://github.com/skeeto/w64devkit/releases"
+                          if _IS_WINDOWS else ""),
         )
 
     # -- build -------------------------------------------------------------
