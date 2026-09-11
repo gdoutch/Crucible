@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Even Parity Bit · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · VHDL · easy</p>
+  <h1>Even Parity Bit</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>One bit that, appended to <code>data</code>, would make the total number
+  of set bits even. That is the whole of what "even parity" means: it is not
+  a property of <code>data</code> alone, it is a property chosen to hold once
+  <code>parity</code> joins it.</p>
+
+<h2>The idea in one sentence</h2>
+
+<p><code>parity</code> is <code>'1'</code> exactly when <code>data</code>
+  itself has an <em>odd</em> number of ones -- because adding one more one
+  is what turns an odd count even. Count the ones in <code>data</code>; the
+  answer is whether that count is odd.</p>
+
+<h2>You already know an operator that answers this</h2>
+
+<div class="note">
+<p>XOR of two bits is <code>'1'</code> exactly when they differ -- an odd
+  number of them are <code>'1'</code>. Chain that across all eight bits and
+  the same fact holds: the running XOR is <code>'1'</code> exactly when an
+  odd number of the bits seen so far were <code>'1'</code>. XOR the whole
+  vector together and you have your answer, with no need to count anything
+  or compare to a number.</p>
+</div>
+
+<h2>Doing that without writing out eight terms</h2>
+
+<p>VHDL-2008 gives four of the bitwise operators -- <code>and</code>,
+  <code>or</code>, <code>xor</code> and their negations -- a second,
+  <em>unary</em> form: put one of them directly in front of an array and it
+  folds the whole thing down to a single bit of the same type, left to
+  right, as if you had chained the ordinary two-argument operator between
+  every element.</p>
+
+<pre><code>parity <= ???;   -- one operator, one signal, no index, no loop</code></pre>
+
+<p>Nothing about the port list needs to change for this -- <code>data</code>
+  is already exactly the array such an operator expects.</p>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li><code>00000000</code> → <code>0</code>. Zero is even; nothing to add.</li>
+  <li><code>00000001</code> → <code>1</code>. One bit is odd.</li>
+  <li><code>11111111</code> → <code>0</code>. Eight is even too -- the same
+    answer as all-zero, from the opposite end. A solution that treats
+    "all zero" as a special case rather than actually computing a count
+    gets this one wrong.</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="vhdl_even_parity.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

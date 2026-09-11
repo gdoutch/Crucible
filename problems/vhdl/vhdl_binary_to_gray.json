@@ -1,0 +1,45 @@
+{
+  "id": "vhdl_binary_to_gray",
+  "title": "Binary to Gray Code",
+  "language": "vhdl",
+  "difficulty": "easy",
+  "topics": [
+    "combinational logic",
+    "bitwise",
+    "encoding"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Convert a 4-bit binary value into its 4-bit reflected Gray code.\n\n## Your entity\n\n```\nentity solution is\n    port (\n        bin  : in  std_logic_vector(3 downto 0);\n        gray : out std_logic_vector(3 downto 0)\n    );\nend entity solution;\n```\n\nGray code is the encoding used on rotary encoders and grey-scale counters:\nadjacent values -- `n` and `n+1` -- differ in exactly one bit, which is what\nmakes it safe to *sample* mid-transition (an ordinary binary counter can be\nbriefly misread as anything, because several bits can be changing at once;\na Gray-coded one is misread as its neighbour at worst).\n\n`\"1010\"` (decimal 10) becomes `\"1111\"`. `\"0111\"` (decimal 7) becomes\n`\"0100\"`.\n\n## Input and output\n\nThe testbench reads one line of stdin as a 4-character bit string, drives\nit onto `bin`, waits for the output to settle, and writes `gray` back out\nthe same way.\n\n## Watch out\n\n- The top bit is unchanged: `gray(3) = bin(3)`. Every other output bit is\n  the XOR of the binary input bit at its own position *and the position one\n  above it* -- `gray(i) = bin(i+1) xor bin(i)` for `i` from 2 downto 0.\n  Getting that shift backwards (`bin(i) xor bin(i-1)`, say) still produces\n  *a* 4-bit output for every input, so nothing about it fails to compile --\n  it is simply the wrong 4 bits for every input except zero.\n",
+  "starter_code": "library ieee;\nuse ieee.std_logic_1164.all;\n\nentity solution is\n    port (\n        bin  : in  std_logic_vector(3 downto 0);\n        gray : out std_logic_vector(3 downto 0)\n    );\nend entity solution;\n\narchitecture rtl of solution is\nbegin\n    -- your code here\n    gray <= (others => '0');\nend architecture rtl;\n",
+  "harness": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.std_logic_textio.all;\n\nuse std.textio.all;\nuse std.env.all;\n\nentity harness is\nend entity harness;\n\narchitecture sim of harness is\n    signal bin_sig  : std_logic_vector(3 downto 0);\n    signal gray_sig : std_logic_vector(3 downto 0);\nbegin\n    dut : entity work.solution\n        port map (\n            bin => bin_sig,\n            gray => gray_sig\n        );\n\n    process\n        variable in_line  : line;\n        variable out_line : line;\n        variable bin_in   : std_logic_vector(3 downto 0);\n    begin\n        readline(input, in_line);\n        read(in_line, bin_in);\n        bin_sig <= bin_in;\n        wait for 1 ns;\n        write(out_line, gray_sig);\n        writeline(output, out_line);\n        finish;\n    end process;\nend architecture sim;\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random 4-bit values for the VHDL Binary to Gray Code testbench.\n\nOnly the input is produced here -- the expected output is captured by\nrunning the reference solution's own simulation, so the two can never\ndisagree. All 16 possible inputs exist, so this leans on a few by name\nrather than trying to look clever about coverage.\n\"\"\"\n\nWIDTH = 4\n\n\ndef _bits(value):\n    return \"\".join(str((value >> b) & 1) for b in range(WIDTH - 1, -1, -1))\n\n\ndef _case(name, value, description=\"\"):\n    return {\"name\": name, \"stdin\": _bits(value) + \"\\n\", \"description\": description}\n\n\ndef generate(rng, count):\n    return [_case(\"random value #%d\" % (i + 1), rng.randrange(1 << WIDTH))\n            for i in range(count)]\n"
+  },
+  "tests": [
+    {
+      "name": "zero",
+      "stdin": "0000\n",
+      "expected_stdout": "0000",
+      "description": "Binary and Gray agree at zero."
+    },
+    {
+      "name": "one",
+      "stdin": "0001\n",
+      "expected_stdout": "0001"
+    },
+    {
+      "name": "ten",
+      "stdin": "1010\n",
+      "expected_stdout": "1111",
+      "description": "Every output bit differs from the input, which is as far from a lookup-table shortcut as a 4-bit case gets."
+    },
+    {
+      "name": "all ones",
+      "stdin": "1111\n",
+      "expected_stdout": "1000",
+      "description": "The top bit passes straight through even when every input bit is set."
+    }
+  ],
+  "reference_solution_b64": "bGlicmFyeSBpZWVlOwp1c2UgaWVlZS5zdGRfbG9naWNfMTE2NC5hbGw7CgplbnRpdHkgc29sdXRpb24gaXMKICAgIHBvcnQgKAogICAgICAgIGJpbiAgOiBpbiAgc3RkX2xvZ2ljX3ZlY3RvcigzIGRvd250byAwKTsKICAgICAgICBncmF5IDogb3V0IHN0ZF9sb2dpY192ZWN0b3IoMyBkb3dudG8gMCkKICAgICk7CmVuZCBlbnRpdHkgc29sdXRpb247CgphcmNoaXRlY3R1cmUgcnRsIG9mIHNvbHV0aW9uIGlzCmJlZ2luCiAgICBncmF5KDMpIDw9IGJpbigzKTsKICAgIGdyYXkoMikgPD0gYmluKDMpIHhvciBiaW4oMik7CiAgICBncmF5KDEpIDw9IGJpbigyKSB4b3IgYmluKDEpOwogICAgZ3JheSgwKSA8PSBiaW4oMSkgeG9yIGJpbigwKTsKZW5kIGFyY2hpdGVjdHVyZSBydGw7Cg=="
+}

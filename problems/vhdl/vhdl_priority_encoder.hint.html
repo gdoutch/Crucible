@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — 4-bit Priority Encoder · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · VHDL · medium</p>
+  <h1>4-bit Priority Encoder</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>Not "which bits are set" -- which <em>one</em>, by a fixed ranking: bit 3
+  outranks bit 2 outranks bit 1 outranks bit 0. Whichever of those is the
+  highest set bit is the whole answer; every lower set bit is ignored for
+  the purpose of <code>index</code>, though it still counts towards
+  <code>valid</code>.</p>
+
+<h2>The shape of it</h2>
+
+<p>A priority chain like this reads naturally as a ladder, checked from the
+  top down:</p>
+
+<pre><code>if data(3) = '1' then
+    -- bit 3 wins
+elsif data(2) = '1' then
+    -- bit 2 wins, since bit 3 did not
+elsif data(1) = '1' then
+    -- ...
+elsif data(0) = '1' then
+    -- ...
+???
+end if;</code></pre>
+
+<p>Four conditions, checked in priority order, each one only reached because
+  every condition above it was false.</p>
+
+<h2>The trap: what happens after the last <code>elsif</code></h2>
+
+<div class="trap">
+<p><strong>All four conditions can be false at once -- when
+  <code>data = "0000"</code> -- and an <code>if</code>/<code>elsif</code>
+  ladder with nothing after the last <code>elsif</code> simply does nothing
+  for that case.</strong> The design still elaborates. It still runs. It
+  just never assigns <code>index</code> or <code>valid</code> for that one
+  input, and "never assigned" is not the same as "assigned zero" -- ask
+  GHDL what an output nothing ever drove reads as, and the honest answer is
+  <code>'U'</code>, not <code>'0'</code>.</p>
+<p>The fix is a final <code>else</code>, with its own explicit values for
+  <strong>both</strong> outputs -- <code>index</code> is specified to read
+  <code>"00"</code> here, not left as "don't care", so there is one correct
+  answer to match rather than an genuinely unconstrained one.</p>
+</div>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li><code>0000</code> → <code>000</code>. The case every branch above
+    falls through to -- try this one first, since it is the one a missing
+    <code>else</code> gets wrong while every other case still looks fine.</li>
+  <li><code>0110</code> → <code>101</code>. Bits 1 and 2 are both set;
+    the answer is 2's index, not 1's -- the lower bit does not get ignored
+    entirely, it just loses the tie for <code>index</code>.</li>
+  <li><code>1111</code> → <code>111</code>. Every bit set, and only the
+    top one's priority shows up in the answer.</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="vhdl_priority_encoder.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

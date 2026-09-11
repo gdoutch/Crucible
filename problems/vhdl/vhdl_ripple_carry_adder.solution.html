@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — 4-bit Adder With Carry · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · VHDL · medium</p>
+  <h1>4-bit Adder With Carry</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The whole thing</h2>
+
+<pre><code>library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+entity solution is
+    port (
+        a    : in  std_logic_vector(3 downto 0);
+        b    : in  std_logic_vector(3 downto 0);
+        cin  : in  std_logic;
+        sum  : out std_logic_vector(3 downto 0);
+        cout : out std_logic
+    );
+end entity solution;
+
+architecture rtl of solution is
+    signal wide : unsigned(4 downto 0);
+begin
+    wide <= resize(unsigned(a), 5) + resize(unsigned(b), 5) + cin;
+    sum  <= std_logic_vector(wide(3 downto 0));
+    cout <= wide(4);
+end architecture rtl;</code></pre>
+
+<p>One internal signal, one addition, two ways of reading the answer back
+  out of it.</p>
+
+<h2>Walking it through</h2>
+
+<p>Take <code>a = "1111"</code> (15), <code>b = "0001"</code> (1),
+  <code>cin = '0'</code>:</p>
+
+<table class="trace">
+  <tr><th>step</th><th>value</th></tr>
+  <tr><td><code>resize(unsigned(a), 5)</code></td><td><code>01111</code></td></tr>
+  <tr><td><code>resize(unsigned(b), 5)</code></td><td><code>00001</code></td></tr>
+  <tr><td>sum, as a 5-bit unsigned</td><td><code>10000</code> (16)</td></tr>
+  <tr><td><code>wide(3 downto 0)</code> → <code>sum</code></td><td><code>0000</code></td></tr>
+  <tr><td><code>wide(4)</code> → <code>cout</code></td><td><code>1</code></td></tr>
+</table>
+
+<p>Output <code>"00001"</code> -- confirmed against a real GHDL run for
+  exactly this input.</p>
+
+<h2>Why five bits, not four</h2>
+
+<p>Four bits can represent 0 through 15. The largest possible result here --
+  15 + 15 + 1 = 31 -- needs five. <code>resize(unsigned(a), 5)</code> pads
+  a 4-bit unsigned value out to five bits by adding zeros above the existing
+  ones, which changes nothing about what number it represents; it just gives
+  the addition somewhere to put a result larger than either operand alone.
+  Add two 5-bit values (plus a 1-bit <code>cin</code>, which
+  <code>numeric_std</code> aligns at the low end for free) and the sum
+  itself is exactly wide enough for every possible answer, 0 through 31, to
+  fit without wrapping.</p>
+
+<p><code>wide(3 downto 0)</code> is then <code>sum</code> -- the low four
+  bits, which is also exactly what a plain 4-bit addition would have given,
+  wrapped. <code>wide(4)</code>, the one bit a 4-bit addition had nowhere to
+  put, is <code>cout</code>.</p>
+
+<h2>The trap: computing <code>sum</code> and <code>cout</code> from two
+  different widths</h2>
+
+<div class="trap">
+<p><strong><code>unsigned(a) + unsigned(b)</code>, kept at 4 bits, gives the
+  right <code>sum</code> and no way to get <code>cout</code>.</strong> 4-bit
+  wraparound and 4-bit truncation are the same operation, so the low four
+  bits of a 4-bit addition already equal the low four bits of the correct
+  31-bit-safe answer -- <code>sum</code> alone would look right in every
+  test. It is <code>cout</code> that has nowhere to come from: the
+  information "did this overflow" was thrown away the moment the addition
+  happened at 4 bits, and no amount of inspecting the 4-bit result
+  afterwards gets it back. A submission that computes <code>sum</code> this
+  way and ties <code>cout</code> to <code>'0'</code> passes every case that
+  does not overflow and fails every one that does.</p>
+</div>
+
+<h2><code>cin</code> is part of the same sum, not an afterthought</h2>
+
+<p><code>7 + 8</code> is 15, which fits -- but <code>7 + 8 + 1</code> is 16,
+  which does not. If <code>cin</code> is added to an already-truncated
+  4-bit <code>sum</code> after the fact, rather than folded into the same
+  5-bit addition as <code>a</code> and <code>b</code>, this exact case comes
+  out wrong: the truncation has already happened by the time
+  <code>cin</code> gets a chance to push the total over 15.</p>
+
+<h2>Cost</h2>
+
+<p><strong>O(n)</strong> gate delay in the width of the operands -- a real
+  ripple-carry adder's carry genuinely does propagate bit by bit, which is
+  the "ripple" in the name and the reason wider adders use a
+  carry-lookahead structure instead. At 4 bits the difference is not worth
+  building; <code>numeric_std</code>'s <code>"+"</code> already describes
+  whichever adder structure the synthesis tool judges best for the target.</p>
+
+<footer>
+  <p><a href="vhdl_ripple_carry_adder.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

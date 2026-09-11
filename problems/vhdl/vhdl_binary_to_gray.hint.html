@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Binary to Gray Code · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · VHDL · easy</p>
+  <h1>Binary to Gray Code</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>Four output bits, each a simple function of the input -- no state, no
+  memory of a previous value, just this input mapped to this output. That
+  makes it a fit for four independent concurrent signal assignments, one
+  per bit of <code>gray</code>, rather than a process.</p>
+
+<h2>The idea in one sentence</h2>
+
+<p>The top bit copies straight across. Every bit below it is the XOR of
+  <em>two</em> binary input bits: the one at its own position, and the one
+  immediately above that.</p>
+
+<table class="trace">
+  <tr><th>gray bit</th><th>formula</th></tr>
+  <tr><td>3 (top)</td><td><code>bin(3)</code></td></tr>
+  <tr><td>2</td><td><code>bin(3) xor bin(2)</code></td></tr>
+  <tr><td>1</td><td><code>bin(2) xor bin(1)</code></td></tr>
+  <tr><td>0</td><td><code>bin(1) xor bin(0)</code></td></tr>
+</table>
+
+<p>Four lines, each one XOR. Nothing here needs a loop.</p>
+
+<h2>The trap: which direction is "one above"</h2>
+
+<div class="trap">
+<p><strong><code>bin(i+1) xor bin(i)</code>, not <code>bin(i) xor
+  bin(i-1)</code>.</strong> Both read as "XOR this bit with its neighbour",
+  and both compile -- a <code>std_logic_vector</code> has no notion of which
+  direction is "correct", so getting it backwards produces four well-formed
+  bits for every input, all of them wrong except at zero, where both
+  directions happen to agree.</p>
+<p>One way to keep the direction straight: the top bit (<code>bin(3)</code>)
+  never gets XORed with anything -- it has nothing above it. Every other
+  bit's formula involves the bit one position <em>higher</em> than itself.
+  If a formula for <code>gray(0)</code> ever mentions <code>bin(3)</code> or
+  wraps around, the direction has gone the wrong way.</p>
+</div>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li><code>0000</code> → <code>0000</code>. Binary and Gray agree at zero
+    -- and, awkwardly, this is also the one case a backwards shift gets
+    right by accident, so do not stop here.</li>
+  <li><code>0001</code> → <code>0001</code>.</li>
+  <li><code>1010</code> → <code>1111</code>. Every output bit differs from
+    the corresponding input bit.</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="vhdl_binary_to_gray.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

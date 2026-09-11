@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — 4-bit Priority Encoder · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · VHDL · medium</p>
+  <h1>4-bit Priority Encoder</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The whole thing</h2>
+
+<pre><code>library ieee;
+use ieee.std_logic_1164.all;
+
+entity solution is
+    port (
+        data  : in  std_logic_vector(3 downto 0);
+        index : out std_logic_vector(1 downto 0);
+        valid : out std_logic
+    );
+end entity solution;
+
+architecture rtl of solution is
+begin
+    process (data)
+    begin
+        if data(3) = '1' then
+            index <= "11";
+            valid <= '1';
+        elsif data(2) = '1' then
+            index <= "10";
+            valid <= '1';
+        elsif data(1) = '1' then
+            index <= "01";
+            valid <= '1';
+        elsif data(0) = '1' then
+            index <= "00";
+            valid <= '1';
+        else
+            index <= "00";
+            valid <= '0';
+        end if;
+    end process;
+end architecture rtl;</code></pre>
+
+<p>Five branches for four bits -- one per bit, in priority order, plus the
+  branch that catches every condition failing at once.</p>
+
+<h2>Walking it through</h2>
+
+<p>Take <code>data = "0110"</code> -- bits 1 and 2 are set, bit 3 is not:</p>
+
+<table class="trace">
+  <tr><th>condition</th><th>data(3)='1'?</th><th>data(2)='1'?</th><th>taken?</th></tr>
+  <tr><td><code>if data(3)</code></td><td>false</td><td>--</td><td>no, fall through</td></tr>
+  <tr><td><code>elsif data(2)</code></td><td>--</td><td>true</td><td><strong>yes</strong></td></tr>
+</table>
+
+<p>The process stops at the first true condition -- <code>data(1)</code>
+  and <code>data(0)</code> are never even inspected once <code>data(2)</code>
+  matches. <code>index <= "10"</code>, <code>valid <= '1'</code>, output
+  <code>"101"</code> -- confirmed against a real GHDL run for exactly this
+  input.</p>
+
+<h2>Why a chain and not, say, a <code>case</code></h2>
+
+<p>A <code>case data is</code> statement would need one choice per possible
+  4-bit pattern -- sixteen of them, or ranges of them -- because
+  <code>case</code> picks exactly one branch by matching the whole value,
+  with no notion of "this bit outranks that one". The
+  <code>if</code>/<code>elsif</code> ladder is a better fit precisely
+  because priority <em>is</em> the ordering of the conditions: checking
+  <code>data(3)</code> first and returning immediately if it is set is what
+  "bit 3 outranks everything else" means as code.</p>
+
+<h2>The trap: the branch that is easy to never write</h2>
+
+<div class="trap">
+<p><strong>Four <code>elsif</code>s cover four bits being set. Nothing
+  covers none of them being set, unless something explicitly does.</strong>
+  Delete the final <code>else</code> here and the design still elaborates,
+  still runs, and gets every case with at least one bit set exactly right
+  -- because those cases were never the problem. <code>data = "0000"</code>
+  is the one input that reaches the end of the ladder with every condition
+  false, and with no <code>else</code> to catch it, <code>index</code> and
+  <code>valid</code> simply never get driven for that case. GHDL's answer
+  for a signal nothing ever assigned is <code>'U'</code> -- not
+  <code>'0'</code>, not silence, an actual reportable value meaning
+  "undefined" -- and <code>std_logic_textio.write</code> prints it exactly
+  as honestly as it prints a <code>'0'</code> or a <code>'1'</code>: the
+  output comes out <code>"UUU"</code>.</p>
+<p>This is the same shape of bug as leaving one path through an
+  <code>if</code> without an assignment in
+  <a href="vhdl_count_set_bits.solution.html">Count Set Bits</a> -- a real
+  synthesis tool reads exactly this pattern as "keep the old value", which
+  is what a latch <em>is</em>. Here, in simulation, with nothing to hold
+  over from a previous run, "the old value" is simply whatever the signal
+  started at: undefined.</p>
+</div>
+
+<h2>Cost</h2>
+
+<p><strong>O(n)</strong> gate delay in the number of priority levels -- each
+  <code>elsif</code> depends on every condition above it having already
+  been evaluated, so a 4-input priority encoder is four levels deep where
+  the earlier <a href="vhdl_binary_to_gray.solution.html">Binary to Gray
+  Code</a> problem's independent bits were all one level. That dependency
+  is not incidental here; it is the entire point -- it is what "priority"
+  means as a circuit.</p>
+
+<footer>
+  <p><a href="vhdl_priority_encoder.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

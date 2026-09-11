@@ -1,0 +1,45 @@
+{
+  "id": "vhdl_even_parity",
+  "title": "Even Parity Bit",
+  "language": "vhdl",
+  "difficulty": "easy",
+  "topics": [
+    "combinational logic",
+    "bitwise",
+    "reduction operators"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Compute the even-parity bit for an 8-bit value: the single bit that, added\nto the data, makes the total number of `1` bits even.\n\n## Your entity\n\n```\nentity solution is\n    port (\n        data   : in  std_logic_vector(7 downto 0);\n        parity : out std_logic\n    );\nend entity solution;\n```\n\n`data(7)` is the eight bits to check; `parity` is `'1'` when `data` itself\nholds an *odd* number of ones (so adding the parity bit brings the total to\nan even number), `'0'` when `data` already holds an even number.\n\n`\"10110001\"` has four ones -- already even -- so `parity` is `'0'`.\n`\"10110000\"` has three -- odd -- so `parity` is `'1'`.\n\n## Input and output\n\nThe testbench reads one line of stdin as an 8-character bit string, drives\nit onto `data`, waits for the output to settle, and writes `parity` back out\nas a single `'0'` or `'1'` character.\n\n## Watch out\n\n- The direct definition -- XOR every bit together, in order -- is also the\n  simplest circuit for this: `xor` is one of the handful of VHDL-2008\n  operators with a *reduction* form, so `xor data` (no loop, no index) folds\n  an entire `std_logic_vector` down to one bit. Writing out `data(7) xor\n  data(6) xor ...` by hand is not wrong, just eight symbols longer and one\n  more place to drop a bit.\n",
+  "starter_code": "library ieee;\nuse ieee.std_logic_1164.all;\n\nentity solution is\n    port (\n        data   : in  std_logic_vector(7 downto 0);\n        parity : out std_logic\n    );\nend entity solution;\n\narchitecture rtl of solution is\nbegin\n    -- your code here\n    parity <= '0';\nend architecture rtl;\n",
+  "harness": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.std_logic_textio.all;\n\nuse std.textio.all;\nuse std.env.all;\n\nentity harness is\nend entity harness;\n\narchitecture sim of harness is\n    signal data_sig   : std_logic_vector(7 downto 0);\n    signal parity_sig : std_logic;\nbegin\n    dut : entity work.solution\n        port map (\n            data => data_sig,\n            parity => parity_sig\n        );\n\n    process\n        variable in_line  : line;\n        variable out_line : line;\n        variable data_in  : std_logic_vector(7 downto 0);\n    begin\n        readline(input, in_line);\n        read(in_line, data_in);\n        data_sig <= data_in;\n        wait for 1 ns;\n        write(out_line, parity_sig);\n        writeline(output, out_line);\n        finish;\n    end process;\nend architecture sim;\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random 8-bit patterns for the VHDL Even Parity Bit testbench.\n\nOnly the input is produced here -- the expected output is captured by\nrunning the reference solution's own simulation, so the two can never\ndisagree.\n\"\"\"\n\nWIDTH = 8\n\n\ndef generate(rng, count):\n    builders = (_scattered, _all_ones_ish, _single_bit, _run_of_ones)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _bits(value):\n    return \"\".join(str((value >> b) & 1) for b in range(WIDTH - 1, -1, -1))\n\n\ndef _case(name, value, description=\"\"):\n    return {\"name\": name, \"stdin\": _bits(value) + \"\\n\", \"description\": description}\n\n\ndef _scattered(rng, index):\n    return _case(\"scattered bits #%d\" % index, rng.randrange(1 << WIDTH))\n\n\ndef _all_ones_ish(rng, index):\n    return _case(\"mostly ones #%d\" % index,\n                 (1 << WIDTH) - 1 - rng.randrange(1 << 3))\n\n\ndef _single_bit(rng, index):\n    position = rng.randrange(WIDTH)\n    return _case(\"one bit, at %d #%d\" % (position, index), 1 << position)\n\n\ndef _run_of_ones(rng, index):\n    width = rng.randint(1, WIDTH)\n    start = rng.randint(0, WIDTH - width)\n    return _case(\"%d adjacent bits #%d\" % (width, index),\n                 ((1 << width) - 1) << start)\n"
+  },
+  "tests": [
+    {
+      "name": "all zero",
+      "stdin": "00000000\n",
+      "expected_stdout": "0",
+      "description": "Zero ones -- already even, so no parity bit is needed."
+    },
+    {
+      "name": "one bit set",
+      "stdin": "00000001\n",
+      "expected_stdout": "1"
+    },
+    {
+      "name": "all ones",
+      "stdin": "11111111\n",
+      "expected_stdout": "0",
+      "description": "Eight ones is even, the same as all-zero -- a solution that special-cases 0 without actually computing the parity would get this one wrong."
+    },
+    {
+      "name": "seven ones",
+      "stdin": "11111110\n",
+      "expected_stdout": "1",
+      "description": "Odd count from a run of ones rather than a single scattered bit."
+    }
+  ],
+  "reference_solution_b64": "bGlicmFyeSBpZWVlOwp1c2UgaWVlZS5zdGRfbG9naWNfMTE2NC5hbGw7CgplbnRpdHkgc29sdXRpb24gaXMKICAgIHBvcnQgKAogICAgICAgIGRhdGEgICA6IGluICBzdGRfbG9naWNfdmVjdG9yKDcgZG93bnRvIDApOwogICAgICAgIHBhcml0eSA6IG91dCBzdGRfbG9naWMKICAgICk7CmVuZCBlbnRpdHkgc29sdXRpb247CgphcmNoaXRlY3R1cmUgcnRsIG9mIHNvbHV0aW9uIGlzCmJlZ2luCiAgICBwYXJpdHkgPD0geG9yIGRhdGE7CmVuZCBhcmNoaXRlY3R1cmUgcnRsOwo="
+}

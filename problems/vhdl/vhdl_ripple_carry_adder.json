@@ -1,0 +1,51 @@
+{
+  "id": "vhdl_ripple_carry_adder",
+  "title": "4-bit Adder With Carry",
+  "language": "vhdl",
+  "difficulty": "medium",
+  "topics": [
+    "combinational logic",
+    "arithmetic",
+    "overflow"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Add two 4-bit values and a carry-in, producing a 4-bit sum and a carry-out.\n\n## Your entity\n\n```\nentity solution is\n    port (\n        a    : in  std_logic_vector(3 downto 0);\n        b    : in  std_logic_vector(3 downto 0);\n        cin  : in  std_logic;\n        sum  : out std_logic_vector(3 downto 0);\n        cout : out std_logic\n    );\nend entity solution;\n```\n\n`sum` is `a + b + cin`, truncated to 4 bits; `cout` is `'1'` exactly when\nthat addition would not have fit in 4 bits -- the bit that a 4-bit register\nhas nowhere to put.\n\n`\"0111\" + \"0001\"`, `cin = '0'` -- 7 + 1 -- gives `sum = \"1000\"`,\n`cout = '0'`: 8 fits in 4 bits.\n`\"1111\" + \"0001\"`, `cin = '0'` -- 15 + 1 -- gives `sum = \"0000\"`,\n`cout = '1'`: 16 does not.\n\n## Input and output\n\nThe testbench reads one line of stdin as three space-separated tokens --\n`a`, `b` (4-character bit strings) and `cin` (a single `'0'` or `'1'`) --\ndrives them onto the matching ports, waits for the outputs to settle, and\nwrites `sum` immediately followed by `cout` back out on one line (five\ncharacters: four for `sum`, one for `cout`).\n\n## Watch out\n\n- `unsigned(a) + unsigned(b)`, both 4 bits wide, produces a 4-bit result --\n  numeric_std's `\"+\"` does not grow the result to fit an answer that\n  overflows, it wraps, the same way a 4-bit register genuinely would. That\n  4-bit wrapped value *is* the correct `sum` in every case (truncating and\n  wrapping mean the same thing here), but the bit that fell off is now\n  nowhere: nothing in a 4-bit `unsigned` can tell you afterwards whether it\n  carried out or not. `cout` needs an answer wide enough to still have that\n  bit *before* anything gets truncated back down to `sum`.\n",
+  "starter_code": "library ieee;\nuse ieee.std_logic_1164.all;\n\nentity solution is\n    port (\n        a    : in  std_logic_vector(3 downto 0);\n        b    : in  std_logic_vector(3 downto 0);\n        cin  : in  std_logic;\n        sum  : out std_logic_vector(3 downto 0);\n        cout : out std_logic\n    );\nend entity solution;\n\narchitecture rtl of solution is\nbegin\n    -- your code here\n    sum  <= (others => '0');\n    cout <= '0';\nend architecture rtl;\n",
+  "harness": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.std_logic_textio.all;\n\nuse std.textio.all;\nuse std.env.all;\n\nentity harness is\nend entity harness;\n\narchitecture sim of harness is\n    signal a_sig, b_sig, sum_sig : std_logic_vector(3 downto 0);\n    signal cin_sig, cout_sig     : std_logic;\nbegin\n    dut : entity work.solution\n        port map (\n            a    => a_sig,\n            b    => b_sig,\n            cin  => cin_sig,\n            sum  => sum_sig,\n            cout => cout_sig\n        );\n\n    process\n        variable in_line   : line;\n        variable out_line  : line;\n        variable a_in, b_in : std_logic_vector(3 downto 0);\n        variable cin_in    : std_logic;\n    begin\n        readline(input, in_line);\n        read(in_line, a_in);\n        read(in_line, b_in);\n        read(in_line, cin_in);\n        a_sig   <= a_in;\n        b_sig   <= b_in;\n        cin_sig <= cin_in;\n        wait for 1 ns;\n        write(out_line, sum_sig);\n        write(out_line, cout_sig);\n        writeline(output, out_line);\n        finish;\n    end process;\nend architecture sim;\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random operand pairs for the VHDL Ripple-Carry Adder testbench.\n\nOnly the input is produced here -- the expected output is captured by\nrunning the reference solution's own simulation, so the two can never\ndisagree. Weighted towards values likely to overflow, since a solution\nthat only gets cout right by leaving it tied to \\'0\\' passes every case\nthat does not overflow.\n\"\"\"\n\nWIDTH = 4\n\n\ndef _bits(value):\n    return \"\".join(str((value >> b) & 1) for b in range(WIDTH - 1, -1, -1))\n\n\ndef _case(name, a, b, cin, description=\"\"):\n    stdin = \"%s %s %d\\n\" % (_bits(a), _bits(b), cin)\n    return {\"name\": name, \"stdin\": stdin, \"description\": description}\n\n\ndef generate(rng, count):\n    builders = (_likely_overflow, _random, _likely_overflow, _random)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _random(rng, index):\n    return _case(\"random #%d\" % index,\n                 rng.randrange(1 << WIDTH), rng.randrange(1 << WIDTH),\n                 rng.randrange(2))\n\n\ndef _likely_overflow(rng, index):\n    # Both operands drawn from the top half of the range, so addition\n    # overflows far more often than chance would give it.\n    a = rng.randrange(1 << (WIDTH - 1), 1 << WIDTH)\n    b = rng.randrange(1 << (WIDTH - 1), 1 << WIDTH)\n    return _case(\"likely overflow #%d\" % index, a, b, rng.randrange(2),\n                 \"Both operands drawn large, so this one overflows more often than not.\")\n"
+  },
+  "tests": [
+    {
+      "name": "no carry",
+      "stdin": "0111 0001 0\n",
+      "expected_stdout": "10000",
+      "description": "7 + 1 = 8, fits in 4 bits -- cout stays 0."
+    },
+    {
+      "name": "carry out",
+      "stdin": "1111 0001 0\n",
+      "expected_stdout": "00001",
+      "description": "15 + 1 = 16 -- the sum wraps to 0000 and the carry is the only place 16 shows up. A solution that ties cout to '0' passes the case above and fails this one."
+    },
+    {
+      "name": "carry in tips it over",
+      "stdin": "0111 1000 1\n",
+      "expected_stdout": "00001",
+      "description": "7 + 8 = 15 fits, but the carry-in makes it 16 -- cin has to be added before the overflow check, not after."
+    },
+    {
+      "name": "everything set",
+      "stdin": "1111 1111 1\n",
+      "expected_stdout": "11111",
+      "description": "15 + 15 + 1 = 31 -- the largest possible result, exercising every sum bit alongside the carry."
+    },
+    {
+      "name": "zero",
+      "stdin": "0000 0000 0\n",
+      "expected_stdout": "00000"
+    }
+  ],
+  "reference_solution_b64": "bGlicmFyeSBpZWVlOwp1c2UgaWVlZS5zdGRfbG9naWNfMTE2NC5hbGw7CnVzZSBpZWVlLm51bWVyaWNfc3RkLmFsbDsKCmVudGl0eSBzb2x1dGlvbiBpcwogICAgcG9ydCAoCiAgICAgICAgYSAgICA6IGluICBzdGRfbG9naWNfdmVjdG9yKDMgZG93bnRvIDApOwogICAgICAgIGIgICAgOiBpbiAgc3RkX2xvZ2ljX3ZlY3RvcigzIGRvd250byAwKTsKICAgICAgICBjaW4gIDogaW4gIHN0ZF9sb2dpYzsKICAgICAgICBzdW0gIDogb3V0IHN0ZF9sb2dpY192ZWN0b3IoMyBkb3dudG8gMCk7CiAgICAgICAgY291dCA6IG91dCBzdGRfbG9naWMKICAgICk7CmVuZCBlbnRpdHkgc29sdXRpb247CgphcmNoaXRlY3R1cmUgcnRsIG9mIHNvbHV0aW9uIGlzCiAgICBzaWduYWwgd2lkZSA6IHVuc2lnbmVkKDQgZG93bnRvIDApOwpiZWdpbgogICAgd2lkZSA8PSByZXNpemUodW5zaWduZWQoYSksIDUpICsgcmVzaXplKHVuc2lnbmVkKGIpLCA1KSArIGNpbjsKICAgIHN1bSAgPD0gc3RkX2xvZ2ljX3ZlY3Rvcih3aWRlKDMgZG93bnRvIDApKTsKICAgIGNvdXQgPD0gd2lkZSg0KTsKZW5kIGFyY2hpdGVjdHVyZSBydGw7Cg=="
+}

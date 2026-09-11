@@ -581,8 +581,8 @@ the stylesheet does not load the pages are still ordinary readable HTML.
 
 ## What is in the box
 
-94 problems — 47 in C, 12 in C++, 4 in Python, 15 in C#, 12 in Java, 3 in
-x86-64 assembly and 1 in VHDL. Every one of them mixes hand-written edge cases
+98 problems — 47 in C, 12 in C++, 4 in Python, 15 in C#, 12 in Java, 3 in
+x86-64 assembly and 5 in VHDL. Every one of them mixes hand-written edge cases
 with four randomised ones, and ships a hint and a worked solution.
 
 The C set is deliberately weighted towards the things C makes you think about
@@ -654,6 +654,8 @@ with the `debugging` topic.
 | | x86-64 asm | Sum an Array | loops, addressing, arrays |
 | | x86-64 asm | Count Set Bits | bit manipulation, loops |
 | | VHDL | Count Set Bits | combinational logic, bit manipulation |
+| | VHDL | Even Parity Bit | combinational logic, bitwise, reduction operators |
+| | VHDL | Binary to Gray Code | combinational logic, bitwise, encoding |
 | **medium** | C | Binary Search | algorithms, arrays, search |
 | | C | Palindrome Check | strings, two pointers, ctype |
 | | C | Remove Duplicates From a Sorted Array | arrays, in-place, two pointers |
@@ -687,6 +689,8 @@ with the `debugging` topic.
 | | Java | Word Frequency Without a Null Pointer Exception | maps, autoboxing, strings |
 | | Java | Balanced Brackets With an ArrayDeque | collections, strings |
 | | x86-64 asm | Index of the Largest Element | loops, addressing, branching, arrays |
+| | VHDL | 4-bit Adder With Carry | combinational logic, arithmetic, overflow |
+| | VHDL | 4-bit Priority Encoder | combinational logic, priority, latch inference |
 | **hard** | C | Maximum Subarray Sum | algorithms, dynamic programming, arrays |
 | | C | Reverse a Linked List | pointers, linked lists |
 | | C | Edit Distance | dynamic programming, strings |
@@ -1379,7 +1383,7 @@ problems/
   csharp/              15 problems,            + .solution.html (+ fr_FR)
   java/                12 problems,            + .solution.html
   asm_x64_masm/        3 problems,             + .solution.html
-  vhdl/                1 problem,              + .solution.html
+  vhdl/                5 problems,             + .solution.html
   uml/                 2 problems,             + .diagram.html
   safety/              3 problems
 tests/

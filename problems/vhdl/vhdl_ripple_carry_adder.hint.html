@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — 4-bit Adder With Carry · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · VHDL · medium</p>
+  <h1>4-bit Adder With Carry</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>What you are being asked for</h2>
+
+<p>Ordinary addition, plus one extra output that only ever matters some of
+  the time: <code>cout</code> is <code>'1'</code> exactly when
+  <code>a + b + cin</code> needed a fifth bit that a 4-bit <code>sum</code>
+  does not have room for.</p>
+
+<h2>Getting from bits to arithmetic</h2>
+
+<p><code>a</code> and <code>b</code> arrive as <code>std_logic_vector</code>,
+  which has no <code>"+"</code> of its own. <code>ieee.numeric_std</code> is
+  where addition lives for these types -- convert with
+  <code>unsigned(...)</code>, add, convert back with
+  <code>std_logic_vector(...)</code> for the parts that leave through a
+  <code>std_logic_vector</code> port.</p>
+
+<h2>The trap: where does the extra bit go?</h2>
+
+<div class="note">
+<p><code>unsigned(a) + unsigned(b)</code>, both declared 4 bits wide, gives
+  back a 4-bit answer -- <code>numeric_std</code> does not grow the result
+  to fit; it wraps, the same way the real 4-bit register this describes
+  would. For an input like <code>15 + 1</code>, wrapped-to-4-bits is
+  <code>0</code>, which is in fact the correct <code>sum</code> -- 16
+  truncated to 4 bits really is 0. The problem is that the bit which made it
+  16 rather than 0 is now gone. Nothing left in a 4-bit value can tell you
+  afterwards whether a carry happened.</p>
+</div>
+
+<p>The fix is ordering: get the answer somewhere <em>wide enough to still
+  hold the carry</em> before anything gets truncated down to 4 bits for
+  <code>sum</code>. <code>resize(unsigned(a), 5)</code> pads a 4-bit
+  unsigned value out to 5 bits (with zeros, since it is unsigned) without
+  changing what number it represents -- do that to both operands before
+  adding, and the top bit of a 5-bit result is exactly the carry you are
+  looking for.</p>
+
+<h2>Check yourself before you press Go</h2>
+
+<ul>
+  <li><code>0111 0001 0</code> (7 + 1) → <code>10000</code>: sum
+    <code>1000</code>, <code>cout = 0</code>. Fits.</li>
+  <li><code>1111 0001 0</code> (15 + 1) → <code>00001</code>: sum wraps to
+    <code>0000</code>, and <code>cout = 1</code> is the only place the 16
+    shows up. A solution with <code>cout</code> tied to <code>'0'</code>
+    gets the case above right and this one wrong.</li>
+  <li><code>0111 1000 1</code> (7 + 8, plus <code>cin</code>) → also
+    <code>00001</code>: neither operand alone overflows, but
+    <code>cin</code> tips it over 15. <code>cin</code> has to be part of the
+    same widened sum, not added on afterwards.</li>
+</ul>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="vhdl_ripple_carry_adder.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,50 @@
+{
+  "id": "vhdl_priority_encoder",
+  "title": "4-bit Priority Encoder",
+  "language": "vhdl",
+  "difficulty": "medium",
+  "topics": [
+    "combinational logic",
+    "priority",
+    "latch inference"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Find the highest-priority set bit in a 4-bit value and report its index.\n\n## Your entity\n\n```\nentity solution is\n    port (\n        data  : in  std_logic_vector(3 downto 0);\n        index : out std_logic_vector(1 downto 0);\n        valid : out std_logic\n    );\nend entity solution;\n```\n\n`index` is the position of the *most significant* `'1'` in `data` -- bit 3\noutranks bit 2, which outranks bit 1, which outranks bit 0. `valid` is\n`'1'` whenever at least one bit is set; when `data` is all zero, `valid`\nmust be `'0'` and `index` must be `\"00\"`.\n\n`\"0110\"` has bits 1 and 2 set; bit 2 has the higher priority, so\n`index = \"10\"`, `valid = '1'`. `\"0000\"` gives `index = \"00\"`,\n`valid = '0'`.\n\n## Input and output\n\nThe testbench reads one line of stdin as a 4-character bit string, drives\nit onto `data`, waits for the output to settle, and writes `index`\nimmediately followed by `valid` back out on one line (three characters:\ntwo for `index`, one for `valid`).\n\n## Watch out\n\n- A priority chain like this is usually written as an `if` /\n  `elsif` / ... / `elsif` ladder, checked from the highest-priority bit\n  down. The all-zero case is what falls through every one of those\n  conditions -- it needs its own branch, with its own explicit values for\n  *both* outputs. A ladder with no final `else` still elaborates and runs;\n  it just leaves `index` and `valid` undefined for exactly the one input\n  that never took any of the earlier branches, and undefined does not\n  quietly become `'0'` -- ask for it and you get back `'U'`, GHDL's honest\n  answer for \"nothing ever drove this\".\n",
+  "starter_code": "library ieee;\nuse ieee.std_logic_1164.all;\n\nentity solution is\n    port (\n        data  : in  std_logic_vector(3 downto 0);\n        index : out std_logic_vector(1 downto 0);\n        valid : out std_logic\n    );\nend entity solution;\n\narchitecture rtl of solution is\nbegin\n    -- your code here\n    index <= \"00\";\n    valid <= '0';\nend architecture rtl;\n",
+  "harness": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.std_logic_textio.all;\n\nuse std.textio.all;\nuse std.env.all;\n\nentity harness is\nend entity harness;\n\narchitecture sim of harness is\n    signal data_sig  : std_logic_vector(3 downto 0);\n    signal index_sig : std_logic_vector(1 downto 0);\n    signal valid_sig : std_logic;\nbegin\n    dut : entity work.solution\n        port map (\n            data  => data_sig,\n            index => index_sig,\n            valid => valid_sig\n        );\n\n    process\n        variable in_line  : line;\n        variable out_line : line;\n        variable data_in  : std_logic_vector(3 downto 0);\n    begin\n        readline(input, in_line);\n        read(in_line, data_in);\n        data_sig <= data_in;\n        wait for 1 ns;\n        write(out_line, index_sig);\n        write(out_line, valid_sig);\n        writeline(output, out_line);\n        finish;\n    end process;\nend architecture sim;\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random 4-bit patterns for the VHDL Priority Encoder testbench.\n\nOnly the input is produced here -- the expected output is captured by\nrunning the reference solution's own simulation, so the two can never\ndisagree.\n\"\"\"\n\nWIDTH = 4\n\n\ndef _bits(value):\n    return \"\".join(str((value >> b) & 1) for b in range(WIDTH - 1, -1, -1))\n\n\ndef _case(name, value, description=\"\"):\n    return {\"name\": name, \"stdin\": _bits(value) + \"\\n\", \"description\": description}\n\n\ndef generate(rng, count):\n    builders = (_scattered, _single_bit, _scattered, _single_bit)\n    return [builders[i % len(builders)](rng, i + 1) for i in range(count)]\n\n\ndef _scattered(rng, index):\n    # Never all-zero -- the fixed \"none set\" case already covers that, and a\n    # generated case is more useful exercising two-or-more-bits priority.\n    return _case(\"scattered bits #%d\" % index, rng.randrange(1, 1 << WIDTH))\n\n\ndef _single_bit(rng, index):\n    position = rng.randrange(WIDTH)\n    return _case(\"one bit, at %d #%d\" % (position, index), 1 << position)\n"
+  },
+  "tests": [
+    {
+      "name": "none set",
+      "stdin": "0000\n",
+      "expected_stdout": "000",
+      "description": "The case every branch of an if/elsif ladder falls through -- it needs a branch of its own."
+    },
+    {
+      "name": "lowest bit only",
+      "stdin": "0001\n",
+      "expected_stdout": "001"
+    },
+    {
+      "name": "two bits, higher wins",
+      "stdin": "0110\n",
+      "expected_stdout": "101",
+      "description": "Bits 1 and 2 are both set; index reports 2, not 1 -- the lower one is outranked, not ignored, so it still needs to make valid true, just not to set the index."
+    },
+    {
+      "name": "top bit set",
+      "stdin": "1000\n",
+      "expected_stdout": "111"
+    },
+    {
+      "name": "every bit set",
+      "stdin": "1111\n",
+      "expected_stdout": "111",
+      "description": "Only the top bit's priority should show up in the answer."
+    }
+  ],
+  "reference_solution_b64": "bGlicmFyeSBpZWVlOwp1c2UgaWVlZS5zdGRfbG9naWNfMTE2NC5hbGw7CgplbnRpdHkgc29sdXRpb24gaXMKICAgIHBvcnQgKAogICAgICAgIGRhdGEgIDogaW4gIHN0ZF9sb2dpY192ZWN0b3IoMyBkb3dudG8gMCk7CiAgICAgICAgaW5kZXggOiBvdXQgc3RkX2xvZ2ljX3ZlY3RvcigxIGRvd250byAwKTsKICAgICAgICB2YWxpZCA6IG91dCBzdGRfbG9naWMKICAgICk7CmVuZCBlbnRpdHkgc29sdXRpb247CgphcmNoaXRlY3R1cmUgcnRsIG9mIHNvbHV0aW9uIGlzCmJlZ2luCiAgICBwcm9jZXNzIChkYXRhKQogICAgYmVnaW4KICAgICAgICBpZiBkYXRhKDMpID0gJzEnIHRoZW4KICAgICAgICAgICAgaW5kZXggPD0gIjExIjsKICAgICAgICAgICAgdmFsaWQgPD0gJzEnOwogICAgICAgIGVsc2lmIGRhdGEoMikgPSAnMScgdGhlbgogICAgICAgICAgICBpbmRleCA8PSAiMTAiOwogICAgICAgICAgICB2YWxpZCA8PSAnMSc7CiAgICAgICAgZWxzaWYgZGF0YSgxKSA9ICcxJyB0aGVuCiAgICAgICAgICAgIGluZGV4IDw9ICIwMSI7CiAgICAgICAgICAgIHZhbGlkIDw9ICcxJzsKICAgICAgICBlbHNpZiBkYXRhKDApID0gJzEnIHRoZW4KICAgICAgICAgICAgaW5kZXggPD0gIjAwIjsKICAgICAgICAgICAgdmFsaWQgPD0gJzEnOwogICAgICAgIGVsc2UKICAgICAgICAgICAgaW5kZXggPD0gIjAwIjsKICAgICAgICAgICAgdmFsaWQgPD0gJzAnOwogICAgICAgIGVuZCBpZjsKICAgIGVuZCBwcm9jZXNzOwplbmQgYXJjaGl0ZWN0dXJlIHJ0bDsK"
+}

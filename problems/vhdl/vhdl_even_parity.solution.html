@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Even Parity Bit · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · VHDL · easy</p>
+  <h1>Even Parity Bit</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The whole thing</h2>
+
+<pre><code>library ieee;
+use ieee.std_logic_1164.all;
+
+entity solution is
+    port (
+        data   : in  std_logic_vector(7 downto 0);
+        parity : out std_logic
+    );
+end entity solution;
+
+architecture rtl of solution is
+begin
+    parity <= xor data;
+end architecture rtl;</code></pre>
+
+<p>One concurrent signal assignment. No process, no loop, no <code>if</code>
+  -- the whole circuit is one operator.</p>
+
+<h2>Why XOR is the operator that answers this</h2>
+
+<p>XOR of two bits is <code>'1'</code> exactly when they differ, which is
+  the same fact as "an odd number of the two inputs were <code>'1'</code>".
+  That fact is preserved as XOR is chained: after XOR-ing together
+  <em>n</em> bits, the running result is <code>'1'</code> exactly when an
+  odd number of those <em>n</em> bits were <code>'1'</code>, regardless of
+  which ones or in what order. XOR every bit of <code>data</code> together
+  and what comes out the other end is exactly "does <code>data</code> hold
+  an odd number of ones" -- which is exactly the definition of the even
+  parity bit.</p>
+
+<h2>Walking it through</h2>
+
+<p>Take <code>data = "10110001"</code> -- four ones, at positions 7, 5, 4
+  and 0:</p>
+
+<table class="trace">
+  <tr><th>bit</th><th>value</th><th>running XOR</th></tr>
+  <tr><td>7</td><td>1</td><td>1</td></tr>
+  <tr><td>6</td><td>0</td><td>1</td></tr>
+  <tr><td>5</td><td>1</td><td>0</td></tr>
+  <tr><td>4</td><td>1</td><td>1</td></tr>
+  <tr><td>3</td><td>0</td><td>1</td></tr>
+  <tr><td>2</td><td>0</td><td>1</td></tr>
+  <tr><td>1</td><td>0</td><td>1</td></tr>
+  <tr><td>0</td><td>1</td><td>0</td></tr>
+</table>
+
+<p>Four ones -- an even number -- and the running XOR lands back on
+  <code>0</code>. Confirmed against a real GHDL run for exactly this
+  input: <code>parity = '0'</code>.</p>
+
+<h2>The reduction operator</h2>
+
+<p><code>xor data</code> is <em>unary</em> <code>xor</code> -- VHDL-2008's
+  reduction form, one of a handful of operators (<code>and</code>,
+  <code>or</code>, <code>nand</code>, <code>nor</code>, <code>xor</code>,
+  <code>xnor</code>) that can be written with one operand, a
+  one-dimensional array, instead of two. Written out the long way, the same
+  circuit is:</p>
+
+<pre><code>parity <= data(7) xor data(6) xor data(5) xor data(4)
+        xor data(3) xor data(2) xor data(1) xor data(0);</code></pre>
+
+<p>Both compile to the same tree of two-input XOR gates. The reduction form
+  is not a shortcut in the sense of skipping work -- it is the same
+  circuit -- it is a shortcut in the sense that there is no bit index left
+  to get wrong, no seventh term to forget when the vector happens to be
+  wider next time.</p>
+
+<h2>Cost</h2>
+
+<p>As hardware: an 8-input XOR tree, <strong>O(log n)</strong> gate delay
+  in the width of the input, not <code>O(n)</code> -- the same shape as the
+  adder tree behind <a href="vhdl_count_set_bits.solution.html">Count Set
+  Bits</a>' addition, and for the same reason: nothing here happens one bit
+  at a time in real time, the whole reduction settles in parallel.</p>
+
+<h2>A wrong turn worth recognising</h2>
+
+<div class="trap">
+<p><strong>Treating "no bits set" as a special case.</strong>
+  <code>parity <= '0' when data = "00000000" else '1';</code> passes the
+  all-zero case by coincidence and is wrong for almost everything else --
+  it says "odd" for every nonzero input, including
+  <code>"11111111"</code>, which has eight ones and needs
+  <code>parity = '0'</code> exactly like all-zero does. The bug reads as
+  plausible because zero is the most obvious case to think about first;
+  the fix is remembering that parity is a property of the <em>count</em>,
+  not of whether the count is zero.</p>
+</div>
+
+<footer>
+  <p><a href="vhdl_even_parity.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

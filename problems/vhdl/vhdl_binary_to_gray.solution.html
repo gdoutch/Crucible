@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Binary to Gray Code · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · VHDL · easy</p>
+  <h1>Binary to Gray Code</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The whole thing</h2>
+
+<pre><code>library ieee;
+use ieee.std_logic_1164.all;
+
+entity solution is
+    port (
+        bin  : in  std_logic_vector(3 downto 0);
+        gray : out std_logic_vector(3 downto 0)
+    );
+end entity solution;
+
+architecture rtl of solution is
+begin
+    gray(3) <= bin(3);
+    gray(2) <= bin(3) xor bin(2);
+    gray(1) <= bin(2) xor bin(1);
+    gray(0) <= bin(1) xor bin(0);
+end architecture rtl;</code></pre>
+
+<p>Four independent concurrent assignments. Each one depends on at most two
+  bits of <code>bin</code>, so all four settle in parallel -- there is no
+  ordering between them for the simulator, or the synthesised hardware, to
+  get right or wrong.</p>
+
+<h2>Walking it through</h2>
+
+<p>Take <code>bin = "1010"</code> (decimal 10):</p>
+
+<table class="trace">
+  <tr><th>gray bit</th><th>formula</th><th>value</th></tr>
+  <tr><td>3</td><td><code>bin(3)</code></td><td>1</td></tr>
+  <tr><td>2</td><td><code>bin(3) xor bin(2)</code></td><td>1 xor 0 = 1</td></tr>
+  <tr><td>1</td><td><code>bin(2) xor bin(1)</code></td><td>0 xor 1 = 1</td></tr>
+  <tr><td>0</td><td><code>bin(1) xor bin(0)</code></td><td>1 xor 0 = 1</td></tr>
+</table>
+
+<p><code>gray = "1111"</code> -- every bit came out set, confirmed against a
+  real GHDL run sweeping all 16 possible inputs against this exact
+  architecture.</p>
+
+<h2>Why this is the conversion</h2>
+
+<p>The defining property of Gray code is that consecutive values differ in
+  exactly one bit. <code>bin(i+1) xor bin(i)</code> is exactly "does the
+  binary count change at this position when it rolls from <em>n</em> to
+  <em>n+1</em>" -- a binary counter's bit <em>i</em> flips exactly when
+  every bit below it was <code>1</code>, which is the same condition as
+  "bit <em>i+1</em> is about to flip too". XOR-ing each bit with its
+  upstream neighbour cancels that shared flip out, leaving only the single
+  bit position where the *net* change actually happens.</p>
+
+<h2>The whole table, for reference</h2>
+
+<table class="trace">
+  <tr><th>bin</th><th>gray</th><th>bin</th><th>gray</th></tr>
+  <tr><td>0000</td><td>0000</td><td>1000</td><td>1100</td></tr>
+  <tr><td>0001</td><td>0001</td><td>1001</td><td>1101</td></tr>
+  <tr><td>0010</td><td>0011</td><td>1010</td><td>1111</td></tr>
+  <tr><td>0011</td><td>0010</td><td>1011</td><td>1110</td></tr>
+  <tr><td>0100</td><td>0110</td><td>1100</td><td>1010</td></tr>
+  <tr><td>0101</td><td>0111</td><td>1101</td><td>1011</td></tr>
+  <tr><td>0110</td><td>0101</td><td>1110</td><td>1001</td></tr>
+  <tr><td>0111</td><td>0100</td><td>1111</td><td>1000</td></tr>
+</table>
+
+<p>Read down either column and every row differs from its neighbour by
+  exactly one bit -- including the wraparound from <code>1111</code> back
+  to <code>0000</code>, which is what makes this specifically the
+  <em>reflected</em> Gray code rather than merely "some" one-bit-at-a-time
+  ordering.</p>
+
+<h2>The trap: which bit is "above"</h2>
+
+<div class="trap">
+<p><strong>The shift direction is not symmetric, and getting it backwards
+  still compiles.</strong> Swap the formula to <code>gray(i) <= bin(i) xor
+  bin(i-1)</code> -- XOR-ing with the neighbour <em>below</em> instead of
+  above -- and every port is still the right width, every index is still in
+  range, and the design still elaborates and runs. Checked against all 16
+  inputs, that version agrees with the correct one on exactly one of
+  them: <code>"0000"</code>, where every bit is zero regardless of which
+  neighbour you look at. Every other input comes out wrong.</p>
+<p>The tell: the correct formula for <code>gray(0)</code> reaches
+  <em>up</em> to <code>bin(1)</code>; it never reaches for something below
+  bit 0, because there is nothing below bit 0. A version that XORs
+  <code>bin(0)</code> with <code>bin(3)</code> (wrapping around) or leaves
+  <code>gray(0)</code> as a bare copy of <code>bin(0)</code> has gone
+  looking for a neighbour in the wrong place.</p>
+</div>
+
+<h2>Cost</h2>
+
+<p><strong>O(1)</strong> gate delay -- one XOR gate deep, independent of the
+  vector width, since every output bit depends on at most two input bits
+  rather than on each other.</p>
+
+<footer>
+  <p><a href="vhdl_binary_to_gray.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>
