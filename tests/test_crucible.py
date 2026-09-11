@@ -25,7 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from crucible import __main__ as crucible_main
 from crucible import guides, i18n, languages, profiles, randomise, runner, workspace
-from crucible.languages import asm_lang, native_compiler
+from crucible.languages import asm_lang, native_compiler, vhdl_lang
 from crucible.languages.asm_lang import AsmX64MasmLanguage
 from crucible.languages.c_lang import CLanguage
 from crucible.languages.csharp_lang import CSharpLanguage
@@ -1500,6 +1500,36 @@ class TestVhdlDiagnostics(unittest.TestCase):
     def test_registered_under_its_own_id(self):
         self.assertIn("vhdl", languages.known_ids())
         self.assertIs(languages.get("vhdl").__class__, VhdlLanguage)
+
+    def test_ghdls_own_runtime_trailer_is_stripped(self):
+        """Confirmed against a real GHDL 6.0.0 install: every run that
+        completes without being killed for time appends its own
+        "simulation finished @<time>" line to stdout, which would otherwise
+        fail every correct submission's comparison by one extra line."""
+        self.assertEqual(
+            vhdl_lang._strip_ghdl_runtime_noise("0000\nsimulation finished @1ns\n"),
+            "0000\n")
+
+    def test_a_trailer_with_extra_detail_is_still_recognised(self):
+        """`.match`, not `.fullmatch` -- a GHDL build that appends more than
+        just the time (a process count, say) is still the same trailer."""
+        self.assertEqual(
+            vhdl_lang._strip_ghdl_runtime_noise(
+                "0100\nsimulation finished @23ps (1 processes)\n"),
+            "0100\n")
+
+    def test_stdout_with_no_trailer_is_left_alone(self):
+        self.assertEqual(vhdl_lang._strip_ghdl_runtime_noise("0011\n"), "0011\n")
+
+    def test_empty_stdout_is_left_alone(self):
+        self.assertEqual(vhdl_lang._strip_ghdl_runtime_noise(""), "")
+
+    def test_the_phrase_is_only_stripped_as_the_last_line(self):
+        """Never touch a testbench's own output just because it happens to
+        contain this text -- only GHDL's own trailer, which is always the
+        final line, is fair game."""
+        text = "simulation finished @1ns is not what I meant\nreal output\n"
+        self.assertEqual(vhdl_lang._strip_ghdl_runtime_noise(text), text)
 
 
 # ---------------------------------------------------------------------------

@@ -46,12 +46,26 @@ from pathlib import Path
 
 from ..i18n import t
 from . import native_compiler as nc
-from .base import BuildResult, Language, ToolchainStatus, run_process
+from .base import BuildResult, ExecResult, Language, ToolchainStatus, run_process
 
 #: The testbench's entity name is fixed by convention -- same idea as every
 #: other plugin's fixed harness_filename, just one level up, since GHDL names
 #: simulation units by entity name rather than by file.
 _TOP_UNIT = "harness"
+
+#: Matches only at the *start* of GHDL's own trailer line -- ".match", not
+#: ".fullmatch" -- so a GHDL build that appends extra detail after the time
+#: value (a process count, say) is still recognised as the same line.
+_RUNTIME_TRAILER = re.compile(r"simulation finished @\S+")
+
+
+def _strip_ghdl_runtime_noise(stdout: str) -> str:
+    if not stdout:
+        return stdout
+    lines = stdout.splitlines(keepends=True)
+    if lines and _RUNTIME_TRAILER.match(lines[-1]):
+        lines.pop()
+    return "".join(lines)
 
 #: VHDL-2008 is what makes `std.env.finish` and direct entity instantiation
 #: without a preceding component declaration both unconditionally available,
@@ -167,6 +181,22 @@ class VhdlLanguage(Language):
     def exec_command(self, workdir: Path, build: BuildResult) -> list[str]:
         ghdl = nc.which("ghdl") or "ghdl"
         return [ghdl, "-r", _STD, _TOP_UNIT]
+
+    def run_test(self, workdir: Path, build: BuildResult,
+                stdin_data: str, timeout: float) -> ExecResult:
+        """As `Language.run_test`, except GHDL's own runtime gets a word
+        first.
+
+        Every run that completes without being killed for time -- pass, fail
+        or a caught assertion -- has GHDL append its own `simulation
+        finished @<time>` line to stdout once the design goes quiet. That is
+        not the testbench speaking; it is the simulator's own trailer, and
+        left in it would fail every otherwise-correct submission's output
+        comparison by exactly one extra line.
+        """
+        result = super().run_test(workdir, build, stdin_data, timeout)
+        result.stdout = _strip_ghdl_runtime_noise(result.stdout)
+        return result
 
     # -- diagnostics -------------------------------------------------------
 
