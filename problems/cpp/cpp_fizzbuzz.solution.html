@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — FizzBuzz as a Function · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C++ · easy</p>
+  <h1>FizzBuzz as a Function</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>#include &lt;string&gt;
+
+std::string FizzBuzz(int n)
+{
+    if (n % 15 == 0)
+    {
+        return "FizzBuzz";
+    }
+    if (n % 3 == 0)
+    {
+        return "Fizz";
+    }
+    if (n % 5 == 0)
+    {
+        return "Buzz";
+    }
+    return std::to_string(n);
+}</code></pre>
+
+<h2>Why 15 goes first</h2>
+<div class="trap">
+<p>A number divisible by 15 is divisible by 3 <em>and</em> by 5, so it satisfies
+every one of the three tests. Whichever test is written first wins, which
+means the most specific one must come first. <code>n % 15 == 0</code> is the
+same condition as <code>n % 3 == 0 &amp;&amp; n % 5 == 0</code>.</p>
+</div>
+<h2>Why <code>std::to_string</code></h2>
+<p>The fall-through case must return text. <code>std::to_string(int)</code>
+formats the number in decimal, including negative values and the largest
+<code>int</code>, so no manual digit loop is needed.</p>
+<h2>Cost</h2>
+<p><strong>O(1)</strong>: a handful of remainder operations whatever
+<code>n</code> is.</p>
+
+<footer>
+  <p><a href="cpp_fizzbuzz.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

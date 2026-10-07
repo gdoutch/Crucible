@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Run-Length Encoding · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C++ · medium</p>
+  <h1>Run-Length Encoding</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>#include &lt;string&gt;
+
+std::string RunLengthEncode(const std::string&amp; text)
+{
+    std::string out;
+    std::size_t i = 0;
+    while (i &lt; text.size())
+    {
+        std::size_t j = i;
+        while (j &lt; text.size() &amp;&amp; text[j] == text[i])
+        {
+            j++;
+        }
+        out += text[i];
+        out += std::to_string(j - i);
+        i = j;
+    }
+    return out;
+}</code></pre>
+
+<h2>Why an inner loop</h2>
+<div class="trap">
+<p>The single-loop version -- compare each character with the previous one and
+write when they differ -- needs a special case for the very first character
+and another after the loop for the final run, and forgetting either is the
+usual bug. Measuring each run completely before writing it makes both
+disappear: an empty string never enters the loop, and the last run ends when
+<code>j</code> reaches <code>text.size()</code>.</p>
+</div>
+<h2>Why <code>std::to_string</code></h2>
+<p><code>out += count</code> with a <code>char</code> or small integer appends a
+character <em>code</em>, not digits, and cannot represent counts above 9 anyway.</p>
+<h2>Cost</h2>
+<p><strong>O(n)</strong> time; output is at most twice the input length.</p>
+
+<footer>
+  <p><a href="cpp_run_length_encode.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

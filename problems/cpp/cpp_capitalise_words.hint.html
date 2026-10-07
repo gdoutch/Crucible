@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Capitalise Each Word · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C++ · easy</p>
+  <h1>Capitalise Each Word</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>A flag for "the next letter starts a word"</h2>
+
+<pre><code>bool startOfWord = true;
+for (char&amp; c : text) {
+    if (c == ' ') startOfWord = true;
+    else { /* upper or lower by the flag */ startOfWord = false; }
+}</code></pre>
+
+<p>The flag is set at the start and again after every space, and cleared
+after any other character. That is why a digit at the start of a word uses up
+the capital: <code>"3d"</code> stays <code>"3d"</code>.</p>
+
+<h2>Where it goes wrong</h2>
+
+<div class="trap">
+<p>Splitting into words and rejoining looks tidy but loses the original spacing: runs of spaces collapse, and leading and trailing spaces vanish. The output is printed inside brackets precisely so you can see them. Work character by character instead. Also lower-case the letters that are <em>not</em> at the start of a word -- <code>"hELLO"</code> is not finished by upper-casing the <code>h</code>.</p>
+</div>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cpp_capitalise_words.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

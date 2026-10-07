@@ -1,0 +1,47 @@
+{
+  "id": "cpp_run_length_encode",
+  "title": "Run-Length Encoding",
+  "language": "cpp",
+  "difficulty": "medium",
+  "topics": [
+    "strings",
+    "loops",
+    "encoding"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Compress a string by replacing each run of identical characters with the character followed by the run length.\n\n## Your function\n\n```\nstd::string RunLengthEncode(const std::string& text);\n```\n\n`\"aaabcc\"` becomes `\"a3b1c2\"`. A single character still gets its count (`\"b1\"`), so the encoding is unambiguous. The empty string encodes to the empty string. The input contains no digits.\n\n## Watch out\n\n- **The last run is never followed by a different character,** so a loop that writes a run only when the character changes forgets it. Flush after the loop.\n- **Counts can have several digits.** A run of 12 is `\"a12\"`: build the count with `std::to_string`, not by adding to a `char`.\n- **Do not read `text[0]` when `text` is empty.**\n",
+  "starter_code": "#include <string>\n\n/// Replace each run of identical characters with the character and the\n/// run length: \"aaabcc\" -> \"a3b1c2\". text has no digits and may be empty.\nstd::string RunLengthEncode(const std::string& text)\n{\n    // your code here\n    return \"\";\n}\n",
+  "harness": "#include <iostream>\n#include <string>\n\nstd::string RunLengthEncode(const std::string& text);\n\nint main()\n{\n    std::string line;\n    while (std::getline(std::cin, line))\n    {\n        std::cout << \"[\" << RunLengthEncode(line) << \"]\\n\";\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random strings built from runs of 1 to 14 repeated letters.\"\"\"\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    out = []\n    for _ in range(rng.randint(0, 6)):\n        out.append(rng.choice(\"abxyz.- \") * rng.randint(1, 14))\n    return {\"name\": \"runs #%d\" % index, \"stdin\": \"\".join(out) + \"\\n\"}\n"
+  },
+  "tests": [
+    {
+      "name": "an empty string",
+      "stdin": "\n",
+      "expected_stdout": "[]"
+    },
+    {
+      "name": "a single character",
+      "stdin": "b\n",
+      "expected_stdout": "[b1]"
+    },
+    {
+      "name": "mixed run lengths",
+      "stdin": "aaabcc\n",
+      "expected_stdout": "[a3b1c2]"
+    },
+    {
+      "name": "the final run must be flushed",
+      "stdin": "xyzzz\n",
+      "expected_stdout": "[x1y1z3]"
+    },
+    {
+      "name": "a run of twelve has a two-digit count",
+      "stdin": "aaaaaaaaaaaab\n",
+      "expected_stdout": "[a12b1]"
+    }
+  ],
+  "reference_solution_b64": "I2luY2x1ZGUgPHN0cmluZz4KCnN0ZDo6c3RyaW5nIFJ1bkxlbmd0aEVuY29kZShjb25zdCBzdGQ6OnN0cmluZyYgdGV4dCkKewogICAgc3RkOjpzdHJpbmcgb3V0OwogICAgc3RkOjpzaXplX3QgaSA9IDA7CiAgICB3aGlsZSAoaSA8IHRleHQuc2l6ZSgpKQogICAgewogICAgICAgIHN0ZDo6c2l6ZV90IGogPSBpOwogICAgICAgIHdoaWxlIChqIDwgdGV4dC5zaXplKCkgJiYgdGV4dFtqXSA9PSB0ZXh0W2ldKQogICAgICAgIHsKICAgICAgICAgICAgaisrOwogICAgICAgIH0KICAgICAgICBvdXQgKz0gdGV4dFtpXTsKICAgICAgICBvdXQgKz0gc3RkOjp0b19zdHJpbmcoaiAtIGkpOwogICAgICAgIGkgPSBqOwogICAgfQogICAgcmV0dXJuIG91dDsKfQo="
+}

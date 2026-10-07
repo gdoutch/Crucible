@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Run-Length Encoding · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C++ · medium</p>
+  <h1>Run-Length Encoding</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Measure a run, write it, jump past it</h2>
+
+<pre><code>while (i &lt; text.size()) {
+    j = i;
+    while (j &lt; text.size() &amp;&amp; text[j] == text[i]) j++;
+    // append text[i] and the number (j - i)
+    i = j;
+}</code></pre>
+
+<p>Finding the whole run in an inner loop means there is no "previous
+character" state to flush at the end. For the count, think about what
+<code>j - i</code> is once the inner loop stops, and which standard function
+turns a number into its decimal text.</p>
+
+<h2>Where it goes wrong</h2>
+
+<div class="trap">
+<p>Most wrong answers lose the final run, because the code writes a run only when it sees a character that differs from the previous one, and the last run is never followed by a different character. Counts above 9 are the second trap: <code>a12</code> needs a real conversion to text, not a single character. Finally, an empty line must not index the first character.</p>
+</div>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cpp_run_length_encode.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Second Largest Distinct Value · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C++ · easy</p>
+  <h1>Second Largest Distinct Value</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>#include &lt;optional&gt;
+#include &lt;vector&gt;
+
+std::optional&lt;int&gt; SecondLargest(const std::vector&lt;int&gt;&amp; values)
+{
+    std::optional&lt;int&gt; best;
+    std::optional&lt;int&gt; second;
+    for (int v : values)
+    {
+        if (!best || v &gt; *best)
+        {
+            second = best;
+            best = v;
+        }
+        else if (v &lt; *best &amp;&amp; (!second || v &gt; *second))
+        {
+            second = v;
+        }
+    }
+    return second;
+}</code></pre>
+
+<h2>Why <code>optional</code>, not a sentinel</h2>
+<div class="trap">
+<p>Initialising the two running values to <code>INT_MIN</code> makes a vector
+containing <code>INT_MIN</code> indistinguishable from "not found yet". An
+<code>optional</code> carries the missing state separately from the value, so
+every <code>int</code> stays usable. The same type is what lets the function
+report "no second value" without inventing a magic number.</p>
+</div>
+<h2>Why equal values are skipped</h2>
+<p>The <code>else if (v &lt; *best ...)</code> test is strict, so a repeat of the
+maximum falls through both branches and leaves <code>second</code> alone.</p>
+<h2>Cost</h2>
+<p><strong>O(n)</strong> time, O(1) space.</p>
+
+<footer>
+  <p><a href="cpp_second_largest.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

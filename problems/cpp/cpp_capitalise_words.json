@@ -1,0 +1,44 @@
+{
+  "id": "cpp_capitalise_words",
+  "title": "Capitalise Each Word",
+  "language": "cpp",
+  "difficulty": "easy",
+  "topics": [
+    "strings",
+    "ctype",
+    "loops"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Title-case a line: the first letter of each word upper-case, every other letter lower-case.\n\n## Your function\n\n```\nstd::string Capitalise(std::string text);\n```\n\nA *word* starts at any character that follows a space (or at the start of the string). Spaces are kept exactly as given -- including runs of several and leading or trailing ones. Characters that are not letters are left as they are.\n\n```\n\"hELLO wORLD\"   ->  \"Hello World\"\n\"  a  b \"       ->  \"  A  B \"\n```\n\n## Watch out\n\n- **`text` is taken by value, so you may modify it and return it.** No second string is needed.\n- **Track \"start of a word\" with a flag**, not by looking at `text[i - 1]` for `i == 0`.\n- **Cast to `unsigned char`** before `std::toupper` / `std::tolower`; a negative `char` is undefined behaviour.\n- Do not use `split` / `istringstream`: they collapse the spaces, and the spaces must survive.\n",
+  "starter_code": "#include <string>\n\n/// Upper-case the first letter of each space-separated word and\n/// lower-case the rest. Spaces are preserved exactly.\nstd::string Capitalise(std::string text)\n{\n    // your code here\n    return text;\n}\n",
+  "harness": "#include <iostream>\n#include <string>\n\nstd::string Capitalise(std::string text);\n\nint main()\n{\n    std::string line;\n    while (std::getline(std::cin, line))\n    {\n        std::cout << \"[\" << Capitalise(line) << \"]\\n\";\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random lines of mixed-case words separated by one or more spaces.\"\"\"\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    parts = [rng.choice([\"\", \" \", \"  \"]) if rng.random() < 0.3 else \"\"]\n    for _ in range(rng.randint(1, 4)):\n        word = \"\".join(rng.choice(\"abcdefXYZ\") for _ in range(rng.randint(1, 6)))\n        parts.append(\"\".join(c.upper() if rng.random() < 0.5 else c for c in word))\n        parts.append(\" \" * rng.randint(1, 3))\n    return {\"name\": \"a line of words #%d\" % index, \"stdin\": \"\".join(parts) + \"\\n\"}\n"
+  },
+  "tests": [
+    {
+      "name": "an empty line",
+      "stdin": "\n",
+      "expected_stdout": "[]"
+    },
+    {
+      "name": "mixed case",
+      "stdin": "hELLO wORLD\n",
+      "expected_stdout": "[Hello World]"
+    },
+    {
+      "name": "leading, repeated and trailing spaces are preserved",
+      "stdin": "  a  b \n",
+      "expected_stdout": "[  A  B ]",
+      "description": "The output is bracketed so the spaces are visible."
+    },
+    {
+      "name": "non-letters are left alone",
+      "stdin": "3d-printing is 100% fun\n",
+      "expected_stdout": "[3d-printing Is 100% Fun]",
+      "description": "'3d-printing' becomes '3d-printing'; the 'd' follows a digit, not a space."
+    }
+  ],
+  "reference_solution_b64": "I2luY2x1ZGUgPGNjdHlwZT4KI2luY2x1ZGUgPHN0cmluZz4KCnN0ZDo6c3RyaW5nIENhcGl0YWxpc2Uoc3RkOjpzdHJpbmcgdGV4dCkKewogICAgYm9vbCBzdGFydE9mV29yZCA9IHRydWU7CiAgICBmb3IgKGNoYXImIGMgOiB0ZXh0KQogICAgewogICAgICAgIHVuc2lnbmVkIGNoYXIgdSA9IHN0YXRpY19jYXN0PHVuc2lnbmVkIGNoYXI+KGMpOwogICAgICAgIGlmIChjID09ICcgJykKICAgICAgICB7CiAgICAgICAgICAgIHN0YXJ0T2ZXb3JkID0gdHJ1ZTsKICAgICAgICB9CiAgICAgICAgZWxzZQogICAgICAgIHsKICAgICAgICAgICAgYyA9IHN0YXRpY19jYXN0PGNoYXI+KHN0YXJ0T2ZXb3JkID8gc3RkOjp0b3VwcGVyKHUpIDogc3RkOjp0b2xvd2VyKHUpKTsKICAgICAgICAgICAgc3RhcnRPZldvcmQgPSBmYWxzZTsKICAgICAgICB9CiAgICB9CiAgICByZXR1cm4gdGV4dDsKfQo="
+}

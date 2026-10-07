@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Second Largest Distinct Value · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C++ · easy</p>
+  <h1>Second Largest Distinct Value</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Two running values, both optional</h2>
+
+<pre><code>std::optional&lt;int&gt; best, second;
+for (int v : values) {
+    // new maximum: old best becomes second
+    // strictly between: improves second
+    // equal to best: ignore
+}
+return second;</code></pre>
+
+<p>Whenever a new maximum arrives, the old maximum is demoted to second
+place. A value equal to the maximum changes nothing.</p>
+
+<h2>Where it goes wrong</h2>
+
+<div class="trap">
+<p>Duplicates are the usual trap: with <code>[9, 9, 5]</code> a naive "track the two biggest values seen" reports <code>9</code> twice. The second trap is the starting value. If you begin both running values at <code>INT_MIN</code>, an input that really contains <code>INT_MIN</code> cannot be told from "nothing found". Use the optional type the signature already gives you to carry that state.</p>
+</div>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cpp_second_largest.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

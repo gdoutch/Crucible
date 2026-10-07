@@ -1,0 +1,43 @@
+{
+  "id": "cpp_fizzbuzz",
+  "title": "FizzBuzz as a Function",
+  "language": "cpp",
+  "difficulty": "easy",
+  "topics": [
+    "strings",
+    "conditionals",
+    "modulo"
+  ],
+  "timeout_seconds": 5,
+  "statement": "The classic, with a twist: return the answer as a `std::string` instead of printing it.\n\n## Your function\n\n```\nstd::string FizzBuzz(int n);\n```\n\nFor `n >= 1`:\n\n- divisible by both 3 and 5 -> `\"FizzBuzz\"`\n- divisible by 3 only -> `\"Fizz\"`\n- divisible by 5 only -> `\"Buzz\"`\n- otherwise the number itself as text, e.g. `\"7\"`.\n\n## Watch out\n\n- **Test for 15 (or for both factors) first.** If the `n % 3` branch comes first, `15` answers `\"Fizz\"` and never reaches the combined case.\n- **A number is not a string.** `std::to_string(n)` converts it; returning `n` or `char(n)` will not compile or will give the wrong text.\n",
+  "starter_code": "#include <string>\n\n/// n >= 1. Return \"Fizz\", \"Buzz\", \"FizzBuzz\", or n as text.\nstd::string FizzBuzz(int n)\n{\n    // your code here\n    return \"\";\n}\n",
+  "harness": "#include <iostream>\n#include <string>\n\nstd::string FizzBuzz(int n);\n\nint main()\n{\n    int n;\n    while (std::cin >> n)\n    {\n        std::cout << FizzBuzz(n) << \"\\n\";\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random batches of numbers, always including a multiple of 15.\"\"\"\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    nums = [rng.randint(1, 200) for _ in range(5)] + [15 * rng.randint(1, 100)]\n    rng.shuffle(nums)\n    return {\"name\": \"six numbers #%d\" % index,\n            \"stdin\": \"\\n\".join(map(str, nums)) + \"\\n\"}\n"
+  },
+  "tests": [
+    {
+      "name": "a plain number",
+      "stdin": "1\n7\n",
+      "expected_stdout": "1\n7"
+    },
+    {
+      "name": "multiples of three and five",
+      "stdin": "3\n5\n9\n10\n",
+      "expected_stdout": "Fizz\nBuzz\nFizz\nBuzz"
+    },
+    {
+      "name": "multiples of fifteen",
+      "stdin": "15\n30\n45\n",
+      "expected_stdout": "FizzBuzz\nFizzBuzz\nFizzBuzz",
+      "description": "Both factors: must be FizzBuzz, not Fizz."
+    },
+    {
+      "name": "a large number",
+      "stdin": "2147483647\n",
+      "expected_stdout": "2147483647"
+    }
+  ],
+  "reference_solution_b64": "I2luY2x1ZGUgPHN0cmluZz4KCnN0ZDo6c3RyaW5nIEZpenpCdXp6KGludCBuKQp7CiAgICBpZiAobiAlIDE1ID09IDApCiAgICB7CiAgICAgICAgcmV0dXJuICJGaXp6QnV6eiI7CiAgICB9CiAgICBpZiAobiAlIDMgPT0gMCkKICAgIHsKICAgICAgICByZXR1cm4gIkZpenoiOwogICAgfQogICAgaWYgKG4gJSA1ID09IDApCiAgICB7CiAgICAgICAgcmV0dXJuICJCdXp6IjsKICAgIH0KICAgIHJldHVybiBzdGQ6OnRvX3N0cmluZyhuKTsKfQo="
+}

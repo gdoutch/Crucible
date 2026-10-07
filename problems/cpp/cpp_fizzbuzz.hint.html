@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — FizzBuzz as a Function · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C++ · easy</p>
+  <h1>FizzBuzz as a Function</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Most specific case first</h2>
+
+<pre><code>if (/* divisible by 3 and 5 */) return "FizzBuzz";
+if (/* by 3 */) return "Fizz";
+if (/* by 5 */) return "Buzz";
+return std::to_string(n);</code></pre>
+
+<p>Each <code>if</code> returns, so order is everything: the combined
+case has to be asked before either single one. Try 15, 30 and 45 by hand
+against your branch order before you run anything.</p>
+
+<h2>Where it goes wrong</h2>
+
+<div class="trap">
+<p>Order of the tests is the only difficulty. A number divisible by 15 satisfies the by-3 test and the by-5 test as well as the combined one, so if either single test is asked first, 15 answers <code>"Fizz"</code> or <code>"Buzz"</code> and the combined branch is dead code. Also remember the plain case returns text: the function's return type is <code>std::string</code>, so a bare number will not do.</p>
+</div>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cpp_fizzbuzz.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

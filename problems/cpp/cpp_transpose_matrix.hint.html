@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Transpose a Matrix · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C++ · medium</p>
+  <h1>Transpose a Matrix</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Build a new matrix with the dimensions swapped</h2>
+
+<pre><code>t = C rows, each of R columns
+for i in 0..R-1:
+    for j in 0..C-1:
+        t[j][i] = m[i][j]</code></pre>
+
+<p>Reading <code>m[i][j]</code> and writing <code>t[j][i]</code> is the
+whole idea. The only care needed is in sizing <code>t</code> and in the empty
+case. Sketch a 2 x 3 matrix on paper and write down the shape of its transpose
+before you write the allocation.</p>
+
+<h2>Where it goes wrong</h2>
+
+<div class="trap">
+<p>Sizing is where this goes wrong. The result of an <code>R x C</code> matrix has <code>C</code> rows, each <code>R</code> long; allocate it <code>R x C</code> and any non-square input writes out of bounds. Swapping elements within the original works only for a square matrix, and even then swapping every pair twice undoes the work. An empty matrix has no first row to measure.</p>
+</div>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cpp_transpose_matrix.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

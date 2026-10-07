@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Two Sum With a Hash Map · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C++ · medium</p>
+  <h1>Two Sum With a Hash Map</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Look up the complement, then remember yourself</h2>
+
+<pre><code>for each j:
+    need = target - values[j]          // in long long
+    if need was seen: return {seenIndex[need], j}
+    remember values[j] -> j            // only the first time</code></pre>
+
+<p>The order of those two steps is what stops an element pairing with
+itself. <code>emplace</code> leaves an existing key alone, which keeps the
+earliest index.</p>
+
+<h2>Where it goes wrong</h2>
+
+<div class="trap">
+<p>Three separate things go wrong. Recording a value before looking it up lets an element pair with itself, so <code>[3]</code> with target 6 wrongly succeeds. Overwriting a repeated value's index in the map returns a larger <code>i</code> than the problem asks for. And <code>target - values[j]</code> is a signed subtraction that can overflow <code>int</code> -- the last visible test is built around that.</p>
+</div>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cpp_two_sum.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

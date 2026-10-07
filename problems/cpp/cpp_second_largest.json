@@ -1,0 +1,54 @@
+{
+  "id": "cpp_second_largest",
+  "title": "Second Largest Distinct Value",
+  "language": "cpp",
+  "difficulty": "easy",
+  "topics": [
+    "vectors",
+    "optional",
+    "loops"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Find the second-largest **distinct** value -- the largest value that is strictly smaller than the maximum -- and say so honestly when there is none.\n\n## Your function\n\n```\nstd::optional<int> SecondLargest(const std::vector<int>& values);\n```\n\nReturn the second-largest distinct value, or `std::nullopt` if the vector has fewer than two distinct values (empty, one element, or all equal).\n\n```\n[5 9 2 9]   ->  5      (the two 9s are one value)\n[4 4 4]     ->  none\n```\n\n## Watch out\n\n- **Duplicates of the maximum are not the second largest.** `[9, 9, 5]` has second-largest `5`, not `9`.\n- **Do not use a sentinel like `INT_MIN` for \"nothing yet\".** An array containing `INT_MIN` is legitimate, and a sentinel cannot tell it apart from \"unset\". `std::optional` exists for exactly this.\n- A single pass with two running values avoids sorting; sorting and de-duplicating is also fine.\n",
+  "starter_code": "#include <optional>\n#include <vector>\n\n/// The largest value strictly below the maximum, or nullopt if there is\n/// no such value.\nstd::optional<int> SecondLargest(const std::vector<int>& values)\n{\n    // your code here\n    return std::nullopt;\n}\n",
+  "harness": "#include <iostream>\n#include <optional>\n#include <vector>\n\nstd::optional<int> SecondLargest(const std::vector<int>& values);\n\nint main()\n{\n    int n;\n    while (std::cin >> n)\n    {\n        std::vector<int> values(n);\n        for (int i = 0; i < n; i++)\n        {\n            std::cin >> values[i];\n        }\n        std::optional<int> r = SecondLargest(values);\n        if (r) { std::cout << *r << \"\\n\"; }\n        else   { std::cout << \"none\\n\"; }\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random small-range arrays, so duplicates of the maximum are common.\"\"\"\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    n = rng.randint(0, 10)\n    values = [rng.randint(-4, 4) for _ in range(n)]\n    return {\"name\": \"%d values #%d\" % (n, index),\n            \"stdin\": \"%d\\n%s\\n\" % (n, \" \".join(map(str, values)))}\n"
+  },
+  "tests": [
+    {
+      "name": "an empty vector has none",
+      "stdin": "0\n\n",
+      "expected_stdout": "none"
+    },
+    {
+      "name": "one element has none",
+      "stdin": "1\n5\n",
+      "expected_stdout": "none"
+    },
+    {
+      "name": "all equal has none",
+      "stdin": "3\n4 4 4\n",
+      "expected_stdout": "none"
+    },
+    {
+      "name": "duplicates of the maximum",
+      "stdin": "4\n5 9 2 9\n",
+      "expected_stdout": "5",
+      "description": "The two 9s are one value; the answer is 5."
+    },
+    {
+      "name": "the maximum last",
+      "stdin": "3\n1 2 3\n",
+      "expected_stdout": "2"
+    },
+    {
+      "name": "INT_MIN is a real value",
+      "stdin": "2\n-2147483648 7\n",
+      "expected_stdout": "-2147483648",
+      "description": "A sentinel of INT_MIN would wrongly report none."
+    }
+  ],
+  "reference_solution_b64": "I2luY2x1ZGUgPG9wdGlvbmFsPgojaW5jbHVkZSA8dmVjdG9yPgoKc3RkOjpvcHRpb25hbDxpbnQ+IFNlY29uZExhcmdlc3QoY29uc3Qgc3RkOjp2ZWN0b3I8aW50PiYgdmFsdWVzKQp7CiAgICBzdGQ6Om9wdGlvbmFsPGludD4gYmVzdDsKICAgIHN0ZDo6b3B0aW9uYWw8aW50PiBzZWNvbmQ7CiAgICBmb3IgKGludCB2IDogdmFsdWVzKQogICAgewogICAgICAgIGlmICghYmVzdCB8fCB2ID4gKmJlc3QpCiAgICAgICAgewogICAgICAgICAgICBzZWNvbmQgPSBiZXN0OwogICAgICAgICAgICBiZXN0ID0gdjsKICAgICAgICB9CiAgICAgICAgZWxzZSBpZiAodiA8ICpiZXN0ICYmICghc2Vjb25kIHx8IHYgPiAqc2Vjb25kKSkKICAgICAgICB7CiAgICAgICAgICAgIHNlY29uZCA9IHY7CiAgICAgICAgfQogICAgfQogICAgcmV0dXJuIHNlY29uZDsKfQo="
+}

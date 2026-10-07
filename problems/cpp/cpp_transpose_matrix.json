@@ -1,0 +1,47 @@
+{
+  "id": "cpp_transpose_matrix",
+  "title": "Transpose a Matrix",
+  "language": "cpp",
+  "difficulty": "medium",
+  "topics": [
+    "vectors",
+    "2D arrays",
+    "indexing"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Swap a matrix's rows and columns: the element at row `r`, column `c` moves to row `c`, column `r`.\n\n## Your function\n\n```\nstd::vector<std::vector<int>>\nTranspose(const std::vector<std::vector<int>>& m);\n```\n\n`m` is rectangular (every row the same length) and may have any shape, not just square. An `R x C` input gives a `C x R` result. An empty matrix transposes to an empty matrix.\n\n```\n[1 2 3]        [1 4]\n[4 5 6]   ->   [2 5]\n               [3 6]\n```\n\n## Watch out\n\n- **The result's dimensions are swapped.** Size it `C` rows of `R` columns; reusing `R x C` is only right for a square matrix and is out of range for any other.\n- **Do not transpose in place** -- a non-square matrix cannot be, and a square one is easy to get wrong (swapping every pair twice puts everything back).\n- **An empty matrix has no `m[0]`.** Check `m.empty()` before asking how many columns there are.\n",
+  "starter_code": "#include <vector>\n\n/// Return the transpose of the rectangular matrix m (R x C -> C x R).\nstd::vector<std::vector<int>>\nTranspose(const std::vector<std::vector<int>>& m)\n{\n    // your code here\n    return {};\n}\n",
+  "harness": "#include <iostream>\n#include <vector>\n\nstd::vector<std::vector<int>>\nTranspose(const std::vector<std::vector<int>>& m);\n\nint main()\n{\n    int r, c;\n    while (std::cin >> r >> c)\n    {\n        std::vector<std::vector<int>> m(r, std::vector<int>(c));\n        for (int i = 0; i < r; i++)\n        {\n            for (int j = 0; j < c; j++)\n            {\n                std::cin >> m[i][j];\n            }\n        }\n        auto t = Transpose(m);\n        std::cout << t.size() << \"x\" << (t.empty() ? 0 : t[0].size()) << \"\\n\";\n        for (const auto& row : t)\n        {\n            for (std::size_t j = 0; j < row.size(); j++)\n            {\n                std::cout << row[j] << (j + 1 < row.size() ? \" \" : \"\");\n            }\n            std::cout << \"\\n\";\n        }\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random rectangular matrices, usually not square.\"\"\"\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    r, c = rng.randint(1, 5), rng.randint(1, 5)\n    rows = [\" \".join(str(rng.randint(-9, 9)) for _ in range(c)) for _ in range(r)]\n    return {\"name\": \"a %dx%d matrix #%d\" % (r, c, index),\n            \"stdin\": \"%d %d\\n%s\\n\" % (r, c, \"\\n\".join(rows))}\n"
+  },
+  "tests": [
+    {
+      "name": "an empty matrix",
+      "stdin": "0 0\n",
+      "expected_stdout": "0x0"
+    },
+    {
+      "name": "a single element",
+      "stdin": "1 1\n5\n",
+      "expected_stdout": "1x1\n5"
+    },
+    {
+      "name": "a wide matrix becomes tall",
+      "stdin": "2 3\n1 2 3\n4 5 6\n",
+      "expected_stdout": "3x2\n1 4\n2 5\n3 6"
+    },
+    {
+      "name": "a tall matrix becomes wide",
+      "stdin": "3 1\n1\n2\n3\n",
+      "expected_stdout": "1x3\n1 2 3"
+    },
+    {
+      "name": "a square matrix",
+      "stdin": "2 2\n1 2\n3 4\n",
+      "expected_stdout": "2x2\n1 3\n2 4"
+    }
+  ],
+  "reference_solution_b64": "I2luY2x1ZGUgPHZlY3Rvcj4KCnN0ZDo6dmVjdG9yPHN0ZDo6dmVjdG9yPGludD4+ClRyYW5zcG9zZShjb25zdCBzdGQ6OnZlY3RvcjxzdGQ6OnZlY3RvcjxpbnQ+PiYgbSkKewogICAgaWYgKG0uZW1wdHkoKSkKICAgIHsKICAgICAgICByZXR1cm4ge307CiAgICB9CiAgICBzdGQ6OnNpemVfdCByb3dzID0gbS5zaXplKCk7CiAgICBzdGQ6OnNpemVfdCBjb2xzID0gbVswXS5zaXplKCk7CiAgICBzdGQ6OnZlY3RvcjxzdGQ6OnZlY3RvcjxpbnQ+PiB0KGNvbHMsIHN0ZDo6dmVjdG9yPGludD4ocm93cykpOwogICAgZm9yIChzdGQ6OnNpemVfdCBpID0gMDsgaSA8IHJvd3M7IGkrKykKICAgIHsKICAgICAgICBmb3IgKHN0ZDo6c2l6ZV90IGogPSAwOyBqIDwgY29sczsgaisrKQogICAgICAgIHsKICAgICAgICAgICAgdFtqXVtpXSA9IG1baV1bal07CiAgICAgICAgfQogICAgfQogICAgcmV0dXJuIHQ7Cn0K"
+}

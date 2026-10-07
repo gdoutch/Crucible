@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Transpose a Matrix · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C++ · medium</p>
+  <h1>Transpose a Matrix</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>#include &lt;vector&gt;
+
+std::vector&lt;std::vector&lt;int&gt;&gt;
+Transpose(const std::vector&lt;std::vector&lt;int&gt;&gt;&amp; m)
+{
+    if (m.empty())
+    {
+        return {};
+    }
+    std::size_t rows = m.size();
+    std::size_t cols = m[0].size();
+    std::vector&lt;std::vector&lt;int&gt;&gt; t(cols, std::vector&lt;int&gt;(rows));
+    for (std::size_t i = 0; i &lt; rows; i++)
+    {
+        for (std::size_t j = 0; j &lt; cols; j++)
+        {
+            t[j][i] = m[i][j];
+        }
+    }
+    return t;
+}</code></pre>
+
+<h2>Why a new matrix</h2>
+<div class="trap">
+<p>An <code>R x C</code> matrix and its <code>C x R</code> transpose do not have
+the same shape unless <code>R == C</code>, so there is nothing to swap in
+place. Allocating <code>C</code> rows of <code>R</code> columns and copying
+<code>m[i][j]</code> to <code>t[j][i]</code> works for every rectangle; sizing the
+result as <code>R x C</code> instead writes outside the vector the first time the
+matrix is not square.</p>
+</div>
+<h2>Why check <code>empty()</code> first</h2>
+<p><code>m[0].size()</code> on an empty outer vector is undefined behaviour.</p>
+<h2>Cost</h2>
+<p><strong>O(R x C)</strong> time and space.</p>
+
+<footer>
+  <p><a href="cpp_transpose_matrix.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

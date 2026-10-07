@@ -1,0 +1,60 @@
+{
+  "id": "cpp_two_sum",
+  "title": "Two Sum With a Hash Map",
+  "language": "cpp",
+  "difficulty": "medium",
+  "topics": [
+    "unordered_map",
+    "vectors",
+    "overflow"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Find two *different positions* whose values add up to a target.\n\n## Your function\n\n```\nstd::pair<int, int> TwoSum(const std::vector<int>& values, int target);\n```\n\nReturn `{i, j}` with `i < j` and `values[i] + values[j] == target`. If several pairs exist, return the one with the **smallest `j`**, and among those the smallest `i`. If there is no pair, return `{-1, -1}`.\n\n```\n[2 7 11 15], target 9   ->  {0, 1}\n[3 3],       target 6   ->  {0, 1}\n[3],         target 6   ->  {-1, -1}   (one element cannot be used twice)\n```\n\n## Watch out\n\n- **Look up before you insert.** Scanning left to right, ask \"have I already seen `target - values[j]`?\" *then* record `values[j]`. Inserting first lets an element pair with itself.\n- **Keep the first index for a repeated value** (do not overwrite): that gives the smallest `i`.\n- **`target - x` can overflow `int`** (`target = INT_MAX`, `x = -1`). Do the subtraction in `long long`, and skip the lookup if the complement is outside `int` range.\n",
+  "starter_code": "#include <unordered_map>\n#include <utility>\n#include <vector>\n\n/// Smallest j, then smallest i, with i < j and values[i] + values[j] == target.\n/// {-1, -1} if there is none.\nstd::pair<int, int> TwoSum(const std::vector<int>& values, int target)\n{\n    // your code here\n    return {-1, -1};\n}\n",
+  "harness": "#include <iostream>\n#include <utility>\n#include <vector>\n\nstd::pair<int, int> TwoSum(const std::vector<int>& values, int target);\n\nint main()\n{\n    int n, target;\n    while (std::cin >> n >> target)\n    {\n        std::vector<int> values(n);\n        for (int i = 0; i < n; i++)\n        {\n            std::cin >> values[i];\n        }\n        std::pair<int, int> r = TwoSum(values, target);\n        std::cout << r.first << \" \" << r.second << \"\\n\";\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random small arrays and targets, so pairs, repeats and misses all occur.\"\"\"\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    n = rng.randint(0, 10)\n    values = [rng.randint(-6, 6) for _ in range(n)]\n    target = rng.randint(-10, 10)\n    return {\"name\": \"%d values, target %d #%d\" % (n, target, index),\n            \"stdin\": \"%d %d\\n%s\\n\" % (n, target, \" \".join(map(str, values)))}\n"
+  },
+  "tests": [
+    {
+      "name": "an empty vector",
+      "stdin": "0 5\n\n",
+      "expected_stdout": "-1 -1"
+    },
+    {
+      "name": "the classic example",
+      "stdin": "4 9\n2 7 11 15\n",
+      "expected_stdout": "0 1"
+    },
+    {
+      "name": "a repeated value pairs with its twin",
+      "stdin": "2 6\n3 3\n",
+      "expected_stdout": "0 1"
+    },
+    {
+      "name": "an element cannot pair with itself",
+      "stdin": "1 6\n3\n",
+      "expected_stdout": "-1 -1",
+      "description": "Inserting before looking up would answer {0, 0}."
+    },
+    {
+      "name": "no pair exists",
+      "stdin": "3 100\n1 2 3\n",
+      "expected_stdout": "-1 -1"
+    },
+    {
+      "name": "the pair that completes first wins",
+      "stdin": "5 10\n3 6 4 7 4\n",
+      "expected_stdout": "1 2",
+      "description": "(1, 2) completes at j = 2; (0, 3) also sums to 10 but completes later, at j = 3."
+    },
+    {
+      "name": "target - x would overflow int",
+      "stdin": "2 2147483647\n-1 5\n",
+      "expected_stdout": "-1 -1",
+      "description": "2147483647 - (-1) does not fit in int; the answer is none."
+    }
+  ],
+  "reference_solution_b64": "I2luY2x1ZGUgPGNsaW1pdHM+CiNpbmNsdWRlIDx1bm9yZGVyZWRfbWFwPgojaW5jbHVkZSA8dXRpbGl0eT4KI2luY2x1ZGUgPHZlY3Rvcj4KCnN0ZDo6cGFpcjxpbnQsIGludD4gVHdvU3VtKGNvbnN0IHN0ZDo6dmVjdG9yPGludD4mIHZhbHVlcywgaW50IHRhcmdldCkKewogICAgc3RkOjp1bm9yZGVyZWRfbWFwPGludCwgaW50PiBmaXJzdEluZGV4OwogICAgZm9yIChpbnQgaiA9IDA7IGogPCBzdGF0aWNfY2FzdDxpbnQ+KHZhbHVlcy5zaXplKCkpOyBqKyspCiAgICB7CiAgICAgICAgbG9uZyBsb25nIG5lZWQgPSBzdGF0aWNfY2FzdDxsb25nIGxvbmc+KHRhcmdldCkgLSB2YWx1ZXNbal07CiAgICAgICAgaWYgKG5lZWQgPj0gSU5UX01JTiAmJiBuZWVkIDw9IElOVF9NQVgpCiAgICAgICAgewogICAgICAgICAgICBhdXRvIGl0ID0gZmlyc3RJbmRleC5maW5kKHN0YXRpY19jYXN0PGludD4obmVlZCkpOwogICAgICAgICAgICBpZiAoaXQgIT0gZmlyc3RJbmRleC5lbmQoKSkKICAgICAgICAgICAgewogICAgICAgICAgICAgICAgcmV0dXJuIHtpdC0+c2Vjb25kLCBqfTsKICAgICAgICAgICAgfQogICAgICAgIH0KICAgICAgICBmaXJzdEluZGV4LmVtcGxhY2UodmFsdWVzW2pdLCBqKTsKICAgIH0KICAgIHJldHVybiB7LTEsIC0xfTsKfQo="
+}

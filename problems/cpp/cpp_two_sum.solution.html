@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Two Sum With a Hash Map · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C++ · medium</p>
+  <h1>Two Sum With a Hash Map</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>#include &lt;climits&gt;
+#include &lt;unordered_map&gt;
+#include &lt;utility&gt;
+#include &lt;vector&gt;
+
+std::pair&lt;int, int&gt; TwoSum(const std::vector&lt;int&gt;&amp; values, int target)
+{
+    std::unordered_map&lt;int, int&gt; firstIndex;
+    for (int j = 0; j &lt; static_cast&lt;int&gt;(values.size()); j++)
+    {
+        long long need = static_cast&lt;long long&gt;(target) - values[j];
+        if (need &gt;= INT_MIN &amp;&amp; need &lt;= INT_MAX)
+        {
+            auto it = firstIndex.find(static_cast&lt;int&gt;(need));
+            if (it != firstIndex.end())
+            {
+                return {it-&gt;second, j};
+            }
+        }
+        firstIndex.emplace(values[j], j);
+    }
+    return {-1, -1};
+}</code></pre>
+
+<h2>Why look up before insert</h2>
+<div class="trap">
+<p>If <code>values[j]</code> is recorded first, a lookup for
+<code>target - values[j]</code> can find <code>j</code> itself whenever
+<code>values[j] * 2 == target</code>, answering <code>{j, j}</code> for the
+single-element input <code>[3]</code>. Looking up first only ever finds
+<em>earlier</em> positions, which also guarantees <code>i &lt; j</code>.</p>
+</div>
+<h2>Why <code>long long</code> for the complement</h2>
+<p><code>target - values[j]</code> is a signed subtraction that can leave the range
+of <code>int</code>, which is undefined behaviour. In <code>long long</code> it is
+exact; a complement outside <code>int</code> range cannot be in the map, so the
+lookup is skipped.</p>
+<h2>Cost</h2>
+<p><strong>O(n)</strong> expected time and space.</p>
+
+<footer>
+  <p><a href="cpp_two_sum.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>
