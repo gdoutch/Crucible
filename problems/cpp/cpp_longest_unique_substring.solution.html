@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Longest Substring Without Repeating Characters · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C++ · medium</p>
+  <h1>Longest Substring Without Repeating Characters</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>#include &lt;algorithm&gt;
+#include &lt;string&gt;
+#include &lt;vector&gt;
+
+int LongestUniqueSubstring(const std::string&amp; text)
+{
+    std::vector&lt;int&gt; last(256, -1);
+    int best = 0;
+    int left = 0;
+    for (int right = 0; right &lt; static_cast&lt;int&gt;(text.size()); right++)
+    {
+        unsigned char c = static_cast&lt;unsigned char&gt;(text[right]);
+        left = std::max(left, last[c] + 1);
+        last[c] = right;
+        best = std::max(best, right - left + 1);
+    }
+    return best;
+}</code></pre>
+
+<h2>Why <code>max(left, last + 1)</code></h2>
+<div class="trap">
+<p><code>last[c]</code> remembers the most recent position of <code>c</code>
+<em>anywhere</em> in the string, not just inside the current window. In
+<code>"abba"</code> the final <code>'a'</code> was last seen at index 0, but by
+then the window has already moved to start at index 2 because of the repeated
+<code>'b'</code>. Assigning <code>left = last['a'] + 1 = 1</code> would drag the
+left edge backward over the two <code>'b'</code>s and report a length of 3. Taking
+the maximum means a stale record can never pull the window back.</p>
+</div>
+<h2>Why every character is visited once</h2>
+<p><code>right</code> only moves forward and so does <code>left</code>; neither is
+ever reset. That is what makes the whole thing linear, in contrast to the
+brute-force approach that re-scans from each starting point.</p>
+<h2>Why <code>unsigned char</code></h2>
+<p>The table is indexed by character value. A <code>char</code> above 127 is
+negative on common platforms; converting to <code>unsigned char</code> first keeps
+the index in <code>0..255</code>.</p>
+<h2>Cost</h2>
+<p><strong>O(n)</strong> time, O(1) extra space (a table of 256 entries).</p>
+
+<footer>
+  <p><a href="cpp_longest_unique_substring.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

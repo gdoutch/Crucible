@@ -1,0 +1,64 @@
+{
+  "id": "cpp_longest_unique_substring",
+  "title": "Longest Substring Without Repeating Characters",
+  "language": "cpp",
+  "difficulty": "medium",
+  "topics": [
+    "interview",
+    "sliding window",
+    "strings",
+    "hashing"
+  ],
+  "timeout_seconds": 5,
+  "statement": "A staple of coding interviews: find the longest stretch of a string in which\nno character appears twice.\n\n## Your function\n\n```\nint LongestUniqueSubstring(const std::string& text);\n```\n\nReturn the **length** of the longest *contiguous* substring of `text` whose\ncharacters are all distinct. The empty string gives `0`. Any byte value can\nappear, including spaces and punctuation, and case matters (`'a'` and `'A'`\ndiffer).\n\n```\n\"abcabcbb\"  ->  3    (\"abc\")\n\"bbbbb\"     ->  1\n\"pwwkew\"    ->  3    (\"wke\" -- a substring, not the subsequence \"pwke\")\n```\n\n## Watch out\n\n- **Do not restart from scratch at every position.** Checking each start\n  against each end is O(n^2) or worse; the intended answer is a **sliding\n  window** that visits each character once, remembering where each\n  character was last seen.\n- **When a repeat appears, move the left edge forward -- never backward.**\n  For `\"abba\"`, by the time the final `'a'` arrives, its last position\n  (index 0) is already *outside* the window. Jumping the left edge back to\n  index 1 would wrongly reopen a window that contains the second `'b'`\n  twice. Take the larger of the current left edge and `last + 1`.\n- **Index a table by `static_cast<unsigned char>(c)`.** A plain `char` can\n  be negative, and a negative array index is undefined behaviour.\n- A subsequence is not a substring: characters must be adjacent.\n",
+  "starter_code": "#include <string>\n\n/// Length of the longest run of adjacent characters with no repeats.\nint LongestUniqueSubstring(const std::string& text)\n{\n    // your code here\n    return 0;\n}\n",
+  "harness": "#include <iostream>\n#include <string>\n\nint LongestUniqueSubstring(const std::string& text);\n\nint main()\n{\n    std::string line;\n    while (std::getline(std::cin, line))\n    {\n        std::cout << LongestUniqueSubstring(line) << \"\\n\";\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random strings over a tiny alphabet, so repeats (including the abba\npattern) are frequent.\"\"\"\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    alphabet = rng.choice([\"ab\", \"abc\", \"abcd\", \"abcdefg\"])\n    n = rng.randint(0, 20)\n    return {\"name\": \"%d characters over '%s' #%d\" % (n, alphabet, index),\n            \"stdin\": \"\".join(rng.choice(alphabet) for _ in range(n)) + \"\\n\"}\n"
+  },
+  "tests": [
+    {
+      "name": "an empty string",
+      "stdin": "\n",
+      "expected_stdout": "0"
+    },
+    {
+      "name": "a single character",
+      "stdin": "x\n",
+      "expected_stdout": "1"
+    },
+    {
+      "name": "a repeating pattern",
+      "stdin": "abcabcbb\n",
+      "expected_stdout": "3"
+    },
+    {
+      "name": "all the same character",
+      "stdin": "bbbbb\n",
+      "expected_stdout": "1"
+    },
+    {
+      "name": "a substring, not a subsequence",
+      "stdin": "pwwkew\n",
+      "expected_stdout": "3"
+    },
+    {
+      "name": "the left edge must never move backward",
+      "stdin": "abba\n",
+      "expected_stdout": "2",
+      "description": "Answer 2. Setting left = last['a'] + 1 = 1 at the end would give 3."
+    },
+    {
+      "name": "a repeat that is already outside the window",
+      "stdin": "dvdf\n",
+      "expected_stdout": "3"
+    },
+    {
+      "name": "spaces and case count as characters",
+      "stdin": "a Ab a\n",
+      "expected_stdout": "4"
+    }
+  ],
+  "reference_solution_b64": "I2luY2x1ZGUgPGFsZ29yaXRobT4KI2luY2x1ZGUgPHN0cmluZz4KI2luY2x1ZGUgPHZlY3Rvcj4KCmludCBMb25nZXN0VW5pcXVlU3Vic3RyaW5nKGNvbnN0IHN0ZDo6c3RyaW5nJiB0ZXh0KQp7CiAgICBzdGQ6OnZlY3RvcjxpbnQ+IGxhc3QoMjU2LCAtMSk7CiAgICBpbnQgYmVzdCA9IDA7CiAgICBpbnQgbGVmdCA9IDA7CiAgICBmb3IgKGludCByaWdodCA9IDA7IHJpZ2h0IDwgc3RhdGljX2Nhc3Q8aW50Pih0ZXh0LnNpemUoKSk7IHJpZ2h0KyspCiAgICB7CiAgICAgICAgdW5zaWduZWQgY2hhciBjID0gc3RhdGljX2Nhc3Q8dW5zaWduZWQgY2hhcj4odGV4dFtyaWdodF0pOwogICAgICAgIGxlZnQgPSBzdGQ6Om1heChsZWZ0LCBsYXN0W2NdICsgMSk7CiAgICAgICAgbGFzdFtjXSA9IHJpZ2h0OwogICAgICAgIGJlc3QgPSBzdGQ6Om1heChiZXN0LCByaWdodCAtIGxlZnQgKyAxKTsKICAgIH0KICAgIHJldHVybiBiZXN0Owp9Cg=="
+}

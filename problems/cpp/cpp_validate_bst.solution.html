@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Is This a Valid Binary Search Tree? · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C++ · hard</p>
+  <h1>Is This a Valid Binary Search Tree?</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>struct TreeNode
+{
+    int val;
+    TreeNode* left;
+    TreeNode* right;
+};
+
+static bool Check(const TreeNode* node, long long lo, long long hi)
+{
+    if (node == nullptr)
+    {
+        return true;
+    }
+    if (node-&gt;val &lt;= lo || node-&gt;val &gt;= hi)
+    {
+        return false;
+    }
+    return Check(node-&gt;left, lo, node-&gt;val) &amp;&amp; Check(node-&gt;right, node-&gt;val, hi);
+}
+
+bool IsValidBst(const TreeNode* root)
+{
+    return Check(root, -(1LL &lt;&lt; 40), (1LL &lt;&lt; 40));
+}</code></pre>
+
+<h2>Why checking the parent is not enough</h2>
+<div class="trap">
+<p>Take <code>5</code> with left child <code>1</code> and right child
+<code>7</code>, and give <code>7</code> a left child <code>4</code>. Every
+parent-child pair looks fine: 1 &lt; 5, 7 &gt; 5, and 4 &lt; 7. But <code>4</code>
+lives in the right subtree of <code>5</code>, so it must be greater than 5, and it
+is not. The violation spans two levels, so only a check that remembers every
+ancestor can see it. That is what <code>(lo, hi)</code> does: after going right
+from 5 the lower bound is 5, and it stays 5 however deep you go, so
+<code>4</code> is rejected.</p>
+</div>
+<h2>Why the bounds are <code>long long</code></h2>
+<p>With <code>int</code> bounds you need sentinel values for "unbounded", and the
+natural sentinels are <code>INT_MIN</code> and <code>INT_MAX</code> -- which are valid
+node values. A node holding <code>INT_MIN</code> would fail <code>val &gt;
+lo</code>. Wider bounds (the reference uses &plusmn;2<sup>40</sup>) can never equal an
+<code>int</code>, so every legal value passes the unbounded case.</p>
+<h2>Why strict comparisons</h2>
+<p>The checks <code>&lt;= lo</code> and <code>&gt;= hi</code> reject equality, so
+duplicates fail on whichever side they appear.</p>
+<h2>Alternative</h2>
+<p>An in-order traversal of a valid BST is strictly increasing; checking that
+against a running "previous value" (held in a <code>long long</code> or a pointer)
+is equally correct.</p>
+<h2>Cost</h2>
+<p><strong>O(n)</strong> time, O(h) stack for a tree of height h.</p>
+
+<footer>
+  <p><a href="cpp_validate_bst.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

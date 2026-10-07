@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Longest Substring Without Repeating Characters · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C++ · medium</p>
+  <h1>Longest Substring Without Repeating Characters</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>A window and a last-seen table</h2>
+
+<pre><code>left = 0
+for right in 0 .. n-1:
+    left = max(left, last[text[right]] + 1)
+    last[text[right]] = right
+    best = max(best, right - left + 1)</code></pre>
+
+<p>The window is <code>[left, right]</code> and it never contains a repeat.
+When the new character was last seen <em>inside</em> the window, <code>left</code>
+jumps past it; if it was last seen before <code>left</code>, nothing changes.</p>
+
+<h2>Where it goes wrong</h2>
+
+<div class="trap">
+<p>Two mistakes dominate. The first is complexity: restarting a scan from every starting position is quadratic, and interviewers will ask you to do better. The second is subtler and appears even in a linear solution: setting the left edge to <code>last[c] + 1</code> unconditionally. That moves the window <em>backward</em> whenever the character's last sighting is already behind the left edge, which is exactly what <code>"abba"</code> exercises. The visible tests include that case and <code>"dvdf"</code>; trace both by hand before you run anything.</p>
+</div>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cpp_longest_unique_substring.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

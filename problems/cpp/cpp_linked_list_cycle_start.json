@@ -1,0 +1,65 @@
+{
+  "id": "cpp_linked_list_cycle_start",
+  "title": "Find Where a Linked-List Cycle Begins",
+  "language": "cpp",
+  "difficulty": "fiendish",
+  "topics": [
+    "interview",
+    "linked lists",
+    "two pointers",
+    "Floyd's algorithm"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Detecting that a linked list loops is the easy question. The follow-up is the\none interviewers actually ask: **which node does the loop start at?** -- in\nO(1) extra memory.\n\n## The type\n\n```\nstruct ListNode\n{\n    int val;\n    ListNode* next;\n};\n```\n\n## Your function\n\n```\nconst ListNode* CycleStart(const ListNode* head);\n```\n\nIf the list ends in `nullptr`, return `nullptr`. Otherwise, some node's `next`\npoints back to an earlier node (or to itself): return **that earlier node**, the\nfirst node that is part of the cycle when walking from `head`.\n\n```\n1 -> 2 -> 3 -> 4 -> 5\n          ^         |\n          +---------+        CycleStart returns the node holding 3\n```\n\n`head` may be `nullptr`; a single node may point to itself.\n\n## Watch out\n\n- **Where the slow and fast pointers meet is *not* the start of the cycle.**\n  It is some node inside it. A solution that returns the meeting point is\n  correct for \"is there a cycle?\" and wrong for this question.\n- **Phase two:** once they meet, reset one pointer to `head` and advance\n  *both* one step at a time; they next meet exactly at the start of the\n  cycle. (The distance from `head` to the start equals the distance from the\n  meeting point to the start, going round the loop.)\n- **Guard the fast pointer:** it moves two steps, so check both `fast` and\n  `fast->next` for `nullptr` before dereferencing -- an acyclic list ends\n  there.\n- **Start both pointers at `head`, and test for a meeting *after* moving.**\n  Testing before the first move reports a \"cycle\" in every list.\n- An O(n) memory solution (a set of visited nodes) also passes; the\n  constant-memory version is what the interviewer is waiting for.\n",
+  "starter_code": "struct ListNode\n{\n    int val;\n    ListNode* next;\n};\n\n/// The first node of the cycle, or nullptr if the list ends.\nconst ListNode* CycleStart(const ListNode* head)\n{\n    // your code here\n    return nullptr;\n}\n",
+  "harness": "#include <iostream>\n#include <vector>\n\n// The solution file defines this struct identically; the layout must match.\nstruct ListNode\n{\n    int val;\n    ListNode* next;\n};\n\nconst ListNode* CycleStart(const ListNode* head);\n\nint main()\n{\n    int n, pos;\n    while (std::cin >> n >> pos)\n    {\n        std::vector<ListNode*> nodes(n);\n        for (int i = 0; i < n; i++)\n        {\n            int v;\n            std::cin >> v;\n            nodes[i] = new ListNode{v, nullptr};\n        }\n        for (int i = 0; i + 1 < n; i++)\n        {\n            nodes[i]->next = nodes[i + 1];\n        }\n        if (n > 0 && pos >= 0)\n        {\n            nodes[n - 1]->next = nodes[pos];\n        }\n\n        const ListNode* r = CycleStart(n > 0 ? nodes[0] : nullptr);\n        int found = -1;\n        for (int i = 0; i < n; i++)\n        {\n            if (nodes[i] == r) { found = i; }\n        }\n        if (r == nullptr)      { std::cout << \"none\\n\"; }\n        else if (found < 0)    { std::cout << \"foreign node\\n\"; }\n        else                   { std::cout << \"cycle at index \" << found << \"\\n\"; }\n\n        for (ListNode* p : nodes) { delete p; }\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random lists of 0 to 14 nodes; about two thirds loop back to a random\nearlier node (including the node itself and the head).\"\"\"\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    n = rng.randint(0, 14)\n    pos = rng.randrange(n) if n and rng.random() < 0.67 else -1\n    values = [rng.randint(0, 9) for _ in range(n)]\n    return {\"name\": \"%d nodes, tail links to %d #%d\" % (n, pos, index),\n            \"stdin\": \"%d %d\\n%s\\n\" % (n, pos, \" \".join(map(str, values)))}\n"
+  },
+  "tests": [
+    {
+      "name": "an empty list",
+      "stdin": "0 -1\n\n",
+      "expected_stdout": "none"
+    },
+    {
+      "name": "a single node with no cycle",
+      "stdin": "1 -1\n5\n",
+      "expected_stdout": "none"
+    },
+    {
+      "name": "a single node pointing at itself",
+      "stdin": "1 0\n5\n",
+      "expected_stdout": "cycle at index 0",
+      "description": "head->next == head: the cycle starts at the head."
+    },
+    {
+      "name": "a longer list with no cycle",
+      "stdin": "5 -1\n1 2 3 4 5\n",
+      "expected_stdout": "none"
+    },
+    {
+      "name": "the tail loops back to the head",
+      "stdin": "4 0\n1 2 3 4\n",
+      "expected_stdout": "cycle at index 0"
+    },
+    {
+      "name": "the loop starts in the middle",
+      "stdin": "5 2\n1 2 3 4 5\n",
+      "expected_stdout": "cycle at index 2",
+      "description": "The slow/fast meeting point is inside the loop, not at index 2."
+    },
+    {
+      "name": "the tail points at itself",
+      "stdin": "4 3\n1 2 3 4\n",
+      "expected_stdout": "cycle at index 3"
+    },
+    {
+      "name": "a two-node cycle after a long tail",
+      "stdin": "6 4\n1 2 3 4 5 6\n",
+      "expected_stdout": "cycle at index 4"
+    }
+  ],
+  "reference_solution_b64": "c3RydWN0IExpc3ROb2RlCnsKICAgIGludCB2YWw7CiAgICBMaXN0Tm9kZSogbmV4dDsKfTsKCmNvbnN0IExpc3ROb2RlKiBDeWNsZVN0YXJ0KGNvbnN0IExpc3ROb2RlKiBoZWFkKQp7CiAgICBjb25zdCBMaXN0Tm9kZSogc2xvdyA9IGhlYWQ7CiAgICBjb25zdCBMaXN0Tm9kZSogZmFzdCA9IGhlYWQ7CiAgICB3aGlsZSAoZmFzdCAhPSBudWxscHRyICYmIGZhc3QtPm5leHQgIT0gbnVsbHB0cikKICAgIHsKICAgICAgICBzbG93ID0gc2xvdy0+bmV4dDsKICAgICAgICBmYXN0ID0gZmFzdC0+bmV4dC0+bmV4dDsKICAgICAgICBpZiAoc2xvdyA9PSBmYXN0KQogICAgICAgIHsKICAgICAgICAgICAgY29uc3QgTGlzdE5vZGUqIGVudHJ5ID0gaGVhZDsKICAgICAgICAgICAgd2hpbGUgKGVudHJ5ICE9IHNsb3cpCiAgICAgICAgICAgIHsKICAgICAgICAgICAgICAgIGVudHJ5ID0gZW50cnktPm5leHQ7CiAgICAgICAgICAgICAgICBzbG93ID0gc2xvdy0+bmV4dDsKICAgICAgICAgICAgfQogICAgICAgICAgICByZXR1cm4gZW50cnk7CiAgICAgICAgfQogICAgfQogICAgcmV0dXJuIG51bGxwdHI7Cn0K"
+}

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Find Where a Linked-List Cycle Begins · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C++ · fiendish</p>
+  <h1>Find Where a Linked-List Cycle Begins</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>struct ListNode
+{
+    int val;
+    ListNode* next;
+};
+
+const ListNode* CycleStart(const ListNode* head)
+{
+    const ListNode* slow = head;
+    const ListNode* fast = head;
+    while (fast != nullptr &amp;&amp; fast-&gt;next != nullptr)
+    {
+        slow = slow-&gt;next;
+        fast = fast-&gt;next-&gt;next;
+        if (slow == fast)
+        {
+            const ListNode* entry = head;
+            while (entry != slow)
+            {
+                entry = entry-&gt;next;
+                slow = slow-&gt;next;
+            }
+            return entry;
+        }
+    }
+    return nullptr;
+}</code></pre>
+
+<h2>Why the meeting point is not the answer</h2>
+<div class="trap">
+<p>The fast pointer travels twice as far as the slow one. If the tail before the
+loop has length <em>a</em>, the loop has length <em>L</em>, and they meet
+<em>b</em> steps into the loop, then slow has walked <em>a + b</em> and fast
+<em>2(a + b)</em>. The difference, <em>a + b</em>, must be a whole number of laps:
+<em>a + b = kL</em>. So <em>a = kL &minus; b</em>: walking <em>a</em> more steps from
+the meeting point takes you the rest of the way round the loop to its entrance.
+A pointer starting at <code>head</code> also reaches the entrance after exactly
+<em>a</em> steps. Moving both in lockstep makes them collide at the entrance, and
+<em>only</em> there. The first meeting point itself is <em>b</em> steps past the
+entrance, which is generally not the start.</p>
+</div>
+<h2>Why the loop condition checks two pointers</h2>
+<p>The fast pointer advances two nodes per iteration. <code>fast-&gt;next-&gt;next</code>
+dereferences <code>fast-&gt;next</code>, so both <code>fast</code> and
+<code>fast-&gt;next</code> must be non-null first. Either being null means the list
+ended, so there is no cycle.</p>
+<h2>Why move before comparing</h2>
+<p>Both pointers start at <code>head</code>. Comparing them before the first step
+would find them equal immediately and report a cycle in every non-empty list.</p>
+<h2>Cost</h2>
+<p><strong>O(n)</strong> time and <strong>O(1)</strong> extra space.</p>
+
+<footer>
+  <p><a href="cpp_linked_list_cycle_start.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

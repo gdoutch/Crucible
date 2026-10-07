@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Find Where a Linked-List Cycle Begins · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C++ · fiendish</p>
+  <h1>Find Where a Linked-List Cycle Begins</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Two phases: find a meeting point, then find the entrance</h2>
+
+<pre><code>phase 1: slow = fast = head
+         loop while fast &amp;&amp; fast-&gt;next:
+             slow = slow-&gt;next; fast = fast-&gt;next-&gt;next
+             if slow == fast: -&gt; phase 2
+         (loop ends: no cycle, return nullptr)
+phase 2: entry = head
+         while entry != slow: entry = entry-&gt;next; slow = slow-&gt;next
+         return entry</code></pre>
+
+<p>Phase 2 moves both pointers one step at a time. They are the same
+distance from the cycle's entrance (one going round the loop, the other down the
+tail), so they arrive there together.</p>
+
+<h2>Where it goes wrong</h2>
+
+<div class="trap">
+<p>Interviewers use this as the follow-up to the simpler cycle-detection question precisely because the first answer people give is incomplete. Detecting that the two pointers meet only proves there is a cycle; the meeting node is somewhere inside it, not at its start. The second slip is dereferencing <code>fast-&gt;next-&gt;next</code> without checking <code>fast-&gt;next</code>, which crashes on every acyclic list of odd length. The third is comparing the pointers before moving them, which makes every list look circular. The harness prints the index it got back, so a wrong node is easy to spot.</p>
+</div>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cpp_linked_list_cycle_start.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

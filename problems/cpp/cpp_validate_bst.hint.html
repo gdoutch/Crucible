@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Is This a Valid Binary Search Tree? · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C++ · hard</p>
+  <h1>Is This a Valid Binary Search Tree?</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Pass the allowed interval down the tree</h2>
+
+<pre><code>Check(node, lo, hi):          // lo and hi exclusive, wider than int
+    if node is null       -> true
+    if node.val &lt;= lo or node.val &gt;= hi -> false
+    return Check(node.left,  lo, node.val)
+        &amp;&amp; Check(node.right, node.val, hi)</code></pre>
+
+<p>Going left, the node's own value becomes the new <em>upper</em> bound; going
+right, it becomes the new <em>lower</em> bound. That is how a node deep in the
+right subtree remembers it must still beat the root.</p>
+
+<h2>Where it goes wrong</h2>
+
+<div class="trap">
+<p>The famous wrong answer checks each node only against its immediate children, or only against its parent. That accepts a tree whose violation sits several levels apart, like the <code>5 1 7 null null 4 8</code> example in the tests. Information about ancestors has to travel down the recursion. The second trap is how you represent "no bound yet": reaching for <code>INT_MIN</code> and <code>INT_MAX</code> rejects valid trees that contain those very values. Finally, the ordering is strict, so equal values fail.</p>
+</div>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cpp_validate_bst.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>
