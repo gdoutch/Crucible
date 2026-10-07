@@ -1,0 +1,55 @@
+{
+  "id": "cpp_rotate_left",
+  "title": "Rotate a Vector Left by k",
+  "language": "cpp",
+  "difficulty": "medium",
+  "topics": [
+    "vectors",
+    "algorithms",
+    "modular arithmetic"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Rotating left by `k` moves each element `k` places toward the front, and\nthe first `k` elements wrap round to the back.\n\n## Your function\n\n```\nvoid RotateLeft(std::vector<int>& values, long long k);\n```\n\nRotate `values` in place. `k` can be **larger than the size**, **zero**, or\n**negative** -- a negative `k` rotates right by `|k|`. `values` may be empty.\n\n```\n[1 2 3 4 5], k = 2   ->  [3 4 5 1 2]\n[1 2 3 4 5], k = -1  ->  [5 1 2 3 4]\n[1 2 3 4 5], k = 12  ->  [3 4 5 1 2]     (12 mod 5 = 2)\n```\n\n## Watch out\n\n- **Reduce `k` first, and reduce it to a non-negative remainder.** C++'s `%`\n  keeps the sign of the dividend, so `-1 % 5` is `-1`, not `4`. Add the\n  size back and take `%` again, or branch on the sign.\n- **An empty vector has no valid modulus.** `k % 0` is undefined behaviour --\n  return before dividing.\n- `std::rotate(first, middle, last)` does the whole move once `k` is a valid\n  offset into the vector.\n",
+  "starter_code": "#include <vector>\n\n/// Rotate values left by k places, in place. k may exceed the size or be\n/// negative (negative rotates right). values may be empty.\nvoid RotateLeft(std::vector<int>& values, long long k)\n{\n    // your code here\n}\n",
+  "harness": "#include <iostream>\n#include <vector>\n\nvoid RotateLeft(std::vector<int>& values, long long k);\n\nint main()\n{\n    int n;\n    long long k;\n    while (std::cin >> n >> k)\n    {\n        std::vector<int> values(n);\n        for (int i = 0; i < n; i++)\n        {\n            std::cin >> values[i];\n        }\n        RotateLeft(values, k);\n        for (int i = 0; i < n; i++)\n        {\n            std::cout << values[i] << (i + 1 < n ? \" \" : \"\");\n        }\n        std::cout << \"\\n\";\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random vectors with a shift that is sometimes negative and sometimes many\nmultiples of the size.\"\"\"\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    n = rng.randint(0, 9)\n    k = rng.choice([rng.randint(-3, 3), rng.randint(-40, 40),\n                    rng.randint(-10**12, 10**12)])\n    values = [rng.randint(-9, 9) for _ in range(n)]\n    return {\"name\": \"%d elements, k = %d #%d\" % (n, k, index),\n            \"stdin\": \"%d %d\\n%s\\n\" % (n, k, \" \".join(map(str, values)))}\n"
+  },
+  "tests": [
+    {
+      "name": "an empty vector with any k",
+      "stdin": "0 7\n\n",
+      "expected_stdout": "",
+      "description": "k % 0 would be undefined behaviour."
+    },
+    {
+      "name": "a small left rotation",
+      "stdin": "5 2\n1 2 3 4 5\n",
+      "expected_stdout": "3 4 5 1 2"
+    },
+    {
+      "name": "k = 0 changes nothing",
+      "stdin": "4 0\n1 2 3 4\n",
+      "expected_stdout": "1 2 3 4"
+    },
+    {
+      "name": "k larger than the size wraps",
+      "stdin": "5 12\n1 2 3 4 5\n",
+      "expected_stdout": "3 4 5 1 2",
+      "description": "12 mod 5 = 2."
+    },
+    {
+      "name": "negative k rotates right",
+      "stdin": "5 -1\n1 2 3 4 5\n",
+      "expected_stdout": "5 1 2 3 4",
+      "description": "C++'s -1 % 5 is -1, not 4."
+    },
+    {
+      "name": "k a whole multiple of the size",
+      "stdin": "3 -6\n7 8 9\n",
+      "expected_stdout": "7 8 9"
+    }
+  ],
+  "reference_solution_b64": "I2luY2x1ZGUgPGFsZ29yaXRobT4KI2luY2x1ZGUgPHZlY3Rvcj4KCnZvaWQgUm90YXRlTGVmdChzdGQ6OnZlY3RvcjxpbnQ+JiB2YWx1ZXMsIGxvbmcgbG9uZyBrKQp7CiAgICBpZiAodmFsdWVzLmVtcHR5KCkpCiAgICB7CiAgICAgICAgcmV0dXJuOwogICAgfQogICAgbG9uZyBsb25nIG4gPSBzdGF0aWNfY2FzdDxsb25nIGxvbmc+KHZhbHVlcy5zaXplKCkpOwogICAgbG9uZyBsb25nIHNoaWZ0ID0gKChrICUgbikgKyBuKSAlIG47CiAgICBzdGQ6OnJvdGF0ZSh2YWx1ZXMuYmVnaW4oKSwgdmFsdWVzLmJlZ2luKCkgKyBzaGlmdCwgdmFsdWVzLmVuZCgpKTsKfQo="
+}

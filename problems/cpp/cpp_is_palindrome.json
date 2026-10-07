@@ -1,0 +1,49 @@
+{
+  "id": "cpp_is_palindrome",
+  "title": "Palindrome, Ignoring Punctuation",
+  "language": "cpp",
+  "difficulty": "easy",
+  "topics": [
+    "strings",
+    "two pointers",
+    "ctype"
+  ],
+  "timeout_seconds": 5,
+  "statement": "A phrase is a palindrome for this exercise if it reads the same forwards\nand backwards once you ignore everything that is not a letter or digit\nand ignore letter case.\n\n## Your function\n\n```\nbool IsPalindrome(const std::string& text);\n```\n\nReturn `true` if `text` is such a palindrome. An empty string, or one with\nno letters or digits at all, is a palindrome.\n\n## Watch out\n\n- **Skip punctuation and spaces; do not just strip them with a second\n  string if you can avoid it.** Two indices -- one walking in from each end,\n  each stepping over characters that fail `std::isalnum` -- need no extra\n  allocation and handle `\"..,\"` naturally.\n- **`std::isalnum`, `std::tolower` and friends take an `int` that must be\n  representable as `unsigned char`** (or `EOF`). Passing a plain `char`\n  that is negative -- any byte above 127 on a signed-`char` platform -- is\n  undefined behaviour. Cast first: `std::isalnum(static_cast<unsigned char>(c))`.\n- **Compare case-insensitively** -- `'A'` and `'a'` match.\n",
+  "starter_code": "#include <string>\n\n/// True if text reads the same both ways, looking only at letters and\n/// digits and ignoring case. An empty result counts as a palindrome.\nbool IsPalindrome(const std::string& text)\n{\n    // your code here\n    return false;\n}\n",
+  "harness": "#include <iostream>\n#include <string>\n\nbool IsPalindrome(const std::string& text);\n\nint main()\n{\n    std::string line;\n    while (std::getline(std::cin, line))\n    {\n        std::cout << (IsPalindrome(line) ? \"true\" : \"false\") << \"\\n\";\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random phrases: half are built as a mirrored palindrome with random\npunctuation and case sprinkled in, half are random strings.\"\"\"\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _noise(rng, text):\n    out = []\n    for ch in text:\n        if rng.random() < 0.3:\n            out.append(rng.choice(\" ,.!-\"))\n        out.append(ch.upper() if rng.random() < 0.5 else ch)\n    return \"\".join(out)\n\n\ndef _case(rng, index):\n    half = \"\".join(rng.choice(\"abcde12\") for _ in range(rng.randint(1, 6)))\n    middle = rng.choice([\"\", \"x\"])\n    base = half + middle + half[::-1]\n    if rng.random() < 0.5:\n        # break exactly one letter so it is a near-miss\n        pos = rng.randrange(len(base))\n        base = base[:pos] + (\"z\" if base[pos] != \"z\" else \"y\") + base[pos + 1:]\n    line = _noise(rng, base)\n    return {\"name\": \"phrase #%d\" % index, \"stdin\": line + \"\\n\"}\n"
+  },
+  "tests": [
+    {
+      "name": "a classic phrase with punctuation and mixed case",
+      "stdin": "A man, a plan, a canal: Panama\n",
+      "expected_stdout": "true"
+    },
+    {
+      "name": "not a palindrome",
+      "stdin": "race a car\n",
+      "expected_stdout": "false"
+    },
+    {
+      "name": "an empty line is a palindrome",
+      "stdin": "\n",
+      "expected_stdout": "true"
+    },
+    {
+      "name": "only punctuation is a palindrome",
+      "stdin": ".,!? \n",
+      "expected_stdout": "true",
+      "description": "There are no letters or digits to compare."
+    },
+    {
+      "name": "digits count, and case is ignored",
+      "stdin": "0P\n1a2 2A1\n",
+      "expected_stdout": "false\ntrue",
+      "description": "'0P' is false: '0' != 'p'. '1a2 2A1' is true."
+    }
+  ],
+  "reference_solution_b64": "I2luY2x1ZGUgPGNjdHlwZT4KI2luY2x1ZGUgPHN0cmluZz4KCmJvb2wgSXNQYWxpbmRyb21lKGNvbnN0IHN0ZDo6c3RyaW5nJiB0ZXh0KQp7CiAgICBpbnQgbGVmdCA9IDA7CiAgICBpbnQgcmlnaHQgPSBzdGF0aWNfY2FzdDxpbnQ+KHRleHQuc2l6ZSgpKSAtIDE7CiAgICB3aGlsZSAobGVmdCA8IHJpZ2h0KQogICAgewogICAgICAgIHdoaWxlIChsZWZ0IDwgcmlnaHQgJiYgIXN0ZDo6aXNhbG51bShzdGF0aWNfY2FzdDx1bnNpZ25lZCBjaGFyPih0ZXh0W2xlZnRdKSkpCiAgICAgICAgewogICAgICAgICAgICBsZWZ0Kys7CiAgICAgICAgfQogICAgICAgIHdoaWxlIChsZWZ0IDwgcmlnaHQgJiYgIXN0ZDo6aXNhbG51bShzdGF0aWNfY2FzdDx1bnNpZ25lZCBjaGFyPih0ZXh0W3JpZ2h0XSkpKQogICAgICAgIHsKICAgICAgICAgICAgcmlnaHQtLTsKICAgICAgICB9CiAgICAgICAgaWYgKHN0ZDo6dG9sb3dlcihzdGF0aWNfY2FzdDx1bnNpZ25lZCBjaGFyPih0ZXh0W2xlZnRdKSkgIT0KICAgICAgICAgICAgc3RkOjp0b2xvd2VyKHN0YXRpY19jYXN0PHVuc2lnbmVkIGNoYXI+KHRleHRbcmlnaHRdKSkpCiAgICAgICAgewogICAgICAgICAgICByZXR1cm4gZmFsc2U7CiAgICAgICAgfQogICAgICAgIGxlZnQrKzsKICAgICAgICByaWdodC0tOwogICAgfQogICAgcmV0dXJuIHRydWU7Cn0K"
+}

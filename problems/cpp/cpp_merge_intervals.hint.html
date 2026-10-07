@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Merge Overlapping Intervals · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C++ · hard</p>
+  <h1>Merge Overlapping Intervals</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Sort, then fold into the last merged interval</h2>
+
+<pre><code>sort(intervals);
+for (next : intervals) {
+    if (!merged.empty() &amp;&amp; next.first &lt;= merged.back().second)
+        merged.back().second = max(merged.back().second, next.second);
+    else
+        merged.push_back(next);
+}</code></pre>
+
+<p>Once sorted by start, an interval either reaches back into the last
+merged one or starts a new one. The end must be <code>max</code>-ed, because
+the new interval can finish <em>before</em> the current one does.</p>
+
+<h2>Where it goes wrong</h2>
+
+<div class="trap">
+<p>Three slips cover most failures. Merging only when intervals strictly overlap (<code>&lt;</code>) leaves <code>[1,2]</code> and <code>[2,3]</code> apart although they share a point. Skipping the sort works only if the input happens to be in order. And assigning the new end instead of taking the larger of the two ends shrinks a result when a later interval sits wholly inside the current one. Guard the empty input too: there is no first interval to look at.</p>
+</div>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cpp_merge_intervals.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

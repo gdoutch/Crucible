@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Group Words by Length · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C++ · medium</p>
+  <h1>Group Words by Length</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>#include &lt;map&gt;
+#include &lt;string&gt;
+#include &lt;vector&gt;
+
+std::map&lt;std::size_t, std::vector&lt;std::string&gt;&gt;
+GroupByLength(const std::vector&lt;std::string&gt;&amp; words)
+{
+    std::map&lt;std::size_t, std::vector&lt;std::string&gt;&gt; groups;
+    for (const std::string&amp; w : words)
+    {
+        groups[w.size()].push_back(w);
+    }
+    return groups;
+}</code></pre>
+
+<h2>Why there is no existence check</h2>
+<div class="trap">
+<p><code>map::operator[]</code> default-constructs a missing value (an empty
+<code>vector</code> here) and hands back a reference to it. That turns "create
+the group if needed, then append" into the single expression
+<code>groups[w.size()].push_back(w)</code>. Walking the words in order and
+appending is also what preserves their relative order inside each group.</p>
+</div>
+<h2>Cost</h2>
+<p><strong>O(n log k)</strong> for <em>n</em> words and <em>k</em> distinct lengths
+(one map lookup per word), plus the cost of copying the strings.</p>
+
+<footer>
+  <p><a href="cpp_group_by_length.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

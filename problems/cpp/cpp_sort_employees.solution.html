@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Sort Records With a Comparator · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C++ · hard</p>
+  <h1>Sort Records With a Comparator</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>#include &lt;algorithm&gt;
+#include &lt;string&gt;
+#include &lt;vector&gt;
+
+struct Employee
+{
+    std::string name;
+    int department;
+    int salary;
+};
+
+void SortEmployees(std::vector&lt;Employee&gt;&amp; staff)
+{
+    std::sort(staff.begin(), staff.end(),
+              [](const Employee&amp; a, const Employee&amp; b)
+              {
+                  if (a.department != b.department)
+                  {
+                      return a.department &lt; b.department;
+                  }
+                  if (a.salary != b.salary)
+                  {
+                      return a.salary &gt; b.salary;
+                  }
+                  return a.name &lt; b.name;
+              });
+}</code></pre>
+
+<h2>Why <code>!=</code> then <code>&lt;</code>, never <code>&lt;=</code></h2>
+<div class="trap">
+<p>A strict weak ordering needs <code>comp(x, x)</code> to be
+<code>false</code>. The chain above returns <code>a.name &lt; b.name</code> at the
+end, which is <code>false</code> for identical records, so the contract holds.
+Returning <code>&lt;=</code> anywhere makes equal elements compare "less" than
+each other, which is undefined behaviour inside <code>std::sort</code>.
+Comparing salaries by subtraction fails differently: the difference of two
+large <code>int</code>s of opposite sign wraps around and flips the answer.</p>
+</div>
+<h2>Shorter form</h2>
+<pre><code>return std::tie(a.department, b.salary, a.name) &lt;
+       std::tie(b.department, a.salary, b.name);</code></pre>
+<p>Note the swapped sides on <code>salary</code> -- that is how "descending" is
+expressed through an ascending tuple comparison.</p>
+<h2>Cost</h2>
+<p><strong>O(n log n)</strong> comparisons.</p>
+
+<footer>
+  <p><a href="cpp_sort_employees.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

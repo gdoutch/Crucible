@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Clamp Every Element In Place · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C++ · easy</p>
+  <h1>Clamp Every Element In Place</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Write through a reference</h2>
+
+<pre><code>for (int&amp; x : values) {
+    // adjust x
+}</code></pre>
+
+<p>Without the <code>&amp;</code>, <code>x</code> is a copy of each
+element and every assignment to it is thrown away. Compile warnings will not
+save you -- the code is legal, it just does nothing.</p>
+
+<h2>Where it goes wrong</h2>
+
+<div class="trap">
+<p>Range-for copies by default. <code>for (int x : values)</code> compiles, runs, and changes nothing -- the assignment lands on a throwaway copy. The signature already takes the vector by non-const reference, so the vector itself is writable; the question is only whether your loop variable is an alias for each element or a copy of it. Also note the function returns <code>void</code>: the harness prints the vector it passed in, so there is nothing to return.</p>
+</div>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cpp_clamp_all.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

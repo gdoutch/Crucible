@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — A Doubly Linked Chain Without Leaks · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C++ · fiendish</p>
+  <h1>A Doubly Linked Chain Without Leaks</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>One owner per node, and it points forward</h2>
+
+<pre><code>auto node = std::make_shared&lt;Node&gt;();
+node-&gt;value = v;
+tail-&gt;next = node;      // owns forward
+node-&gt;prev = tail;      // weak_ptr: observes, does not own</code></pre>
+
+<p>Keep a local <code>tail</code> while building so you can link each new
+node to the previous one. The only <code>shared_ptr</code>s that outlive the
+function should be the returned head and the chain of <code>next</code> links.</p>
+
+<h2>Where it goes wrong</h2>
+
+<div class="trap">
+<p>Run your code through the last test in your head: build five nodes, release the head, count the destructors. If every link between nodes owns its target, node 2 is held by node 1 <em>and</em> by node 3, so releasing the head frees nothing and the count stays at zero. Nothing crashes and nothing is printed -- the memory is simply never returned. Decide which direction owns and which merely observes, and look at the types the <code>Node</code> struct already gives you.</p>
+</div>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cpp_weak_chain.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

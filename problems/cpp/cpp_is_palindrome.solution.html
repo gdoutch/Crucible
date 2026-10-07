@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Palindrome, Ignoring Punctuation · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C++ · easy</p>
+  <h1>Palindrome, Ignoring Punctuation</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>#include &lt;cctype&gt;
+#include &lt;string&gt;
+
+bool IsPalindrome(const std::string&amp; text)
+{
+    int left = 0;
+    int right = static_cast&lt;int&gt;(text.size()) - 1;
+    while (left &lt; right)
+    {
+        while (left &lt; right &amp;&amp; !std::isalnum(static_cast&lt;unsigned char&gt;(text[left])))
+        {
+            left++;
+        }
+        while (left &lt; right &amp;&amp; !std::isalnum(static_cast&lt;unsigned char&gt;(text[right])))
+        {
+            right--;
+        }
+        if (std::tolower(static_cast&lt;unsigned char&gt;(text[left])) !=
+            std::tolower(static_cast&lt;unsigned char&gt;(text[right])))
+        {
+            return false;
+        }
+        left++;
+        right--;
+    }
+    return true;
+}</code></pre>
+
+<h2>Why the inner loops repeat the bound check</h2>
+<div class="trap">
+<p>After skipping, <code>left</code> and <code>right</code> may have met or
+crossed. Without <code>left &lt; right</code> in the skip loops, a
+punctuation-only string drives <code>left</code> past <code>right</code> (and
+off the end of the string). Guarding them keeps both indices in range and
+makes the "no letters at all" case fall through to <code>true</code>.</p>
+</div>
+<h2>Why the <code>unsigned char</code> cast</h2>
+<p>The &lt;cctype&gt; functions are defined only for values representable as
+<code>unsigned char</code> (or <code>EOF</code>). A negative <code>char</code>
+passed straight in is undefined behaviour.</p>
+<h2>Cost</h2>
+<p><strong>O(n)</strong> time, O(1) extra space.</p>
+
+<footer>
+  <p><a href="cpp_is_palindrome.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

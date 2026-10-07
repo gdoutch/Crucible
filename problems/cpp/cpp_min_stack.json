@@ -1,0 +1,43 @@
+{
+  "id": "cpp_min_stack",
+  "title": "A Stack That Knows Its Minimum",
+  "language": "cpp",
+  "difficulty": "medium",
+  "topics": [
+    "stacks",
+    "structs",
+    "invariants"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Design a stack whose current minimum is available in **constant time** --\nincluding after pops.\n\n## The type\n\n```\nstruct MinStack\n{\n    std::vector<int> values;   // the stack itself\n    std::vector<int> mins;     // yours to use however you need\n};\n```\n\n## Your functions\n\n```\nvoid Push(MinStack& s, int value);\nvoid Pop(MinStack& s);            // never called on an empty stack\nint  Min(const MinStack& s);      // never called on an empty stack\n```\n\n`Min` must return the smallest value **currently on the stack**, and each\noperation must run in O(1).\n\n## Watch out\n\n- **A single \"current minimum\" variable breaks on `Pop`.** After popping the\n  minimum, the previous minimum has to come back -- and a lone variable has\n  forgotten it. Keep enough history to restore it.\n- **Equal values count.** Push `2`, push `2`, pop once: the minimum is still\n  `2`. A history that only records *strictly smaller* values loses it.\n- `Min` takes the stack by `const&` -- it must not modify anything.\n",
+  "starter_code": "#include <vector>\n\nstruct MinStack\n{\n    std::vector<int> values;\n    std::vector<int> mins;\n};\n\nvoid Push(MinStack& s, int value)\n{\n    // your code here\n}\n\nvoid Pop(MinStack& s)\n{\n    // your code here\n}\n\nint Min(const MinStack& s)\n{\n    // your code here\n    return 0;\n}\n",
+  "harness": "#include <iostream>\n#include <string>\n#include <vector>\n\n// The solution file defines this struct identically; the layout must match.\nstruct MinStack\n{\n    std::vector<int> values;\n    std::vector<int> mins;\n};\n\nvoid Push(MinStack& s, int value);\nvoid Pop(MinStack& s);\nint Min(const MinStack& s);\n\nint main()\n{\n    int n;\n    while (std::cin >> n)\n    {\n        MinStack s;\n        bool first = true;\n        for (int i = 0; i < n; i++)\n        {\n            std::string op;\n            std::cin >> op;\n            if (op == \"push\")\n            {\n                int v;\n                std::cin >> v;\n                Push(s, v);\n            }\n            else if (op == \"pop\")\n            {\n                Pop(s);\n            }\n            else\n            {\n                if (!first) { std::cout << \" \"; }\n                first = false;\n                std::cout << Min(s);\n            }\n        }\n        std::cout << \"\\n\";\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random valid operation sequences (never pop or query when empty), with a\nsmall value range so equal minima are common.\"\"\"\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    ops = []\n    depth = 0\n    queries = 0\n    for _ in range(rng.randint(6, 16)):\n        choice = rng.random()\n        if depth == 0 or choice < 0.45:\n            ops.append(\"push %d\" % rng.randint(-5, 5))\n            depth += 1\n        elif choice < 0.7:\n            ops.append(\"pop\")\n            depth -= 1\n        else:\n            ops.append(\"min\")\n            queries += 1\n    if not queries:\n        ops.append(\"min\")\n    return {\"name\": \"%d operations #%d\" % (len(ops), index),\n            \"stdin\": \"%d\\n%s\\n\" % (len(ops), \"\\n\".join(ops))}\n"
+  },
+  "tests": [
+    {
+      "name": "push then ask",
+      "stdin": "3\npush 5\npush 2\nmin\n",
+      "expected_stdout": "2"
+    },
+    {
+      "name": "the minimum comes back after a pop",
+      "stdin": "6\npush 5\npush 2\nmin\npop\nmin\nmin\n",
+      "expected_stdout": "2 5 5",
+      "description": "After popping 2 the minimum must return to 5."
+    },
+    {
+      "name": "equal minima: popping one leaves the other",
+      "stdin": "7\npush 2\npush 2\npop\nmin\npush 1\npop\nmin\n",
+      "expected_stdout": "2 2"
+    },
+    {
+      "name": "descending then ascending pushes",
+      "stdin": "8\npush 9\npush 7\npush 3\nmin\npop\nmin\npop\nmin\n",
+      "expected_stdout": "3 7 9"
+    }
+  ],
+  "reference_solution_b64": "I2luY2x1ZGUgPGFsZ29yaXRobT4KI2luY2x1ZGUgPHZlY3Rvcj4KCnN0cnVjdCBNaW5TdGFjawp7CiAgICBzdGQ6OnZlY3RvcjxpbnQ+IHZhbHVlczsKICAgIHN0ZDo6dmVjdG9yPGludD4gbWluczsKfTsKCnZvaWQgUHVzaChNaW5TdGFjayYgcywgaW50IHZhbHVlKQp7CiAgICBpbnQgbSA9IHMubWlucy5lbXB0eSgpID8gdmFsdWUgOiBzdGQ6Om1pbih2YWx1ZSwgcy5taW5zLmJhY2soKSk7CiAgICBzLnZhbHVlcy5wdXNoX2JhY2sodmFsdWUpOwogICAgcy5taW5zLnB1c2hfYmFjayhtKTsKfQoKdm9pZCBQb3AoTWluU3RhY2smIHMpCnsKICAgIHMudmFsdWVzLnBvcF9iYWNrKCk7CiAgICBzLm1pbnMucG9wX2JhY2soKTsKfQoKaW50IE1pbihjb25zdCBNaW5TdGFjayYgcykKewogICAgcmV0dXJuIHMubWlucy5iYWNrKCk7Cn0K"
+}

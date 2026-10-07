@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Sort Records With a Comparator · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C++ · hard</p>
+  <h1>Sort Records With a Comparator</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Compare key by key, equal-then-next</h2>
+
+<pre><code>[](const Employee&amp; a, const Employee&amp; b) {
+    if (a.department != b.department) return a.department &lt; b.department;
+    if (a.salary     != b.salary)     return /* descending */;
+    return a.name &lt; b.name;
+}</code></pre>
+
+<p>Each <code>if</code> asks "do these differ on this key?" and, if so,
+settles the whole comparison there. Only genuinely tied keys fall through to
+the next one -- and a full tie returns <code>false</code>.</p>
+
+<h2>Where it goes wrong</h2>
+
+<div class="trap">
+<p>A comparator is a promise: it must be a strict weak ordering, and breaking the promise is undefined behaviour inside <code>std::sort</code>, not just a wrong order. Returning true for equal elements (<code>&lt;=</code>) breaks it. Writing the salary comparison as a subtraction breaks it differently, because two large values of opposite sign overflow <code>int</code> and the sign flips -- the last visible test is built to expose exactly that. And remember the middle key runs the opposite way to the other two.</p>
+</div>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cpp_sort_employees.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

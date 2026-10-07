@@ -1,0 +1,45 @@
+{
+  "id": "cpp_weak_chain",
+  "title": "A Doubly Linked Chain Without Leaks",
+  "language": "cpp",
+  "difficulty": "fiendish",
+  "topics": [
+    "smart pointers",
+    "shared_ptr",
+    "weak_ptr",
+    "ownership"
+  ],
+  "timeout_seconds": 5,
+  "statement": "In a doubly linked list, each node is pointed at from two directions. If\n**both** links are `std::shared_ptr`, the nodes keep each other alive\nforever: every node's reference count includes its neighbour's link, so\ndropping the head never brings any count to zero. Nothing is destroyed. The\nfix is to make exactly one direction **non-owning**.\n\n## The type\n\n```\nstruct Node\n{\n    int value;\n    std::shared_ptr<Node> next;   // owns the following node\n    std::weak_ptr<Node>   prev;   // observes the previous node; does not own it\n    ~Node();                      // counted by the harness\n};\n```\n\n## Your function\n\n```\nstd::shared_ptr<Node> BuildChain(const std::vector<int>& values);\n```\n\nBuild a chain with one node per element, in order, and return the **head**\n(or an empty `shared_ptr` if `values` is empty). For every node:\n\n- `next` points to the following node (empty at the tail);\n- `prev` points back to the previous node (empty at the head).\n\n## What the harness checks\n\nIt walks `next` from the head, walks `prev` from the tail back to the head,\nthen drops its only reference to the head and reports how many `Node`s were\ndestroyed. **Every node must be destroyed.**\n\n## Watch out\n\n- **`prev` is a `weak_ptr`, so assign it from a `shared_ptr`:**\n  `node->prev = previous;`. It does not increase the previous node's count.\n- **Each node must have exactly one owner:** the previous node's `next` (or,\n  for the head, the returned pointer). Do not keep extra `shared_ptr`\n  copies of nodes in a container that outlives the call.\n- **The harness reads `prev` with `lock()`**; a dangling or never-assigned\n  `prev` shows up as an empty result where a node is expected.\n- `std::make_shared<Node>()` is the idiomatic way to create a node.\n",
+  "starter_code": "#include <memory>\n#include <vector>\n\nstruct Node\n{\n    int value = 0;\n    std::shared_ptr<Node> next;\n    std::weak_ptr<Node> prev;\n    ~Node();\n};\n\n/// Build a doubly linked chain of values; return the head. Every node must\n/// be destroyed once the head is released.\nstd::shared_ptr<Node> BuildChain(const std::vector<int>& values)\n{\n    // your code here\n    return nullptr;\n}\n",
+  "harness": "#include <iostream>\n#include <memory>\n#include <vector>\n\nstatic int g_destroyed = 0;\n\n// The solution's Node must match this layout exactly.\nstruct Node\n{\n    int value = 0;\n    std::shared_ptr<Node> next;\n    std::weak_ptr<Node> prev;\n    ~Node();\n};\n\nNode::~Node() { g_destroyed++; }\n\nstd::shared_ptr<Node> BuildChain(const std::vector<int>& values);\n\nint main()\n{\n    int n;\n    while (std::cin >> n)\n    {\n        std::vector<int> values(n);\n        for (int i = 0; i < n; i++)\n        {\n            std::cin >> values[i];\n        }\n\n        g_destroyed = 0;\n        {\n            std::shared_ptr<Node> head = BuildChain(values);\n\n            std::cout << \"forward:\";\n            for (Node* p = head.get(); p; p = p->next.get())\n            {\n                std::cout << \" \" << p->value;\n            }\n            std::cout << \"\\n\";\n\n            // Find the tail without keeping extra owners alive afterwards.\n            Node* last = head.get();\n            while (last && last->next) { last = last->next.get(); }\n\n            std::cout << \"backward:\";\n            Node* cursor = last;\n            while (cursor)\n            {\n                std::cout << \" \" << cursor->value;\n                std::shared_ptr<Node> prev = cursor->prev.lock();\n                cursor = prev.get();\n            }\n            std::cout << \"\\n\";\n\n            std::cout << \"head use_count: \" << (head ? head.use_count() : 0) << \"\\n\";\n        }\n        std::cout << \"destroyed: \" << g_destroyed << \" of \" << n << \"\\n\";\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random chains of 0 to 8 values.\"\"\"\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    n = rng.randint(0, 8)\n    values = [rng.randint(-20, 20) for _ in range(n)]\n    return {\"name\": \"a chain of %d nodes #%d\" % (n, index),\n            \"stdin\": \"%d\\n%s\\n\" % (n, \" \".join(map(str, values)))}\n"
+  },
+  "tests": [
+    {
+      "name": "an empty chain",
+      "stdin": "0\n\n",
+      "expected_stdout": "forward:\nbackward:\nhead use_count: 0\ndestroyed: 0 of 0",
+      "description": "BuildChain returns an empty shared_ptr; nothing to destroy."
+    },
+    {
+      "name": "a single node",
+      "stdin": "1\n42\n",
+      "expected_stdout": "forward: 42\nbackward: 42\nhead use_count: 1\ndestroyed: 1 of 1"
+    },
+    {
+      "name": "two nodes",
+      "stdin": "2\n1 2\n",
+      "expected_stdout": "forward: 1 2\nbackward: 2 1\nhead use_count: 1\ndestroyed: 2 of 2"
+    },
+    {
+      "name": "five nodes -- every one must be destroyed",
+      "stdin": "5\n10 20 30 40 50\n",
+      "expected_stdout": "forward: 10 20 30 40 50\nbackward: 50 40 30 20 10\nhead use_count: 1\ndestroyed: 5 of 5",
+      "description": "With a shared_ptr prev, destroyed would stay at 0."
+    }
+  ],
+  "reference_solution_b64": "I2luY2x1ZGUgPG1lbW9yeT4KI2luY2x1ZGUgPHZlY3Rvcj4KCnN0cnVjdCBOb2RlCnsKICAgIGludCB2YWx1ZSA9IDA7CiAgICBzdGQ6OnNoYXJlZF9wdHI8Tm9kZT4gbmV4dDsKICAgIHN0ZDo6d2Vha19wdHI8Tm9kZT4gcHJldjsKICAgIH5Ob2RlKCk7Cn07CgpzdGQ6OnNoYXJlZF9wdHI8Tm9kZT4gQnVpbGRDaGFpbihjb25zdCBzdGQ6OnZlY3RvcjxpbnQ+JiB2YWx1ZXMpCnsKICAgIHN0ZDo6c2hhcmVkX3B0cjxOb2RlPiBoZWFkOwogICAgc3RkOjpzaGFyZWRfcHRyPE5vZGU+IHRhaWw7CiAgICBmb3IgKGludCB2IDogdmFsdWVzKQogICAgewogICAgICAgIHN0ZDo6c2hhcmVkX3B0cjxOb2RlPiBub2RlID0gc3RkOjptYWtlX3NoYXJlZDxOb2RlPigpOwogICAgICAgIG5vZGUtPnZhbHVlID0gdjsKICAgICAgICBpZiAoIWhlYWQpCiAgICAgICAgewogICAgICAgICAgICBoZWFkID0gbm9kZTsKICAgICAgICB9CiAgICAgICAgZWxzZQogICAgICAgIHsKICAgICAgICAgICAgdGFpbC0+bmV4dCA9IG5vZGU7CiAgICAgICAgICAgIG5vZGUtPnByZXYgPSB0YWlsOwogICAgICAgIH0KICAgICAgICB0YWlsID0gbm9kZTsKICAgIH0KICAgIHJldHVybiBoZWFkOwp9Cg=="
+}

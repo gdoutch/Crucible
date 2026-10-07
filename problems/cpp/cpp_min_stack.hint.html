@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — A Stack That Knows Its Minimum · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C++ · medium</p>
+  <h1>A Stack That Knows Its Minimum</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Remember the minimum at every depth</h2>
+
+<pre><code>push: mins.push_back( min(value, mins.empty() ? value : mins.back()) )
+pop:  mins.pop_back()   // in step with values
+Min:  mins.back()</code></pre>
+
+<p>Store, alongside each value, the minimum of <em>everything at or below
+that depth</em>. Popping then restores the old minimum for free, because the
+entry underneath already holds it.</p>
+
+<h2>Where it goes wrong</h2>
+
+<div class="trap">
+<p>The tempting design is one <code>int currentMin</code>. It fails the moment you pop the minimum: the value underneath was the previous minimum, and a single variable has forgotten it. The other classic slip is recording only <em>strictly smaller</em> values, which loses a duplicate minimum -- push <code>2</code> twice, pop once, and the minimum must still be <code>2</code>. Whatever history you keep has to move in lock-step with <code>values</code> on every push and pop.</p>
+</div>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cpp_min_stack.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

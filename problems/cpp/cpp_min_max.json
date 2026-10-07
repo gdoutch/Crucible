@@ -1,0 +1,49 @@
+{
+  "id": "cpp_min_max",
+  "title": "Minimum and Maximum in One Pass",
+  "language": "cpp",
+  "difficulty": "easy",
+  "topics": [
+    "vectors",
+    "pair",
+    "loops"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Returning two values from a C++ function is most naturally done with a\n`std::pair` (or a small struct) -- no output parameters needed.\n\n## Your function\n\n```\nstd::pair<int, int> MinMax(const std::vector<int>& values);\n```\n\n`values` is **never empty**. Return `{smallest, largest}`.\n\n## Watch out\n\n- **Do not seed the minimum with `0` or the maximum with `0`.** An\n  all-positive array has a minimum above zero and an all-negative one has\n  a maximum below zero; starting from `0` reports a value that is not in\n  the array at all.\n- **Seed both from `values[0]`** and compare from the second element on --\n  that is correct for every non-empty array, including one made of\n  `INT_MIN` or `INT_MAX`.\n",
+  "starter_code": "#include <utility>\n#include <vector>\n\n/// values is never empty. Return {smallest, largest}.\nstd::pair<int, int> MinMax(const std::vector<int>& values)\n{\n    // your code here\n    return {0, 0};\n}\n",
+  "harness": "#include <iostream>\n#include <utility>\n#include <vector>\n\nstd::pair<int, int> MinMax(const std::vector<int>& values);\n\nint main()\n{\n    int n;\n    while (std::cin >> n)\n    {\n        std::vector<int> values(n);\n        for (int i = 0; i < n; i++)\n        {\n            std::cin >> values[i];\n        }\n        std::pair<int, int> r = MinMax(values);\n        std::cout << r.first << \" \" << r.second << \"\\n\";\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random non-empty arrays, biased all-positive or all-negative half the time\nso a zero-seeded minimum or maximum is caught.\"\"\"\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    n = rng.randint(1, 12)\n    kind = rng.choice([\"mixed\", \"positive\", \"negative\"])\n    if kind == \"positive\":\n        values = [rng.randint(1, 100) for _ in range(n)]\n    elif kind == \"negative\":\n        values = [rng.randint(-100, -1) for _ in range(n)]\n    else:\n        values = [rng.randint(-100, 100) for _ in range(n)]\n    return {\"name\": \"%d %s values #%d\" % (n, kind, index),\n            \"stdin\": \"%d\\n%s\\n\" % (n, \" \".join(map(str, values)))}\n"
+  },
+  "tests": [
+    {
+      "name": "a single element is both minimum and maximum",
+      "stdin": "1\n7\n",
+      "expected_stdout": "7 7"
+    },
+    {
+      "name": "mixed signs",
+      "stdin": "5\n3 -2 9 0 -7\n",
+      "expected_stdout": "-7 9"
+    },
+    {
+      "name": "all positive -- the minimum is not 0",
+      "stdin": "4\n5 3 9 4\n",
+      "expected_stdout": "3 9",
+      "description": "Seeding the minimum with 0 would report 0."
+    },
+    {
+      "name": "all negative -- the maximum is not 0",
+      "stdin": "4\n-5 -3 -9 -4\n",
+      "expected_stdout": "-9 -3",
+      "description": "Seeding the maximum with 0 would report 0."
+    },
+    {
+      "name": "the extremes of int",
+      "stdin": "3\n2147483647 0 -2147483648\n",
+      "expected_stdout": "-2147483648 2147483647"
+    }
+  ],
+  "reference_solution_b64": "I2luY2x1ZGUgPHV0aWxpdHk+CiNpbmNsdWRlIDx2ZWN0b3I+CgpzdGQ6OnBhaXI8aW50LCBpbnQ+IE1pbk1heChjb25zdCBzdGQ6OnZlY3RvcjxpbnQ+JiB2YWx1ZXMpCnsKICAgIGludCBsbyA9IHZhbHVlc1swXTsKICAgIGludCBoaSA9IHZhbHVlc1swXTsKICAgIGZvciAoc3RkOjpzaXplX3QgaSA9IDE7IGkgPCB2YWx1ZXMuc2l6ZSgpOyBpKyspCiAgICB7CiAgICAgICAgaWYgKHZhbHVlc1tpXSA8IGxvKSB7IGxvID0gdmFsdWVzW2ldOyB9CiAgICAgICAgaWYgKHZhbHVlc1tpXSA+IGhpKSB7IGhpID0gdmFsdWVzW2ldOyB9CiAgICB9CiAgICByZXR1cm4ge2xvLCBoaX07Cn0K"
+}

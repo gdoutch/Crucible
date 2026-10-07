@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Multiply Without Signed Overflow · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C++ · fiendish</p>
+  <h1>Multiply Without Signed Overflow</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>#include &lt;climits&gt;
+
+bool SafeMultiply(int a, int b, int&amp; result)
+{
+    long long wide = static_cast&lt;long long&gt;(a) * static_cast&lt;long long&gt;(b);
+    if (wide &lt; INT_MIN || wide &gt; INT_MAX)
+    {
+        return false;
+    }
+    result = static_cast&lt;int&gt;(wide);
+    return true;
+}</code></pre>
+
+<h2>Why check <em>before</em> multiplying</h2>
+<div class="trap">
+<p>Because signed overflow is undefined, <code>int p = a * b; if (p / b !=
+a)</code> is not a valid test: the multiplication has already invoked UB, and
+a compiler may assume it did not and optimise the test away. The only safe
+shape is to prove the product is in range <em>without</em> forming an
+out-of-range <code>int</code>.</p>
+</div>
+<h2>Why widening works</h2>
+<p><code>long long</code> holds at least 64 bits, and two 32-bit values multiply to
+at most about 2<sup>62</sup>, so <code>static_cast&lt;long long&gt;(a) * b</code>
+cannot overflow. Comparing against <code>INT_MIN</code> and
+<code>INT_MAX</code> then answers "does it fit?" exactly, including
+<code>INT_MIN * -1</code> (which is <code>2147483648</code>, one past
+<code>INT_MAX</code>) with no special-casing.</p>
+<h2>Without widening</h2>
+<p>You can stay in <code>int</code> by comparing against <code>INT_MAX / b</code>
+and <code>INT_MIN / b</code> with the sign of each operand handled separately;
+zero must be filtered out first, and <code>INT_MIN / -1</code> must itself be
+avoided because it overflows.</p>
+<h2>Cost</h2>
+<p><strong>O(1)</strong>.</p>
+
+<footer>
+  <p><a href="cpp_safe_multiply.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Palindrome, Ignoring Punctuation · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C++ · easy</p>
+  <h1>Palindrome, Ignoring Punctuation</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Two indices, stepping over the noise</h2>
+
+<pre><code>int left = 0, right = (int)text.size() - 1;
+while (left &lt; right) {
+    // advance left past non-alphanumerics
+    // retreat right past non-alphanumerics
+    // compare tolower of both; mismatch -> false
+    left++; right--;
+}
+return true;</code></pre>
+
+<p>Keep the inner skip loops guarded by <code>left &lt; right</code> too,
+or a string like <code>"..,"</code> will run an index off the end. And cast to
+<code>unsigned char</code> before calling <code>std::isalnum</code> /
+<code>std::tolower</code>.</p>
+
+<h2>Where it goes wrong</h2>
+
+<div class="trap">
+<p>Two things bite here. First, the skip loops: if they do not re-check that the two indices have not met, a string made only of punctuation walks one index straight off the end of the string. Second, the character functions: <code>std::isalnum</code> and <code>std::tolower</code> take an <code>int</code> that must fit in <code>unsigned char</code>, so a plain negative <code>char</code> is undefined behaviour. Cast first. Remember also that digits count, so <code>"0P"</code> is not a palindrome even though <code>'0'</code> and <code>'P'</code> are both "just characters".</p>
+</div>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cpp_is_palindrome.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

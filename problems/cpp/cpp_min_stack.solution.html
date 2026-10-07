@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — A Stack That Knows Its Minimum · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C++ · medium</p>
+  <h1>A Stack That Knows Its Minimum</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>#include &lt;algorithm&gt;
+#include &lt;vector&gt;
+
+struct MinStack
+{
+    std::vector&lt;int&gt; values;
+    std::vector&lt;int&gt; mins;
+};
+
+void Push(MinStack&amp; s, int value)
+{
+    int m = s.mins.empty() ? value : std::min(value, s.mins.back());
+    s.values.push_back(value);
+    s.mins.push_back(m);
+}
+
+void Pop(MinStack&amp; s)
+{
+    s.values.pop_back();
+    s.mins.pop_back();
+}
+
+int Min(const MinStack&amp; s)
+{
+    return s.mins.back();
+}</code></pre>
+
+<h2>Why a parallel stack</h2>
+<div class="trap">
+<p><code>mins[i]</code> holds the minimum of <code>values[0..i]</code>. Pushing
+appends <code>min(value, mins.back())</code>; popping removes the top of both
+vectors. Because the entry beneath already summarises everything beneath
+<em>it</em>, the earlier minimum reappears without any search. A single
+variable, or a stack that only records new strict minima, cannot do this --
+it either forgets history or mishandles duplicates of the minimum.</p>
+</div>
+<h2>Cost</h2>
+<p>All three operations are <strong>O(1)</strong>; extra space is one
+<code>int</code> per element.</p>
+
+<footer>
+  <p><a href="cpp_min_stack.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

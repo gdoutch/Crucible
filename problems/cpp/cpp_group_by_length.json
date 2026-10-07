@@ -1,0 +1,43 @@
+{
+  "id": "cpp_group_by_length",
+  "title": "Group Words by Length",
+  "language": "cpp",
+  "difficulty": "medium",
+  "topics": [
+    "maps",
+    "strings",
+    "vectors"
+  ],
+  "timeout_seconds": 5,
+  "statement": "`std::map` keeps its keys sorted, and `operator[]` creates a missing entry\non first access -- together that makes it the natural tool for grouping.\n\n## Your function\n\n```\nstd::map<std::size_t, std::vector<std::string>>\nGroupByLength(const std::vector<std::string>& words);\n```\n\nReturn a map from each word length to the words of that length, **in the\norder they appeared in `words`**. Duplicate words are kept, each time they\noccur. An empty `words` gives an empty map.\n\n## Watch out\n\n- **`groups[word.size()]` creates the vector on first use** -- you do not\n  need to check whether the key exists before calling `push_back` on it.\n- **Keep input order inside each group.** Do not sort the words, and do not\n  remove duplicates; `\"to\"` appearing twice appears twice.\n- The map's own ordering (ascending length) is free -- never sort the\n  outer structure yourself.\n",
+  "starter_code": "#include <map>\n#include <string>\n#include <vector>\n\n/// Group words by length, preserving input order inside each group.\nstd::map<std::size_t, std::vector<std::string>>\nGroupByLength(const std::vector<std::string>& words)\n{\n    // your code here\n    return {};\n}\n",
+  "harness": "#include <iostream>\n#include <map>\n#include <sstream>\n#include <string>\n#include <vector>\n\nstd::map<std::size_t, std::vector<std::string>>\nGroupByLength(const std::vector<std::string>& words);\n\nint main()\n{\n    std::string line;\n    while (std::getline(std::cin, line))\n    {\n        std::istringstream in(line);\n        std::vector<std::string> words;\n        std::string w;\n        while (in >> w)\n        {\n            words.push_back(w);\n        }\n        auto groups = GroupByLength(words);\n        bool firstGroup = true;\n        for (const auto& g : groups)\n        {\n            if (!firstGroup) { std::cout << \" \"; }\n            firstGroup = false;\n            std::cout << g.first << \":\";\n            for (std::size_t i = 0; i < g.second.size(); i++)\n            {\n                std::cout << (i ? \",\" : \"\") << g.second[i];\n            }\n        }\n        std::cout << \"\\n\";\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random sentences from a small vocabulary with repeats, so duplicates and\ninput order inside a group both matter.\"\"\"\n\nWORDS = [\"a\", \"I\", \"to\", \"of\", \"cat\", \"dog\", \"bee\", \"tree\", \"frog\", \"horse\",\n         \"ant\", \"elephant\", \"it\", \"is\"]\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    n = rng.randint(1, 12)\n    return {\"name\": \"%d words #%d\" % (n, index),\n            \"stdin\": \" \".join(rng.choice(WORDS) for _ in range(n)) + \"\\n\"}\n"
+  },
+  "tests": [
+    {
+      "name": "an empty line gives no groups",
+      "stdin": "\n",
+      "expected_stdout": ""
+    },
+    {
+      "name": "one word",
+      "stdin": "hello\n",
+      "expected_stdout": "5:hello"
+    },
+    {
+      "name": "mixed lengths, order inside a group is input order",
+      "stdin": "the quick brown fox jumps over a lazy dog\n",
+      "expected_stdout": "1:a 3:the,fox,dog 4:over,lazy 5:quick,brown,jumps"
+    },
+    {
+      "name": "duplicates are kept",
+      "stdin": "to be or not to be\n",
+      "expected_stdout": "2:to,be,or,to,be 3:not",
+      "description": "'to' and 'be' each appear twice and must each appear twice."
+    }
+  ],
+  "reference_solution_b64": "I2luY2x1ZGUgPG1hcD4KI2luY2x1ZGUgPHN0cmluZz4KI2luY2x1ZGUgPHZlY3Rvcj4KCnN0ZDo6bWFwPHN0ZDo6c2l6ZV90LCBzdGQ6OnZlY3RvcjxzdGQ6OnN0cmluZz4+Ckdyb3VwQnlMZW5ndGgoY29uc3Qgc3RkOjp2ZWN0b3I8c3RkOjpzdHJpbmc+JiB3b3JkcykKewogICAgc3RkOjptYXA8c3RkOjpzaXplX3QsIHN0ZDo6dmVjdG9yPHN0ZDo6c3RyaW5nPj4gZ3JvdXBzOwogICAgZm9yIChjb25zdCBzdGQ6OnN0cmluZyYgdyA6IHdvcmRzKQogICAgewogICAgICAgIGdyb3Vwc1t3LnNpemUoKV0ucHVzaF9iYWNrKHcpOwogICAgfQogICAgcmV0dXJuIGdyb3VwczsKfQo="
+}

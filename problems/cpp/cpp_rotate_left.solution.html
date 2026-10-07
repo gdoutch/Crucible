@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Rotate a Vector Left by k · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C++ · medium</p>
+  <h1>Rotate a Vector Left by k</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>#include &lt;algorithm&gt;
+#include &lt;vector&gt;
+
+void RotateLeft(std::vector&lt;int&gt;&amp; values, long long k)
+{
+    if (values.empty())
+    {
+        return;
+    }
+    long long n = static_cast&lt;long long&gt;(values.size());
+    long long shift = ((k % n) + n) % n;
+    std::rotate(values.begin(), values.begin() + shift, values.end());
+}</code></pre>
+
+<h2>Why <code>((k % n) + n) % n</code></h2>
+<div class="trap">
+<p>In C++ the result of <code>%</code> takes the sign of the left operand, so a
+negative <code>k</code> gives a negative remainder. Adding <code>n</code>
+lifts it into <code>[0, 2n)</code> and the second <code>%</code> folds it into
+<code>[0, n)</code>; for a non-negative <code>k</code> the extra steps change
+nothing. Doing the arithmetic in <code>long long</code> also keeps a huge
+<code>k</code> from overflowing a 32-bit <code>int</code>.</p>
+</div>
+<h2>Cost</h2>
+<p><strong>O(n)</strong> time, O(1) extra space.</p>
+
+<footer>
+  <p><a href="cpp_rotate_left.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

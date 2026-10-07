@@ -1,0 +1,49 @@
+{
+  "id": "cpp_sort_employees",
+  "title": "Sort Records With a Comparator",
+  "language": "cpp",
+  "difficulty": "hard",
+  "topics": [
+    "sorting",
+    "lambdas",
+    "comparators",
+    "structs"
+  ],
+  "timeout_seconds": 5,
+  "statement": "`std::sort` accepts any comparator you give it -- but the comparator must be\na **strict weak ordering**, and a subtly wrong one is undefined behaviour,\nnot merely a wrong answer.\n\n## The type\n\n```\nstruct Employee\n{\n    std::string name;\n    int department;\n    int salary;\n};\n```\n\n## Your function\n\n```\nvoid SortEmployees(std::vector<Employee>& staff);\n```\n\nSort `staff` in place by:\n\n1. `department`, **ascending**; then\n2. `salary`, **descending**; then\n3. `name`, **ascending** (plain `std::string` ordering).\n\n## Watch out\n\n- **Never write the comparison as subtraction.** `a.salary - b.salary`\n  overflows `int` for large values of opposite sign, and the wrapped result\n  has the wrong sign. Compare with `<` / `>`.\n- **A comparator must return `false` for equal elements.** `<=` (or `>=`)\n  breaks the strict weak ordering contract; with many equal keys `std::sort`\n  can read out of bounds or loop forever.\n- **Chain the keys:** only look at the next key when the previous ones are\n  *equal* -- not when they merely differ in the direction you did not expect.\n- `std::tie` and tuple comparison make a multi-key `<` short; remember that\n  salary is descending, so swap its two sides.\n",
+  "starter_code": "#include <algorithm>\n#include <string>\n#include <vector>\n\nstruct Employee\n{\n    std::string name;\n    int department;\n    int salary;\n};\n\n/// Sort by department ascending, then salary descending, then name ascending.\nvoid SortEmployees(std::vector<Employee>& staff)\n{\n    // your code here\n}\n",
+  "harness": "#include <iostream>\n#include <string>\n#include <vector>\n\n// The solution file defines this struct identically; the layout must match.\nstruct Employee\n{\n    std::string name;\n    int department;\n    int salary;\n};\n\nvoid SortEmployees(std::vector<Employee>& staff);\n\nint main()\n{\n    int n;\n    while (std::cin >> n)\n    {\n        std::vector<Employee> staff(n);\n        for (int i = 0; i < n; i++)\n        {\n            std::cin >> staff[i].name >> staff[i].department >> staff[i].salary;\n        }\n        SortEmployees(staff);\n        for (const Employee& e : staff)\n        {\n            std::cout << e.name << \" \" << e.department << \" \" << e.salary << \"\\n\";\n        }\n        std::cout << \"--\\n\";\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random staff lists over few departments and few salaries, so ties on the\nfirst and second keys are common; names are distinct.\"\"\"\n\nNAMES = [\"ann\", \"bob\", \"cal\", \"dee\", \"eve\", \"fay\", \"gus\", \"hal\", \"ivy\", \"jon\",\n         \"kim\", \"lee\"]\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    n = rng.randint(1, 10)\n    names = rng.sample(NAMES, n)\n    lines = [\"%s %d %d\" % (name, rng.randint(1, 3), rng.choice([100, 200, 300]))\n             for name in names]\n    return {\"name\": \"%d employees with many ties #%d\" % (n, index),\n            \"stdin\": \"%d\\n%s\\n\" % (n, \"\\n\".join(lines))}\n"
+  },
+  "tests": [
+    {
+      "name": "a single employee",
+      "stdin": "1\nann 2 500\n",
+      "expected_stdout": "ann 2 500\n--"
+    },
+    {
+      "name": "departments ascending",
+      "stdin": "3\nzed 3 10\namy 1 10\nbob 2 10\n",
+      "expected_stdout": "amy 1 10\nbob 2 10\nzed 3 10\n--"
+    },
+    {
+      "name": "salary descending inside a department",
+      "stdin": "3\nann 1 100\nbob 1 300\ncal 1 200\n",
+      "expected_stdout": "bob 1 300\ncal 1 200\nann 1 100\n--"
+    },
+    {
+      "name": "name ascending breaks full ties",
+      "stdin": "3\ncal 1 100\nann 1 100\nbob 1 100\n",
+      "expected_stdout": "ann 1 100\nbob 1 100\ncal 1 100\n--"
+    },
+    {
+      "name": "salaries so far apart that subtraction would overflow",
+      "stdin": "3\nann 1 2000000000\nbob 1 -2000000000\ncal 1 0\n",
+      "expected_stdout": "ann 1 2000000000\ncal 1 0\nbob 1 -2000000000\n--",
+      "description": "2000000000 - (-2000000000) overflows int; compare with < or >."
+    }
+  ],
+  "reference_solution_b64": "I2luY2x1ZGUgPGFsZ29yaXRobT4KI2luY2x1ZGUgPHN0cmluZz4KI2luY2x1ZGUgPHZlY3Rvcj4KCnN0cnVjdCBFbXBsb3llZQp7CiAgICBzdGQ6OnN0cmluZyBuYW1lOwogICAgaW50IGRlcGFydG1lbnQ7CiAgICBpbnQgc2FsYXJ5Owp9OwoKdm9pZCBTb3J0RW1wbG95ZWVzKHN0ZDo6dmVjdG9yPEVtcGxveWVlPiYgc3RhZmYpCnsKICAgIHN0ZDo6c29ydChzdGFmZi5iZWdpbigpLCBzdGFmZi5lbmQoKSwKICAgICAgICAgICAgICBbXShjb25zdCBFbXBsb3llZSYgYSwgY29uc3QgRW1wbG95ZWUmIGIpCiAgICAgICAgICAgICAgewogICAgICAgICAgICAgICAgICBpZiAoYS5kZXBhcnRtZW50ICE9IGIuZGVwYXJ0bWVudCkKICAgICAgICAgICAgICAgICAgewogICAgICAgICAgICAgICAgICAgICAgcmV0dXJuIGEuZGVwYXJ0bWVudCA8IGIuZGVwYXJ0bWVudDsKICAgICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgICBpZiAoYS5zYWxhcnkgIT0gYi5zYWxhcnkpCiAgICAgICAgICAgICAgICAgIHsKICAgICAgICAgICAgICAgICAgICAgIHJldHVybiBhLnNhbGFyeSA+IGIuc2FsYXJ5OwogICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICAgIHJldHVybiBhLm5hbWUgPCBiLm5hbWU7CiAgICAgICAgICAgICAgfSk7Cn0K"
+}

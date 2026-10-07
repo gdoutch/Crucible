@@ -1,0 +1,56 @@
+{
+  "id": "cpp_safe_multiply",
+  "title": "Multiply Without Signed Overflow",
+  "language": "cpp",
+  "difficulty": "fiendish",
+  "topics": [
+    "arithmetic",
+    "overflow",
+    "undefined behaviour"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Signed integer overflow in C++ is **undefined behaviour**. You cannot\nmultiply first and look at the result afterwards: by then the program has\nalready broken the rules, and an optimiser is entitled to delete the very\ncheck you wrote.\n\n## Your function\n\n```\nbool SafeMultiply(int a, int b, int& result);\n```\n\nIf `a * b` fits in an `int`, store it in `result` and return `true`.\nOtherwise return `false` (and leave `result` alone). It must never perform a\nsigned multiplication whose true result is out of range.\n\n## Watch out\n\n- **`INT_MIN * -1` and `-1 * INT_MIN` overflow** -- the answer would be\n  `2147483648`. A divide-based check such as `a != 0 && (a * b) / a != b` is\n  itself undefined for these.\n- **Zero is always safe**, whatever the other operand is. Check it before\n  any division, or you divide by zero.\n- **Widening is allowed and simplest:** `long long` is at least 64 bits, so\n  `static_cast<long long>(a) * b` cannot overflow for two `int`s. Compare\n  that against `INT_MIN` and `INT_MAX`.\n- If you avoid widening, check the sign cases separately -- positive times\n  positive, negative times negative and mixed signs each have a different\n  limit.\n",
+  "starter_code": "#include <climits>\n\n/// If a * b fits in an int, store it in result and return true; otherwise\n/// return false and leave result untouched. Never overflow a signed int.\nbool SafeMultiply(int a, int b, int& result)\n{\n    // your code here\n    result = a * b;\n    return true;\n}\n",
+  "harness": "#include <iostream>\n\nbool SafeMultiply(int a, int b, int& result);\n\nint main()\n{\n    int a, b;\n    while (std::cin >> a >> b)\n    {\n        int result = 123456789;\n        if (SafeMultiply(a, b, result))\n        {\n            std::cout << \"ok \" << result << \"\\n\";\n        }\n        else\n        {\n            std::cout << \"overflow \" << result << \"\\n\";\n        }\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random operand pairs at several magnitudes, including values clustered\naround sqrt(INT_MAX) and the int limits.\"\"\"\n\nINTERESTING = [0, 1, -1, 2, -2, 46340, 46341, -46340, -46341, 65536, -65536,\n               32768, -32768, 2147483647, -2147483648, 1073741824, -1073741824]\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    lines = []\n    for _ in range(6):\n        pick = rng.random()\n        if pick < 0.4:\n            a, b = rng.choice(INTERESTING), rng.choice(INTERESTING)\n        elif pick < 0.7:\n            a, b = rng.randint(-100000, 100000), rng.randint(-100000, 100000)\n        else:\n            a, b = rng.randint(-2**31, 2**31 - 1), rng.randint(-50, 50)\n        lines.append(\"%d %d\" % (a, b))\n    return {\"name\": \"six operand pairs #%d\" % index,\n            \"stdin\": \"\\n\".join(lines) + \"\\n\"}\n"
+  },
+  "tests": [
+    {
+      "name": "a small product",
+      "stdin": "6 7\n",
+      "expected_stdout": "ok 42"
+    },
+    {
+      "name": "zero times INT_MIN is zero",
+      "stdin": "0 -2147483648\n-2147483648 0\n",
+      "expected_stdout": "ok 0\nok 0",
+      "description": "Zero is always safe; no division by zero allowed."
+    },
+    {
+      "name": "INT_MIN times -1 overflows",
+      "stdin": "-2147483648 -1\n-1 -2147483648\n",
+      "expected_stdout": "overflow 123456789\noverflow 123456789",
+      "description": "The true result, 2147483648, does not fit."
+    },
+    {
+      "name": "INT_MAX times 1 and INT_MIN times 1 fit",
+      "stdin": "2147483647 1\n-2147483648 1\n1 -2147483648\n",
+      "expected_stdout": "ok 2147483647\nok -2147483648\nok -2147483648"
+    },
+    {
+      "name": "the square-root boundary",
+      "stdin": "46340 46340\n46341 46341\n-46341 46341\n",
+      "expected_stdout": "ok 2147395600\noverflow 123456789\noverflow 123456789",
+      "description": "46340^2 = 2147395600 fits; 46341^2 = 2147488281 does not."
+    },
+    {
+      "name": "the exact negative limit fits",
+      "stdin": "65536 -32768\n65536 32768\n",
+      "expected_stdout": "ok -2147483648\noverflow 123456789",
+      "description": "65536 * -32768 is exactly INT_MIN."
+    }
+  ],
+  "reference_solution_b64": "I2luY2x1ZGUgPGNsaW1pdHM+Cgpib29sIFNhZmVNdWx0aXBseShpbnQgYSwgaW50IGIsIGludCYgcmVzdWx0KQp7CiAgICBsb25nIGxvbmcgd2lkZSA9IHN0YXRpY19jYXN0PGxvbmcgbG9uZz4oYSkgKiBzdGF0aWNfY2FzdDxsb25nIGxvbmc+KGIpOwogICAgaWYgKHdpZGUgPCBJTlRfTUlOIHx8IHdpZGUgPiBJTlRfTUFYKQogICAgewogICAgICAgIHJldHVybiBmYWxzZTsKICAgIH0KICAgIHJlc3VsdCA9IHN0YXRpY19jYXN0PGludD4od2lkZSk7CiAgICByZXR1cm4gdHJ1ZTsKfQo="
+}

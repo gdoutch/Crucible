@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Merge Overlapping Intervals · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C++ · hard</p>
+  <h1>Merge Overlapping Intervals</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>#include &lt;algorithm&gt;
+#include &lt;utility&gt;
+#include &lt;vector&gt;
+
+std::vector&lt;std::pair&lt;int, int&gt;&gt;
+MergeIntervals(std::vector&lt;std::pair&lt;int, int&gt;&gt; intervals)
+{
+    std::vector&lt;std::pair&lt;int, int&gt;&gt; merged;
+    std::sort(intervals.begin(), intervals.end());
+    for (const auto&amp; next : intervals)
+    {
+        if (!merged.empty() &amp;&amp; next.first &lt;= merged.back().second)
+        {
+            merged.back().second = std::max(merged.back().second, next.second);
+        }
+        else
+        {
+            merged.push_back(next);
+        }
+    }
+    return merged;
+}</code></pre>
+
+<h2>Why <code>&lt;=</code> and <code>max</code></h2>
+<div class="trap">
+<p>With closed intervals, <code>[1,2]</code> and <code>[2,3]</code> overlap at the
+single point <code>2</code>, so the test is <code>next.first &lt;=
+merged.back().second</code>. And because sorting is by start only, a later
+interval can lie wholly inside the current one: <code>[1,10]</code> followed
+by <code>[2,3]</code>. Setting the end to <code>3</code> would silently
+discard most of the range, so the end is the larger of the two.</p>
+</div>
+<h2>Cost</h2>
+<p><strong>O(n log n)</strong> for the sort; the merge pass is O(n).</p>
+
+<footer>
+  <p><a href="cpp_merge_intervals.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

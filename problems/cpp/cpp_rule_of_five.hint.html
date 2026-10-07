@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Rule of Five: An Owning Text Class · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C++ · fiendish</p>
+  <h1>Rule of Five: An Owning Text Class</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Five members, and each has one job</h2>
+
+<pre><code>copy ctor     allocate size+1, memcpy
+copy assign   if (this != &amp;other): allocate new, copy, delete[] old, swap in
+move ctor     steal data_/size_, null out the source
+move assign   if (this != &amp;other): delete[] old, steal, null out the source
+destructor    delete[] data_        (delete[] nullptr is fine)</code></pre>
+
+<p>The two traps that bite hardest: freeing your own buffer before
+copying from it in <code>a = a</code>, and forgetting to null out the
+moved-from object so two destructors free the same block. Make
+<code>c_str()</code> return <code>""</code> when <code>data_</code> is null.</p>
+
+<h2>Where it goes wrong</h2>
+
+<div class="trap">
+<p>Every special member has a way to fail without any compile error. Copy assignment that frees its buffer before copying breaks on <code>a = a</code>. An assignment that overwrites <code>data_</code> without freeing it leaks. A move that does not null out the source lets two destructors free one block. And a <code>c_str()</code> that returns <code>nullptr</code> for a moved-from object crashes the first <code>operator&lt;&lt;</code> that prints it. The harness prints <code>live=</code> after each scenario: anything other than <code>0</code> is a leak or a double free.</p>
+</div>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cpp_rule_of_five.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

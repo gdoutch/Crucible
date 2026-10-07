@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — A Doubly Linked Chain Without Leaks · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C++ · fiendish</p>
+  <h1>A Doubly Linked Chain Without Leaks</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>#include &lt;memory&gt;
+#include &lt;vector&gt;
+
+struct Node
+{
+    int value = 0;
+    std::shared_ptr&lt;Node&gt; next;
+    std::weak_ptr&lt;Node&gt; prev;
+    ~Node();
+};
+
+std::shared_ptr&lt;Node&gt; BuildChain(const std::vector&lt;int&gt;&amp; values)
+{
+    std::shared_ptr&lt;Node&gt; head;
+    std::shared_ptr&lt;Node&gt; tail;
+    for (int v : values)
+    {
+        std::shared_ptr&lt;Node&gt; node = std::make_shared&lt;Node&gt;();
+        node-&gt;value = v;
+        if (!head)
+        {
+            head = node;
+        }
+        else
+        {
+            tail-&gt;next = node;
+            node-&gt;prev = tail;
+        }
+        tail = node;
+    }
+    return head;
+}</code></pre>
+
+<h2>Why <code>prev</code> must be weak</h2>
+<div class="trap">
+<p>Each node's reference count is the number of <code>shared_ptr</code>s pointing
+at it. With a shared <code>prev</code>, node 2 is owned by node 1's
+<code>next</code> <em>and</em> node 3's <code>prev</code>. Dropping the head
+releases only the head's own reference; node 1 is still held by node 2's
+<code>prev</code>, node 2 by node 3's, and so on. The counts never reach zero,
+so no destructor runs. <code>weak_ptr</code> observes without counting: the
+only owners are the forward <code>next</code> links, so releasing the head
+cascades down the whole chain.</p>
+</div>
+<h2>Why the local <code>tail</code> is safe</h2>
+<p><code>tail</code> and <code>node</code> are locals; they go out of scope when
+<code>BuildChain</code> returns, leaving the head as the sole owner of node 1,
+node 1's <code>next</code> as the sole owner of node 2, and so on. That is
+exactly what makes the head's <code>use_count()</code> equal <code>1</code> in
+the harness.</p>
+<h2>Cost</h2>
+<p><strong>O(n)</strong> time and one allocation per node (via
+<code>make_shared</code>).</p>
+
+<footer>
+  <p><a href="cpp_weak_chain.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

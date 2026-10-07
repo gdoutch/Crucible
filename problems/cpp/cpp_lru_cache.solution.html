@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — LRU Cache With list and unordered_map · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C++ · hard</p>
+  <h1>LRU Cache With list and unordered_map</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>#include &lt;list&gt;
+#include &lt;unordered_map&gt;
+#include &lt;utility&gt;
+
+struct LruCache
+{
+    int capacity;
+    std::list&lt;std::pair&lt;int, int&gt;&gt; order;
+    std::unordered_map&lt;int, std::list&lt;std::pair&lt;int, int&gt;&gt;::iterator&gt; index;
+};
+
+int Get(LruCache&amp; cache, int key)
+{
+    auto it = cache.index.find(key);
+    if (it == cache.index.end())
+    {
+        return -1;
+    }
+    cache.order.splice(cache.order.begin(), cache.order, it-&gt;second);
+    return it-&gt;second-&gt;second;
+}
+
+void Put(LruCache&amp; cache, int key, int value)
+{
+    auto it = cache.index.find(key);
+    if (it != cache.index.end())
+    {
+        it-&gt;second-&gt;second = value;
+        cache.order.splice(cache.order.begin(), cache.order, it-&gt;second);
+        return;
+    }
+    cache.order.emplace_front(key, value);
+    cache.index[key] = cache.order.begin();
+    if (static_cast&lt;int&gt;(cache.order.size()) &gt; cache.capacity)
+    {
+        cache.index.erase(cache.order.back().first);
+        cache.order.pop_back();
+    }
+}</code></pre>
+
+<h2>Why splice</h2>
+<div class="trap">
+<p>The map gives O(1) lookup of a node; the list gives O(1) reordering and
+O(1) removal of the oldest. <code>splice</code> moves a node between positions
+of the same list <em>without copying or reallocating it</em>, so the iterator
+stored in <code>index</code> still refers to that node afterwards. Erasing the
+node and inserting a new one would hand back a different iterator -- and the
+map would keep pointing at the destroyed node.</p>
+</div>
+<h2>Why evict from both containers</h2>
+<p>Popping <code>order.back()</code> alone leaves its key in <code>index</code>
+pointing at a dead node: a later <code>Get</code> of that key would "hit" and
+dereference freed memory. Erase the key from <code>index</code> first (while
+<code>back()</code> is still readable), then pop the list.</p>
+<h2>Cost</h2>
+<p>Both <code>Get</code> and <code>Put</code> are <strong>O(1)</strong> on average.</p>
+
+<footer>
+  <p><a href="cpp_lru_cache.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

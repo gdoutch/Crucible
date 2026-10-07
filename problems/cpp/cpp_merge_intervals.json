@@ -1,0 +1,54 @@
+{
+  "id": "cpp_merge_intervals",
+  "title": "Merge Overlapping Intervals",
+  "language": "cpp",
+  "difficulty": "hard",
+  "topics": [
+    "sorting",
+    "intervals",
+    "pairs"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Given closed intervals `[start, end]`, merge every group that overlaps\n**or touches** into one.\n\n## Your function\n\n```\nstd::vector<std::pair<int, int>>\nMergeIntervals(std::vector<std::pair<int, int>> intervals);\n```\n\n`intervals` arrives in **no particular order**, and each pair satisfies\n`first <= second`. Return the merged intervals sorted by start. It may be\nempty.\n\n```\n[1,3] [2,6] [8,10]        ->  [1,6] [8,10]\n[1,2] [2,3]               ->  [1,3]         (touching counts)\n[1,10] [2,3]              ->  [1,10]        (containment)\n```\n\n## Watch out\n\n- **Sort first** -- the merge pass only works if overlapping neighbours are\n  adjacent. `std::sort` on pairs orders by `first`, then `second`.\n- **Merge on `next.first <= current.second`**, not `<`: `[1,2]` and `[2,3]`\n  share the point `2` and become `[1,3]`.\n- **Extend with `max`, not assignment.** When a later interval is *inside*\n  the current one (`[1,10]` then `[2,3]`), setting the end to `3` would\n  shrink the result. Take `std::max(current.second, next.second)`.\n- An empty input must return an empty vector without indexing `intervals[0]`.\n",
+  "starter_code": "#include <algorithm>\n#include <utility>\n#include <vector>\n\n/// Merge overlapping or touching closed intervals. Input is unsorted.\n/// Return the result sorted by start.\nstd::vector<std::pair<int, int>>\nMergeIntervals(std::vector<std::pair<int, int>> intervals)\n{\n    // your code here\n    return {};\n}\n",
+  "harness": "#include <iostream>\n#include <utility>\n#include <vector>\n\nstd::vector<std::pair<int, int>>\nMergeIntervals(std::vector<std::pair<int, int>> intervals);\n\nint main()\n{\n    int n;\n    while (std::cin >> n)\n    {\n        std::vector<std::pair<int, int>> in(n);\n        for (int i = 0; i < n; i++)\n        {\n            std::cin >> in[i].first >> in[i].second;\n        }\n        auto out = MergeIntervals(in);\n        for (std::size_t i = 0; i < out.size(); i++)\n        {\n            std::cout << (i ? \" \" : \"\") << out[i].first << \",\" << out[i].second;\n        }\n        std::cout << \"\\n\";\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random unsorted short intervals over a small range so overlaps, touches\nand containments all occur.\"\"\"\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    n = rng.randint(1, 8)\n    pairs = []\n    for _ in range(n):\n        a = rng.randint(0, 20)\n        pairs.append((a, a + rng.randint(0, 6)))\n    return {\"name\": \"%d intervals #%d\" % (n, index),\n            \"stdin\": \"%d\\n%s\\n\" % (n, \"\\n\".join(\"%d %d\" % p for p in pairs))}\n"
+  },
+  "tests": [
+    {
+      "name": "no intervals",
+      "stdin": "0\n",
+      "expected_stdout": ""
+    },
+    {
+      "name": "a single interval",
+      "stdin": "1\n4 9\n",
+      "expected_stdout": "4,9"
+    },
+    {
+      "name": "overlap and a gap, given out of order",
+      "stdin": "3\n8 10\n1 3\n2 6\n",
+      "expected_stdout": "1,6 8,10"
+    },
+    {
+      "name": "touching intervals merge",
+      "stdin": "2\n2 3\n1 2\n",
+      "expected_stdout": "1,3",
+      "description": "They share the point 2."
+    },
+    {
+      "name": "a contained interval must not shrink the result",
+      "stdin": "2\n1 10\n2 3\n",
+      "expected_stdout": "1,10",
+      "description": "Assigning the end instead of taking max would give [1,3]."
+    },
+    {
+      "name": "a chain that merges into one",
+      "stdin": "4\n5 7\n1 3\n3 5\n7 9\n",
+      "expected_stdout": "1,9"
+    }
+  ],
+  "reference_solution_b64": "I2luY2x1ZGUgPGFsZ29yaXRobT4KI2luY2x1ZGUgPHV0aWxpdHk+CiNpbmNsdWRlIDx2ZWN0b3I+CgpzdGQ6OnZlY3RvcjxzdGQ6OnBhaXI8aW50LCBpbnQ+PgpNZXJnZUludGVydmFscyhzdGQ6OnZlY3RvcjxzdGQ6OnBhaXI8aW50LCBpbnQ+PiBpbnRlcnZhbHMpCnsKICAgIHN0ZDo6dmVjdG9yPHN0ZDo6cGFpcjxpbnQsIGludD4+IG1lcmdlZDsKICAgIHN0ZDo6c29ydChpbnRlcnZhbHMuYmVnaW4oKSwgaW50ZXJ2YWxzLmVuZCgpKTsKICAgIGZvciAoY29uc3QgYXV0byYgbmV4dCA6IGludGVydmFscykKICAgIHsKICAgICAgICBpZiAoIW1lcmdlZC5lbXB0eSgpICYmIG5leHQuZmlyc3QgPD0gbWVyZ2VkLmJhY2soKS5zZWNvbmQpCiAgICAgICAgewogICAgICAgICAgICBtZXJnZWQuYmFjaygpLnNlY29uZCA9IHN0ZDo6bWF4KG1lcmdlZC5iYWNrKCkuc2Vjb25kLCBuZXh0LnNlY29uZCk7CiAgICAgICAgfQogICAgICAgIGVsc2UKICAgICAgICB7CiAgICAgICAgICAgIG1lcmdlZC5wdXNoX2JhY2sobmV4dCk7CiAgICAgICAgfQogICAgfQogICAgcmV0dXJuIG1lcmdlZDsKfQo="
+}

@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Minimum and Maximum in One Pass · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C++ · easy</p>
+  <h1>Minimum and Maximum in One Pass</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>#include &lt;utility&gt;
+#include &lt;vector&gt;
+
+std::pair&lt;int, int&gt; MinMax(const std::vector&lt;int&gt;&amp; values)
+{
+    int lo = values[0];
+    int hi = values[0];
+    for (std::size_t i = 1; i &lt; values.size(); i++)
+    {
+        if (values[i] &lt; lo) { lo = values[i]; }
+        if (values[i] &gt; hi) { hi = values[i]; }
+    }
+    return {lo, hi};
+}</code></pre>
+
+<h2>Why seed from <code>values[0]</code></h2>
+<div class="trap">
+<p>The running minimum and maximum must always be values that <em>are in the
+array</em>. <code>values[0]</code> is the one element guaranteed to exist, so
+it is the only safe starting point; every later element can then only
+replace it with something genuinely smaller or larger. A literal
+<code>0</code> (or <code>INT_MAX</code> / <code>INT_MIN</code> sentinels, which
+fail on an array made of those very values) can report a number the caller
+never supplied.</p>
+</div>
+<h2>Cost</h2>
+<p><strong>O(n)</strong> time, one pass, O(1) extra space. Two separate
+<code>std::min_element</code> / <code>std::max_element</code> calls (or the single
+<code>std::minmax_element</code>) are equally correct.</p>
+
+<footer>
+  <p><a href="cpp_min_max.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

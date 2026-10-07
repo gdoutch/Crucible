@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Rule of Five: An Owning Text Class · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C++ · fiendish</p>
+  <h1>Rule of Five: An Owning Text Class</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>#include &lt;cstddef&gt;
+#include &lt;cstring&gt;
+#include &lt;utility&gt;
+
+class Text
+{
+public:
+    Text(const char* s);
+    Text(const Text&amp; other);
+    Text(Text&amp;&amp; other) noexcept;
+    Text&amp; operator=(const Text&amp; other);
+    Text&amp; operator=(Text&amp;&amp; other) noexcept;
+    ~Text();
+
+    const char* c_str() const;
+    std::size_t size() const;
+    void set_char(std::size_t i, char c);
+
+private:
+    char* data_;
+    std::size_t size_;
+};
+
+Text::Text(const char* s)
+    : data_(nullptr), size_(std::strlen(s))
+{
+    data_ = new char[size_ + 1];
+    std::memcpy(data_, s, size_ + 1);
+}
+
+Text::Text(const Text&amp; other)
+    : data_(nullptr), size_(other.size_)
+{
+    data_ = new char[size_ + 1];
+    std::memcpy(data_, other.c_str(), size_ + 1);
+}
+
+Text::Text(Text&amp;&amp; other) noexcept
+    : data_(other.data_), size_(other.size_)
+{
+    other.data_ = nullptr;
+    other.size_ = 0;
+}
+
+Text&amp; Text::operator=(const Text&amp; other)
+{
+    if (this != &amp;other)
+    {
+        char* fresh = new char[other.size_ + 1];
+        std::memcpy(fresh, other.c_str(), other.size_ + 1);
+        delete[] data_;
+        data_ = fresh;
+        size_ = other.size_;
+    }
+    return *this;
+}
+
+Text&amp; Text::operator=(Text&amp;&amp; other) noexcept
+{
+    if (this != &amp;other)
+    {
+        delete[] data_;
+        data_ = other.data_;
+        size_ = other.size_;
+        other.data_ = nullptr;
+        other.size_ = 0;
+    }
+    return *this;
+}
+
+Text::~Text()
+{
+    delete[] data_;
+}
+
+const char* Text::c_str() const
+{
+    return data_ ? data_ : "";
+}
+
+std::size_t Text::size() const
+{
+    return size_;
+}
+
+void Text::set_char(std::size_t i, char c)
+{
+    data_[i] = c;
+}</code></pre>
+
+<h2>Why copy assignment allocates before it frees</h2>
+<div class="trap">
+<p>Order matters in <code>operator=(const Text&amp;)</code>. The reference
+guards <code>this != &amp;other</code> and also builds the new buffer
+<em>before</em> <code>delete[]</code>-ing the old one. Reverse that and
+<code>a = a</code> frees <code>data_</code> and then <code>memcpy</code>s from the
+block it just freed. (Allocating first also means an allocation failure leaves
+the object untouched.)</p>
+</div>
+<h2>Why a move must null out the source</h2>
+<div class="trap">
+<p>After <code>Text d(std::move(a))</code>, both <code>a</code> and
+<code>d</code> will eventually be destroyed. If <code>a.data_</code> still holds
+the stolen pointer, both destructors <code>delete[]</code> it -- a double free.
+Setting the source's pointer to <code>nullptr</code> and its size to
+<code>0</code> makes its destructor a harmless <code>delete[] nullptr</code>.
+This is also why <code>c_str()</code> maps a null buffer to the literal
+<code>""</code>: a moved-from <code>Text</code> must remain safe to read.</p>
+</div>
+<h2>Why the destructor is not enough</h2>
+<p>The compiler-generated copy members would copy the pointer value, so
+<code>b.set_char(0, '#')</code> would also change <code>a</code>, and both
+destructors would free one block. Writing the destructor without the other four
+fixes the leak but creates exactly that aliasing and double free.</p>
+<h2>Cost</h2>
+<p>Copies are <strong>O(n)</strong>; moves are <strong>O(1)</strong>.</p>
+
+<footer>
+  <p><a href="cpp_rule_of_five.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

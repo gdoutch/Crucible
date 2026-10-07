@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Minimum and Maximum in One Pass · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C++ · easy</p>
+  <h1>Minimum and Maximum in One Pass</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Seed from the data, not from zero</h2>
+
+<pre><code>int lo = values[0];
+int hi = values[0];
+for (std::size_t i = 1; i &lt; values.size(); i++) {
+    // update lo and hi
+}
+return {lo, hi};</code></pre>
+
+<p>A minimum of <code>0</code> or a maximum of <code>0</code> is only
+right when <code>0</code> happens to be in the array. Starting from the first
+element is right for every non-empty array, whatever its values.</p>
+
+<h2>Where it goes wrong</h2>
+
+<div class="trap">
+<p>Start a running minimum at <code>0</code> and an all-positive array reports a smallest value that is not in it; start a maximum at <code>0</code> and an all-negative array does the same. Sentinels like <code>INT_MAX</code> and <code>INT_MIN</code> look safer but fail on an array made of exactly those values. The only value guaranteed to be in the array is its first element, so every later element can only <em>replace</em> the running answer with something genuinely smaller or larger. Check your code against the "all positive" and "all negative" test cases before anything else.</p>
+</div>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cpp_min_max.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

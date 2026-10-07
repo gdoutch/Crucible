@@ -1,0 +1,56 @@
+{
+  "id": "cpp_lru_cache",
+  "title": "LRU Cache With list and unordered_map",
+  "language": "cpp",
+  "difficulty": "hard",
+  "topics": [
+    "data structures",
+    "list",
+    "unordered_map",
+    "iterators"
+  ],
+  "timeout_seconds": 5,
+  "statement": "A **least-recently-used** cache holds at most `capacity` entries; when a\nnew key would exceed that, the entry that was touched longest ago is\nevicted. Both reading and writing a key count as \"touching\" it.\n\n## The type\n\n```\nstruct LruCache\n{\n    int capacity;                                            // >= 1\n    std::list<std::pair<int, int>> order;                    // (key, value), most recent first\n    std::unordered_map<int, std::list<std::pair<int, int>>::iterator> index;\n};\n```\n\n`order` and `index` start empty. Keep them consistent: `index[key]` must\npoint at the node for `key` in `order`.\n\n## Your functions\n\n```\nint  Get(LruCache& cache, int key);               // value, or -1 if absent\nvoid Put(LruCache& cache, int key, int value);\n```\n\n- `Get` returns the value and marks `key` most recently used; a missing\n  key returns `-1` and changes nothing.\n- `Put` inserts or **updates** `key`, marks it most recently used, and, if\n  the cache now holds more than `capacity` entries, evicts the least\n  recently used one.\n\n## Watch out\n\n- **`Get` must refresh recency.** A cache whose reads do not reorder\n  anything evicts a hot key as soon as enough new ones arrive.\n- **Updating an existing key must not grow the cache or evict anything** --\n  it replaces the value and moves the node to the front.\n- **`list::splice` moves a node in O(1) without invalidating iterators**,\n  so the iterators stored in `index` stay valid. Erasing and re-inserting\n  would work but leave a stale iterator in the map unless you refresh it.\n- When evicting, **remove the key from `index` as well** as from `order`.\n",
+  "starter_code": "#include <list>\n#include <unordered_map>\n#include <utility>\n\nstruct LruCache\n{\n    int capacity;\n    std::list<std::pair<int, int>> order;\n    std::unordered_map<int, std::list<std::pair<int, int>>::iterator> index;\n};\n\nint Get(LruCache& cache, int key)\n{\n    // your code here\n    return -1;\n}\n\nvoid Put(LruCache& cache, int key, int value)\n{\n    // your code here\n}\n",
+  "harness": "#include <iostream>\n#include <list>\n#include <string>\n#include <unordered_map>\n#include <utility>\n\n// The solution file defines this struct identically; the layout must match.\nstruct LruCache\n{\n    int capacity;\n    std::list<std::pair<int, int>> order;\n    std::unordered_map<int, std::list<std::pair<int, int>>::iterator> index;\n};\n\nint Get(LruCache& cache, int key);\nvoid Put(LruCache& cache, int key, int value);\n\nint main()\n{\n    int capacity, n;\n    while (std::cin >> capacity >> n)\n    {\n        LruCache cache;\n        cache.capacity = capacity;\n        bool first = true;\n        for (int i = 0; i < n; i++)\n        {\n            std::string op;\n            std::cin >> op;\n            if (op == \"put\")\n            {\n                int k, v;\n                std::cin >> k >> v;\n                Put(cache, k, v);\n            }\n            else\n            {\n                int k;\n                std::cin >> k;\n                if (!first) { std::cout << \" \"; }\n                first = false;\n                std::cout << Get(cache, k);\n            }\n        }\n        std::cout << \"\\n\";\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random operation sequences over a small key space so evictions, hits,\nmisses and updates all happen; the final operation is always a get.\"\"\"\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    capacity = rng.randint(1, 4)\n    ops = []\n    for _ in range(rng.randint(8, 20)):\n        key = rng.randint(1, 6)\n        if rng.random() < 0.5:\n            ops.append(\"put %d %d\" % (key, rng.randint(1, 99)))\n        else:\n            ops.append(\"get %d\" % key)\n    ops.append(\"get %d\" % rng.randint(1, 6))\n    return {\"name\": \"capacity %d, %d operations #%d\" % (capacity, len(ops), index),\n            \"stdin\": \"%d %d\\n%s\\n\" % (capacity, len(ops), \"\\n\".join(ops))}\n"
+  },
+  "tests": [
+    {
+      "name": "a miss returns -1",
+      "stdin": "2 2\nput 1 10\nget 2\n",
+      "expected_stdout": "-1"
+    },
+    {
+      "name": "a hit returns the value",
+      "stdin": "2 2\nput 1 10\nget 1\n",
+      "expected_stdout": "10"
+    },
+    {
+      "name": "the oldest key is evicted",
+      "stdin": "2 5\nput 1 1\nput 2 2\nput 3 3\nget 1\nget 3\n",
+      "expected_stdout": "-1 3",
+      "description": "Putting 3 into a full cache of 2 evicts key 1."
+    },
+    {
+      "name": "a get protects a key from eviction",
+      "stdin": "2 6\nput 1 1\nput 2 2\nget 1\nput 3 3\nget 2\nget 1\n",
+      "expected_stdout": "1 -1 1",
+      "description": "Reading 1 makes 2 the oldest, so 2 is evicted when 3 arrives."
+    },
+    {
+      "name": "updating a key neither grows nor evicts",
+      "stdin": "2 6\nput 1 1\nput 2 2\nput 1 11\nput 3 3\nget 2\nget 1\n",
+      "expected_stdout": "-1 11",
+      "description": "The update refreshes key 1, so key 2 is the one evicted."
+    },
+    {
+      "name": "capacity one keeps only the latest",
+      "stdin": "1 5\nput 1 1\nput 2 2\nget 1\nget 2\nget 2\n",
+      "expected_stdout": "-1 2 2"
+    }
+  ],
+  "reference_solution_b64": "I2luY2x1ZGUgPGxpc3Q+CiNpbmNsdWRlIDx1bm9yZGVyZWRfbWFwPgojaW5jbHVkZSA8dXRpbGl0eT4KCnN0cnVjdCBMcnVDYWNoZQp7CiAgICBpbnQgY2FwYWNpdHk7CiAgICBzdGQ6Omxpc3Q8c3RkOjpwYWlyPGludCwgaW50Pj4gb3JkZXI7CiAgICBzdGQ6OnVub3JkZXJlZF9tYXA8aW50LCBzdGQ6Omxpc3Q8c3RkOjpwYWlyPGludCwgaW50Pj46Oml0ZXJhdG9yPiBpbmRleDsKfTsKCmludCBHZXQoTHJ1Q2FjaGUmIGNhY2hlLCBpbnQga2V5KQp7CiAgICBhdXRvIGl0ID0gY2FjaGUuaW5kZXguZmluZChrZXkpOwogICAgaWYgKGl0ID09IGNhY2hlLmluZGV4LmVuZCgpKQogICAgewogICAgICAgIHJldHVybiAtMTsKICAgIH0KICAgIGNhY2hlLm9yZGVyLnNwbGljZShjYWNoZS5vcmRlci5iZWdpbigpLCBjYWNoZS5vcmRlciwgaXQtPnNlY29uZCk7CiAgICByZXR1cm4gaXQtPnNlY29uZC0+c2Vjb25kOwp9Cgp2b2lkIFB1dChMcnVDYWNoZSYgY2FjaGUsIGludCBrZXksIGludCB2YWx1ZSkKewogICAgYXV0byBpdCA9IGNhY2hlLmluZGV4LmZpbmQoa2V5KTsKICAgIGlmIChpdCAhPSBjYWNoZS5pbmRleC5lbmQoKSkKICAgIHsKICAgICAgICBpdC0+c2Vjb25kLT5zZWNvbmQgPSB2YWx1ZTsKICAgICAgICBjYWNoZS5vcmRlci5zcGxpY2UoY2FjaGUub3JkZXIuYmVnaW4oKSwgY2FjaGUub3JkZXIsIGl0LT5zZWNvbmQpOwogICAgICAgIHJldHVybjsKICAgIH0KICAgIGNhY2hlLm9yZGVyLmVtcGxhY2VfZnJvbnQoa2V5LCB2YWx1ZSk7CiAgICBjYWNoZS5pbmRleFtrZXldID0gY2FjaGUub3JkZXIuYmVnaW4oKTsKICAgIGlmIChzdGF0aWNfY2FzdDxpbnQ+KGNhY2hlLm9yZGVyLnNpemUoKSkgPiBjYWNoZS5jYXBhY2l0eSkKICAgIHsKICAgICAgICBjYWNoZS5pbmRleC5lcmFzZShjYWNoZS5vcmRlci5iYWNrKCkuZmlyc3QpOwogICAgICAgIGNhY2hlLm9yZGVyLnBvcF9iYWNrKCk7CiAgICB9Cn0K"
+}

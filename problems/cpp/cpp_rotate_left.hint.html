@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Rotate a Vector Left by k · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C++ · medium</p>
+  <h1>Rotate a Vector Left by k</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Get k into [0, size) before doing anything</h2>
+
+<pre><code>if (values.empty()) return;
+long long n = values.size();
+long long shift = ((k % n) + n) % n;   // always in [0, n)
+std::rotate(values.begin(), values.begin() + shift, values.end());</code></pre>
+
+<p>The empty-vector guard has to come <em>before</em> the <code>%</code>.
+The <code>+ n</code> and second <code>%</code> turn a possibly-negative remainder
+into the matching non-negative one.</p>
+
+<h2>Where it goes wrong</h2>
+
+<div class="trap">
+<p>Three edge cases decide this one. An empty vector: taking <code>k % 0</code> is undefined behaviour, so return first. A negative <code>k</code>: C++'s <code>%</code> keeps the sign of the left operand, so <code>-1 % 5</code> is <code>-1</code>, and using that as an offset walks off the front of the vector. A huge <code>k</code>: it is a <code>long long</code> for a reason, so do the reduction in <code>long long</code> before narrowing to an index.</p>
+</div>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cpp_rotate_left.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

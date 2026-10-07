@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Group Words by Length · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C++ · medium</p>
+  <h1>Group Words by Length</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>operator[] makes the group for you</h2>
+
+<pre><code>std::map&lt;std::size_t, std::vector&lt;std::string&gt;&gt; groups;
+for (const std::string&amp; w : words) {
+    groups[/* the length */].push_back(w);
+}
+return groups;</code></pre>
+
+<p>No <code>find</code>, no <code>if (contains)</code>: indexing a missing
+key inserts an empty vector and returns a reference to it, so
+<code>push_back</code> works on the very first word of each length.</p>
+
+<h2>Where it goes wrong</h2>
+
+<div class="trap">
+<p>Two ways to get this subtly wrong. Sorting or de-duplicating the words changes the order inside a group or drops repeats, and both are visible in the tests: <code>to be or not to be</code> must keep every occurrence, in the order read. And a hand-written "does this key exist yet?" branch is not just verbose, it is where the first-word-of-each-length bug usually hides. Let the map create the entry for you.</p>
+</div>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cpp_group_by_length.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Clamp Every Element In Place · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C++ · easy</p>
+  <h1>Clamp Every Element In Place</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>#include &lt;vector&gt;
+
+void ClampAll(std::vector&lt;int&gt;&amp; values, int lo, int hi)
+{
+    for (int&amp; x : values)
+    {
+        if (x &lt; lo) { x = lo; }
+        else if (x &gt; hi) { x = hi; }
+    }
+}</code></pre>
+
+<h2>Why <code>int&amp; x</code></h2>
+<div class="trap">
+<p>A range-for binds its loop variable by copy unless you say otherwise.
+<code>for (int x : values)</code> is perfectly valid and perfectly useless
+here: <code>x = lo</code> modifies the local copy and the vector never sees
+it. <code>int&amp;</code> makes <code>x</code> an alias for the element itself.</p>
+</div>
+<h2>Cost</h2>
+<p><strong>O(n)</strong> time, O(1) extra space. The one-liner
+<code>x = std::clamp(x, lo, hi);</code> inside the same loop is equivalent.</p>
+
+<footer>
+  <p><a href="cpp_clamp_all.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

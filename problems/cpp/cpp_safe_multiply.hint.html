@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Multiply Without Signed Overflow · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C++ · fiendish</p>
+  <h1>Multiply Without Signed Overflow</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Do the multiplication somewhere it cannot overflow</h2>
+
+<pre><code>long long wide = (long long)a * b;      // two ints always fit
+if (wide &lt; INT_MIN || wide &gt; INT_MAX) return false;
+result = (int)wide;
+return true;</code></pre>
+
+<p>The range check goes on the <em>wide</em> value, and nothing is written
+to <code>result</code> until it passes. <code>INT_MIN * -1</code> needs no special
+case once you widen first.</p>
+
+<h2>Where it goes wrong</h2>
+
+<div class="trap">
+<p>The instinct is to multiply and then test the result. In C++ that is the bug: signed overflow is undefined behaviour, so the program is already wrong by the time you test, and an optimiser may delete the test. A division-based check such as <code>(a * b) / a == b</code> has the same flaw and also divides by zero when <code>a</code> is <code>0</code>. Two operand pairs deserve special attention because their true result is exactly one past <code>INT_MAX</code>.</p>
+</div>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cpp_safe_multiply.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

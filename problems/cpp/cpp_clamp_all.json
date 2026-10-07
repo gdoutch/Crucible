@@ -1,0 +1,43 @@
+{
+  "id": "cpp_clamp_all",
+  "title": "Clamp Every Element In Place",
+  "language": "cpp",
+  "difficulty": "easy",
+  "topics": [
+    "references",
+    "vectors",
+    "loops"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Some functions exist to *change* what the caller passed in. In C++ that\nmeans taking the argument by **non-const reference** -- and then actually\nwriting through it.\n\n## Your function\n\n```\nvoid ClampAll(std::vector<int>& values, int lo, int hi);\n```\n\nModify `values` in place so every element below `lo` becomes `lo` and\nevery element above `hi` becomes `hi`; elements already inside `[lo, hi]`\nare left alone. `lo <= hi` always holds. `values` may be empty.\n\n## Watch out\n\n- **`for (int x : values)` iterates over *copies*.** Assigning to `x`\n  changes the copy and nothing else -- the vector is untouched and the\n  test fails without any error. Use `for (int& x : values)` (or index\n  into the vector).\n- **Return type is `void`.** The harness prints the vector you were given,\n  not a returned one.\n- C++17 provides `std::clamp(v, lo, hi)` in `<algorithm>`, if you want it.\n",
+  "starter_code": "#include <vector>\n\n/// Clamp every element of values into [lo, hi], in place. lo <= hi.\nvoid ClampAll(std::vector<int>& values, int lo, int hi)\n{\n    // your code here\n}\n",
+  "harness": "#include <iostream>\n#include <vector>\n\nvoid ClampAll(std::vector<int>& values, int lo, int hi);\n\nint main()\n{\n    int n, lo, hi;\n    while (std::cin >> n >> lo >> hi)\n    {\n        std::vector<int> values(n);\n        for (int i = 0; i < n; i++)\n        {\n            std::cin >> values[i];\n        }\n        ClampAll(values, lo, hi);\n        for (int i = 0; i < n; i++)\n        {\n            std::cout << values[i] << (i + 1 < n ? \" \" : \"\");\n        }\n        std::cout << \"\\n\";\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random vectors against a random [lo, hi] window, including lo == hi.\"\"\"\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    n = rng.randint(0, 12)\n    lo = rng.randint(-10, 10)\n    hi = lo + rng.choice([0, 0, rng.randint(1, 15)])\n    values = [rng.randint(-30, 30) for _ in range(n)]\n    return {\"name\": \"%d values into [%d, %d] #%d\" % (n, lo, hi, index),\n            \"stdin\": \"%d %d %d\\n%s\\n\" % (n, lo, hi, \" \".join(map(str, values)))}\n"
+  },
+  "tests": [
+    {
+      "name": "an empty vector stays empty",
+      "stdin": "0 0 5\n\n",
+      "expected_stdout": ""
+    },
+    {
+      "name": "values on both sides of the window",
+      "stdin": "6 -2 4\n-9 -2 0 4 5 100\n",
+      "expected_stdout": "-2 -2 0 4 4 4"
+    },
+    {
+      "name": "everything already inside is unchanged",
+      "stdin": "3 0 10\n1 5 9\n",
+      "expected_stdout": "1 5 9"
+    },
+    {
+      "name": "a window of width zero flattens everything",
+      "stdin": "4 3 3\n1 3 5 7\n",
+      "expected_stdout": "3 3 3 3",
+      "description": "lo == hi: every element becomes 3."
+    }
+  ],
+  "reference_solution_b64": "I2luY2x1ZGUgPHZlY3Rvcj4KCnZvaWQgQ2xhbXBBbGwoc3RkOjp2ZWN0b3I8aW50PiYgdmFsdWVzLCBpbnQgbG8sIGludCBoaSkKewogICAgZm9yIChpbnQmIHggOiB2YWx1ZXMpCiAgICB7CiAgICAgICAgaWYgKHggPCBsbykgeyB4ID0gbG87IH0KICAgICAgICBlbHNlIGlmICh4ID4gaGkpIHsgeCA9IGhpOyB9CiAgICB9Cn0K"
+}

@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — LRU Cache With list and unordered_map · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C++ · hard</p>
+  <h1>LRU Cache With list and unordered_map</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>A list for order, a map for speed, splice to move</h2>
+
+<pre><code>// Get:  find in index; splice the node to order.begin(); return value
+// Put:  if present -> update value, splice to front
+//       else       -> emplace_front, record iterator in index,
+//                     if over capacity: erase back() from index AND list</code></pre>
+
+<p><code>order.splice(order.begin(), order, it)</code> relinks an existing
+node to the front in O(1) and leaves every iterator -- including the ones in
+<code>index</code> -- valid. Most-recent at the front means the victim is
+always <code>order.back()</code>.</p>
+
+<h2>Where it goes wrong</h2>
+
+<div class="trap">
+<p>The bugs here are bookkeeping bugs. A <code>Get</code> that returns the value without moving the node means a hot key is evicted as soon as enough new keys arrive. A <code>Put</code> on an existing key that behaves like a fresh insert grows the cache or evicts something it should not. And an eviction that pops the list but leaves the key in the map leaves a dangling iterator that a later lookup will happily dereference. Keep the two containers describing exactly the same set of keys after every operation.</p>
+</div>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cpp_lru_cache.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>
