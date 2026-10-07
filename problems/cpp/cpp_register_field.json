@@ -1,0 +1,62 @@
+{
+  "id": "cpp_register_field",
+  "title": "Read and Write a Register Bit Field",
+  "language": "cpp",
+  "difficulty": "hard",
+  "topics": [
+    "embedded",
+    "bit manipulation",
+    "registers",
+    "undefined behaviour"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Hardware registers pack several settings into one word: a 3-bit prescaler\nhere, a 5-bit divider there, a single enable bit at the top. Changing one\nfield without disturbing its neighbours is a **read-modify-write**, and the\nmask arithmetic is where firmware bugs breed.\n\n## Your functions\n\n```\nstd::uint32_t ExtractField(std::uint32_t reg, unsigned pos, unsigned width);\nstd::uint32_t InsertField(std::uint32_t reg, unsigned pos, unsigned width,\n                          std::uint32_t value);\n```\n\nThe field occupies bits `pos` to `pos + width - 1` (bit 0 is the least\nsignificant). It is always the case that `1 <= width <= 32` and\n`pos + width <= 32`.\n\n- `ExtractField` returns the field's bits, shifted down so the field's lowest\n  bit is bit 0, with everything else zero.\n- `InsertField` returns `reg` with the field replaced by the **low `width`\n  bits of `value`**. Every bit outside the field is unchanged. Bits of\n  `value` above `width` are ignored -- they must not spill into the\n  neighbouring field.\n\n```\nExtractField(0x0000F0A0, 4, 8)         = 0x0000000A\nInsertField (0xFFFFFFFF, 8, 4, 0x2)    = 0xFFFFF2FF\nInsertField (0x00000000, 4, 4, 0x1F)   = 0x000000F0   (0x1F is wider than 4 bits)\n```\n\n## Watch out\n\n- **`1u << 32` is undefined behaviour.** A whole-word field has\n  `width == 32`, so building the mask as `(1u << width) - 1` is wrong for\n  exactly that case. Handle it separately, or build the mask in a way that\n  never shifts by 32.\n- **Mask the value before shifting it into place.** Skipping this lets a\n  too-wide `value` overwrite the bits above the field.\n- **Clear the field before OR-ing the new value in,** or the old bits survive\n  wherever the new ones are zero.\n- Shift by `pos` is always safe: `pos` is at most 31.\n- Use `std::uint32_t`, not `int` -- shifting a bit into the sign bit of a\n  signed value is not what you want on a register.\n",
+  "starter_code": "#include <cstdint>\n\n/// Bits pos .. pos+width-1 of reg, shifted down to bit 0.\n/// 1 <= width <= 32 and pos + width <= 32.\nstd::uint32_t ExtractField(std::uint32_t reg, unsigned pos, unsigned width)\n{\n    // your code here\n    return 0;\n}\n\n/// reg with bits pos .. pos+width-1 replaced by the low `width` bits of\n/// value. Everything outside the field is unchanged.\nstd::uint32_t InsertField(std::uint32_t reg, unsigned pos, unsigned width,\n                          std::uint32_t value)\n{\n    // your code here\n    return reg;\n}\n",
+  "harness": "#include <cstdint>\n#include <cstdio>\n#include <cstdlib>\n#include <iostream>\n#include <string>\n\nstd::uint32_t ExtractField(std::uint32_t reg, unsigned pos, unsigned width);\nstd::uint32_t InsertField(std::uint32_t reg, unsigned pos, unsigned width,\n                          std::uint32_t value);\n\nstatic std::uint32_t hex(const std::string& s)\n{\n    return static_cast<std::uint32_t>(std::strtoul(s.c_str(), nullptr, 16));\n}\n\nint main()\n{\n    std::string op;\n    while (std::cin >> op)\n    {\n        std::string reg, value;\n        unsigned pos, width;\n        if (op == \"ext\")\n        {\n            std::cin >> reg >> pos >> width;\n            std::printf(\"%08X\\n\", static_cast<unsigned>(ExtractField(hex(reg), pos, width)));\n        }\n        else\n        {\n            std::cin >> reg >> pos >> width >> value;\n            std::printf(\"%08X\\n\", static_cast<unsigned>(\n                InsertField(hex(reg), pos, width, hex(value))));\n        }\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random registers, fields and values, including width 32 and values wider\nthan the field.\"\"\"\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    lines = []\n    for _ in range(8):\n        width = rng.choice([1, 2, 3, 4, 5, 8, 12, 16, 31, 32])\n        pos = rng.randint(0, 32 - width)\n        reg = rng.getrandbits(32)\n        if rng.random() < 0.5:\n            lines.append(\"ext %08X %d %d\" % (reg, pos, width))\n        else:\n            lines.append(\"ins %08X %d %d %08X\" % (reg, pos, width, rng.getrandbits(32)))\n    return {\"name\": \"eight register operations #%d\" % index,\n            \"stdin\": \"\\n\".join(lines) + \"\\n\"}\n"
+  },
+  "tests": [
+    {
+      "name": "extract a middle nibble pair",
+      "stdin": "ext 0000F0A0 4 8\n",
+      "expected_stdout": "0000000A"
+    },
+    {
+      "name": "extract a single bit",
+      "stdin": "ext 80000000 31 1\next 80000000 30 1\n",
+      "expected_stdout": "00000001\n00000000"
+    },
+    {
+      "name": "insert a nibble into all ones",
+      "stdin": "ins FFFFFFFF 8 4 2\n",
+      "expected_stdout": "FFFFF2FF",
+      "description": "Only bits 8..11 change."
+    },
+    {
+      "name": "a value wider than the field is truncated",
+      "stdin": "ins 00000000 4 4 1F\n",
+      "expected_stdout": "000000F0",
+      "description": "0x1F has bit 4 set; it must not leak into bit 8."
+    },
+    {
+      "name": "inserting zeros clears the old bits",
+      "stdin": "ins FFFFFFFF 0 8 0\n",
+      "expected_stdout": "FFFFFF00",
+      "description": "The old field bits must be cleared, not OR-ed over."
+    },
+    {
+      "name": "a 32-bit field is the whole word",
+      "stdin": "ext DEADBEEF 0 32\nins 12345678 0 32 CAFEBABE\n",
+      "expected_stdout": "DEADBEEF\nCAFEBABE",
+      "description": "1u << 32 is undefined behaviour; the mask must be built another way."
+    },
+    {
+      "name": "a field at the top of the word",
+      "stdin": "ins 00000000 28 4 F\next F0000000 28 4\n",
+      "expected_stdout": "F0000000\n0000000F"
+    }
+  ],
+  "reference_solution_b64": "I2luY2x1ZGUgPGNzdGRpbnQ+CgpzdGF0aWMgc3RkOjp1aW50MzJfdCBNYXNrKHVuc2lnbmVkIHdpZHRoKQp7CiAgICByZXR1cm4gd2lkdGggPj0gMzIgPyAweEZGRkZGRkZGdSA6ICgoMXUgPDwgd2lkdGgpIC0gMXUpOwp9CgpzdGQ6OnVpbnQzMl90IEV4dHJhY3RGaWVsZChzdGQ6OnVpbnQzMl90IHJlZywgdW5zaWduZWQgcG9zLCB1bnNpZ25lZCB3aWR0aCkKewogICAgcmV0dXJuIChyZWcgPj4gcG9zKSAmIE1hc2sod2lkdGgpOwp9CgpzdGQ6OnVpbnQzMl90IEluc2VydEZpZWxkKHN0ZDo6dWludDMyX3QgcmVnLCB1bnNpZ25lZCBwb3MsIHVuc2lnbmVkIHdpZHRoLAogICAgICAgICAgICAgICAgICAgICAgICAgIHN0ZDo6dWludDMyX3QgdmFsdWUpCnsKICAgIHN0ZDo6dWludDMyX3QgbWFzayA9IE1hc2sod2lkdGgpIDw8IHBvczsKICAgIHJldHVybiAocmVnICYgfm1hc2spIHwgKCh2YWx1ZSA8PCBwb3MpICYgbWFzayk7Cn0K"
+}

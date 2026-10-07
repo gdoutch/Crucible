@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Fixed-Size Ring Buffer (No Heap) · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C++ · medium</p>
+  <h1>Fixed-Size Ring Buffer (No Heap)</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Let count decide, let the indices wrap</h2>
+
+<pre><code>Push: if count == capacity -> return false (touch nothing)
+      data[head] = value; head = (head + 1) % capacity; count++
+Pop:  if count == 0        -> return false (touch nothing)
+      value = data[tail]; tail = (tail + 1) % capacity; count--</code></pre>
+
+<p>Both functions check first and modify afterwards. Neither ever compares
+<code>head</code> with <code>tail</code> to decide whether the buffer is full or
+empty.</p>
+
+<h2>Where it goes wrong</h2>
+
+<div class="trap">
+<p>The classic failure is deciding "full" or "empty" from <code>head == tail</code>. Both states have equal indices, so the test cannot tell them apart, and the buffer will report empty when full (or the reverse). The struct carries a <code>count</code> for exactly this reason. The next most common bug is advancing <code>head</code> or writing the byte <em>before</em> checking for room: a rejected <code>Push</code> then still corrupts state. And forgetting to wrap an index sends the next write one element past the end of <code>data</code>. The harness poisons the struct before calling <code>Init</code>, so an <code>Init</code> that skips a field will show up.</p>
+</div>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cpp_ring_buffer.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Fixed-Size Ring Buffer (No Heap) · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C++ · medium</p>
+  <h1>Fixed-Size Ring Buffer (No Heap)</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>#include &lt;cstdint&gt;
+
+constexpr unsigned kRingCapacity = 8;
+
+struct RingBuffer
+{
+    std::uint8_t data[kRingCapacity];
+    std::uint8_t head;
+    std::uint8_t tail;
+    std::uint8_t count;
+};
+
+void Init(RingBuffer&amp; rb)
+{
+    rb.head = 0;
+    rb.tail = 0;
+    rb.count = 0;
+}
+
+bool Push(RingBuffer&amp; rb, std::uint8_t value)
+{
+    if (rb.count == kRingCapacity)
+    {
+        return false;
+    }
+    rb.data[rb.head] = value;
+    rb.head = static_cast&lt;std::uint8_t&gt;((rb.head + 1) % kRingCapacity);
+    rb.count++;
+    return true;
+}
+
+bool Pop(RingBuffer&amp; rb, std::uint8_t&amp; value)
+{
+    if (rb.count == 0)
+    {
+        return false;
+    }
+    value = rb.data[rb.tail];
+    rb.tail = static_cast&lt;std::uint8_t&gt;((rb.tail + 1) % kRingCapacity);
+    rb.count--;
+    return true;
+}</code></pre>
+
+<h2>Why <code>count</code> exists</h2>
+<div class="trap">
+<p>With only <code>head</code> and <code>tail</code> a ring of eight slots can
+describe eight different amounts of data in nine situations: after filling it,
+<code>head == tail</code>; after emptying it, <code>head == tail</code> again.
+The two states look identical. Production code solves this by wasting one slot,
+by using free-running indices, or -- as here -- by keeping an explicit
+<code>count</code>. Keeping it makes the full/empty tests trivial and obviously
+correct.</p>
+</div>
+<h2>Why check before touching anything</h2>
+<p>A <code>Push</code> that writes <code>data[head]</code> and advances
+<code>head</code> before noticing the buffer is full overwrites the oldest unread
+byte and leaves <code>count</code> at the cap -- a silent loss of data that no
+return value reports. Testing first and returning early makes failure a no-op.</p>
+<h2>Why no heap</h2>
+<p>The whole buffer is a plain struct with a fixed array: no allocator, no
+exceptions, a size known at compile time and a worst-case cost that never
+varies. That is the property firmware depends on, and why
+<code>std::vector</code> and <code>std::queue</code> are usually avoided in
+interrupt paths.</p>
+<h2>Cost</h2>
+<p>Both operations are <strong>O(1)</strong> with no allocation.</p>
+
+<footer>
+  <p><a href="cpp_ring_buffer.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

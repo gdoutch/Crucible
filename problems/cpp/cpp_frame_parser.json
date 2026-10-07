@@ -1,0 +1,74 @@
+{
+  "id": "cpp_frame_parser",
+  "title": "Byte-Stream Frame Parser State Machine",
+  "language": "cpp",
+  "difficulty": "fiendish",
+  "topics": [
+    "embedded",
+    "state machine",
+    "protocols",
+    "checksums",
+    "buffers"
+  ],
+  "timeout_seconds": 5,
+  "statement": "A serial link delivers **one byte at a time**, from an interrupt handler,\nwith line noise between frames. You cannot wait for a whole message: you\nkeep a small state machine and feed it each byte as it arrives, and a frame\ncan be split across any number of calls.\n\n## The frame\n\n```\n0xAA | length | payload[length] | checksum\n```\n\n- `0xAA` marks the start of a frame.\n- `length` is the payload size, **1 to 16** inclusive.\n- `checksum` is chosen so that the 8-bit sum of all the payload bytes **plus\n  the checksum** is `0` modulo 256.\n\n## The type\n\n```\nstruct Parser\n{\n    std::uint8_t state;           // 0 = wait start, 1 = wait length,\n                                  // 2 = payload,    3 = wait checksum\n    std::uint8_t expected;        // payload length of the current frame\n    std::uint8_t received;        // payload bytes stored so far\n    std::uint8_t sum;             // running 8-bit payload sum\n    std::uint8_t payload[16];\n    std::uint8_t guard[4];        // must never be written to\n};\n```\n\nThe caller zero-fills `state` and sets `guard` to `0xA5`. The other fields are\nyours to manage.\n\n## Your function\n\n```\nint Feed(Parser& p, std::uint8_t byte);\n```\n\nProcess **one** byte. Return the payload length when this byte completes a\nvalid frame (the payload is then in `p.payload[0 .. length)`); return `0`\notherwise.\n\nRules:\n\n- In state 0, ignore everything except `0xAA`, which moves to state 1.\n- In state 1, a length outside `1..16` abandons the frame (back to state 0);\n  the byte is consumed, not reinterpreted. Otherwise record it and start\n  collecting payload.\n- Payload bytes are stored and added to `sum`. A payload byte equal to\n  `0xAA` is just data.\n- After the last payload byte, the next byte is the checksum. Whether it is\n  right or wrong, the parser returns to state 0 afterwards; it returns the\n  length only if the checksum is correct.\n\n## Watch out\n\n- **Never write past `payload[15]`.** A length of 17 or more must be rejected\n  *before* any payload byte is stored. The harness checks `guard` after\n  every byte and reports an overrun.\n- **State must live in `Parser`, not in `static` locals.** More than one\n  parser can exist at once, and the harness starts a fresh one per test line.\n- **Keep the sum to 8 bits.** `sum + byte` is computed as `int`; reduce it\n  back to `std::uint8_t` before comparing or storing it.\n- **Reset on every exit path,** including a bad checksum -- a parser that\n  stays in state 3 after a failure swallows the next frame's `0xAA`.\n- A frame that completes must not leave stale `received` / `sum` values that\n  corrupt the next one: initialise them when a length is accepted.\n",
+  "starter_code": "#include <cstdint>\n\nstruct Parser\n{\n    std::uint8_t state;\n    std::uint8_t expected;\n    std::uint8_t received;\n    std::uint8_t sum;\n    std::uint8_t payload[16];\n    std::uint8_t guard[4];\n};\n\n/// Feed one byte. Return the payload length when this byte completes a valid\n/// frame, otherwise 0.\nint Feed(Parser& p, std::uint8_t byte)\n{\n    // your code here\n    return 0;\n}\n",
+  "harness": "#include <cstdint>\n#include <cstdio>\n#include <iostream>\n#include <sstream>\n#include <string>\n\n// The solution file defines this struct identically; the layout must match.\nstruct Parser\n{\n    std::uint8_t state;\n    std::uint8_t expected;\n    std::uint8_t received;\n    std::uint8_t sum;\n    std::uint8_t payload[16];\n    std::uint8_t guard[4];\n};\n\nint Feed(Parser& p, std::uint8_t byte);\n\nstatic bool guardIntact(const Parser& p)\n{\n    for (int i = 0; i < 4; i++)\n    {\n        if (p.guard[i] != 0xA5) { return false; }\n    }\n    return true;\n}\n\nint main()\n{\n    std::string line;\n    while (std::getline(std::cin, line))\n    {\n        Parser p = {};\n        for (int i = 0; i < 4; i++) { p.guard[i] = 0xA5; }\n\n        std::istringstream in(line);\n        unsigned b;\n        int frames = 0;\n        bool overrun = false;\n        while (in >> std::hex >> b)\n        {\n            int len = Feed(p, static_cast<std::uint8_t>(b));\n            if (!guardIntact(p) && !overrun)\n            {\n                overrun = true;\n                std::printf(\"OVERRUN\\n\");\n            }\n            if (len > 0 && len <= 16)\n            {\n                frames++;\n                std::printf(\"frame:\");\n                for (int i = 0; i < len; i++) { std::printf(\" %02x\", p.payload[i]); }\n                std::printf(\"\\n\");\n            }\n            else if (len != 0)\n            {\n                std::printf(\"bad length %d\\n\", len);\n            }\n        }\n        if (frames == 0 && !overrun) { std::printf(\"none\\n\"); }\n        std::printf(\"--\\n\");\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random byte streams: noise, valid frames (with correct checksums), frames\nwith a wrong checksum, and frames with an out-of-range length.\"\"\"\n\n\ndef _frame(rng, length=None, bad_checksum=False):\n    n = length if length is not None else rng.randint(1, 16)\n    payload = [rng.choice([0xAA, rng.randint(0, 255)]) for _ in range(n)]\n    checksum = (-sum(payload)) & 0xFF\n    if bad_checksum:\n        checksum = (checksum + rng.randint(1, 255)) & 0xFF\n    return [0xAA, n] + payload + [checksum]\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    stream = []\n    for _ in range(rng.randint(2, 5)):\n        stream += [rng.choice([0x00, 0x55, 0xFF, 0x7E]) for _ in range(rng.randint(0, 3))]\n        kind = rng.random()\n        if kind < 0.6:\n            stream += _frame(rng)\n        elif kind < 0.8:\n            stream += _frame(rng, bad_checksum=True)\n        else:\n            stream += [0xAA, rng.choice([0, 17, 40, 255])]\n    return {\"name\": \"a noisy stream of %d bytes #%d\" % (len(stream), index),\n            \"stdin\": \" \".join(\"%02x\" % b for b in stream) + \"\\n\"}\n"
+  },
+  "tests": [
+    {
+      "name": "a single valid frame",
+      "stdin": "aa 03 01 02 03 fa\n",
+      "expected_stdout": "frame: 01 02 03\n--",
+      "description": "1 + 2 + 3 = 6; the checksum 0xFA makes the sum 0x100."
+    },
+    {
+      "name": "noise before the frame is ignored",
+      "stdin": "00 ff 55 aa 01 10 f0\n",
+      "expected_stdout": "frame: 10\n--"
+    },
+    {
+      "name": "a bad checksum rejects the frame",
+      "stdin": "aa 01 05 00\n",
+      "expected_stdout": "none\n--"
+    },
+    {
+      "name": "the parser recovers after a rejected frame",
+      "stdin": "aa 01 05 00 aa 01 05 fb\n",
+      "expected_stdout": "frame: 05\n--"
+    },
+    {
+      "name": "length zero abandons the frame",
+      "stdin": "aa 00 aa 01 01 ff\n",
+      "expected_stdout": "frame: 01\n--",
+      "description": "The 0xAA after the bad length starts a fresh frame."
+    },
+    {
+      "name": "length 17 is rejected without overrunning the buffer",
+      "stdin": "aa 11 aa 01 07 f9\n",
+      "expected_stdout": "frame: 07\n--",
+      "description": "payload[] has 16 slots; accepting 17 writes into guard[]."
+    },
+    {
+      "name": "a maximum-length frame",
+      "stdin": "aa 10 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f 10 78\n",
+      "expected_stdout": "frame: 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f 10\n--",
+      "description": "The 16 payload bytes sum to 0x88; the checksum is 0x78."
+    },
+    {
+      "name": "0xAA inside a payload is data",
+      "stdin": "aa 02 aa aa ac\n",
+      "expected_stdout": "frame: aa aa\n--",
+      "description": "aa + aa = 0x154 -> 0x54; checksum 0xAC."
+    },
+    {
+      "name": "two frames back to back",
+      "stdin": "aa 01 01 ff aa 02 10 20 d0\n",
+      "expected_stdout": "frame: 01\nframe: 10 20\n--"
+    }
+  ],
+  "reference_solution_b64": "I2luY2x1ZGUgPGNzdGRpbnQ+CgpzdHJ1Y3QgUGFyc2VyCnsKICAgIHN0ZDo6dWludDhfdCBzdGF0ZTsKICAgIHN0ZDo6dWludDhfdCBleHBlY3RlZDsKICAgIHN0ZDo6dWludDhfdCByZWNlaXZlZDsKICAgIHN0ZDo6dWludDhfdCBzdW07CiAgICBzdGQ6OnVpbnQ4X3QgcGF5bG9hZFsxNl07CiAgICBzdGQ6OnVpbnQ4X3QgZ3VhcmRbNF07Cn07CgppbnQgRmVlZChQYXJzZXImIHAsIHN0ZDo6dWludDhfdCBieXRlKQp7CiAgICBzd2l0Y2ggKHAuc3RhdGUpCiAgICB7CiAgICBjYXNlIDA6CiAgICAgICAgaWYgKGJ5dGUgPT0gMHhBQSkKICAgICAgICB7CiAgICAgICAgICAgIHAuc3RhdGUgPSAxOwogICAgICAgIH0KICAgICAgICByZXR1cm4gMDsKCiAgICBjYXNlIDE6CiAgICAgICAgaWYgKGJ5dGUgPCAxIHx8IGJ5dGUgPiAxNikKICAgICAgICB7CiAgICAgICAgICAgIHAuc3RhdGUgPSAwOwogICAgICAgICAgICByZXR1cm4gMDsKICAgICAgICB9CiAgICAgICAgcC5leHBlY3RlZCA9IGJ5dGU7CiAgICAgICAgcC5yZWNlaXZlZCA9IDA7CiAgICAgICAgcC5zdW0gPSAwOwogICAgICAgIHAuc3RhdGUgPSAyOwogICAgICAgIHJldHVybiAwOwoKICAgIGNhc2UgMjoKICAgICAgICBwLnBheWxvYWRbcC5yZWNlaXZlZF0gPSBieXRlOwogICAgICAgIHAucmVjZWl2ZWQrKzsKICAgICAgICBwLnN1bSA9IHN0YXRpY19jYXN0PHN0ZDo6dWludDhfdD4ocC5zdW0gKyBieXRlKTsKICAgICAgICBpZiAocC5yZWNlaXZlZCA9PSBwLmV4cGVjdGVkKQogICAgICAgIHsKICAgICAgICAgICAgcC5zdGF0ZSA9IDM7CiAgICAgICAgfQogICAgICAgIHJldHVybiAwOwoKICAgIGRlZmF1bHQ6CiAgICAgICAgcC5zdGF0ZSA9IDA7CiAgICAgICAgaWYgKHN0YXRpY19jYXN0PHN0ZDo6dWludDhfdD4ocC5zdW0gKyBieXRlKSA9PSAwKQogICAgICAgIHsKICAgICAgICAgICAgcmV0dXJuIHAuZXhwZWN0ZWQ7CiAgICAgICAgfQogICAgICAgIHJldHVybiAwOwogICAgfQp9Cg=="
+}

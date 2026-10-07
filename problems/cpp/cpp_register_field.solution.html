@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Read and Write a Register Bit Field · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C++ · hard</p>
+  <h1>Read and Write a Register Bit Field</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The code</h2>
+
+<pre><code>#include &lt;cstdint&gt;
+
+static std::uint32_t Mask(unsigned width)
+{
+    return width &gt;= 32 ? 0xFFFFFFFFu : ((1u &lt;&lt; width) - 1u);
+}
+
+std::uint32_t ExtractField(std::uint32_t reg, unsigned pos, unsigned width)
+{
+    return (reg &gt;&gt; pos) &amp; Mask(width);
+}
+
+std::uint32_t InsertField(std::uint32_t reg, unsigned pos, unsigned width,
+                          std::uint32_t value)
+{
+    std::uint32_t mask = Mask(width) &lt;&lt; pos;
+    return (reg &amp; ~mask) | ((value &lt;&lt; pos) &amp; mask);
+}</code></pre>
+
+<h2>Why width 32 needs its own mask</h2>
+<div class="trap">
+<p>The usual mask expression is <code>(1u &lt;&lt; width) - 1</code>. For
+<code>width == 32</code> that shifts a 32-bit value by 32, which the C++ standard
+leaves undefined. On x86 the hardware silently reduces the count modulo 32, so
+the mask comes out as <code>0</code> and the "whole register" field reads as
+nothing; on other targets it can be anything. Handling <code>32</code>
+explicitly gives <code>0xFFFFFFFF</code> everywhere.</p>
+</div>
+<h2>Why the value is masked</h2>
+<p><code>value &lt;&lt; pos</code> alone puts every set bit of <code>value</code>
+into the result, including those above the field. Masking the shifted value with
+the field mask discards them, so writing <code>0x1F</code> into a 4-bit field at
+bit 4 changes bits 4..7 only. The same masking is why a bad configuration value
+cannot silently reconfigure the neighbouring peripheral setting.</p>
+<h2>Why clear first</h2>
+<p><code>reg | (value &lt;&lt; pos)</code> can only set bits. Writing a zero field
+over an old non-zero one would leave the old bits behind. AND with the inverted
+mask first, then OR.</p>
+<h2>Cost</h2>
+<p><strong>O(1)</strong>: a few shifts and masks, no branches beyond the width
+test.</p>
+
+<footer>
+  <p><a href="cpp_register_field.hint.html">← Back to the hint</a> ·
+     Press <strong>Ctrl+R</strong> in Crucible for a fresh data set and solve
+     it again from a blank editor.</p>
+</footer>
+
+</main>
+</body>
+</html>

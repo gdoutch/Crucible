@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Read and Write a Register Bit Field · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C++ · hard</p>
+  <h1>Read and Write a Register Bit Field</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Build the mask once, then clear and set</h2>
+
+<pre><code>mask  = (width == 32) ? 0xFFFFFFFF : (1u &lt;&lt; width) - 1;
+extract: (reg &gt;&gt; pos) &amp; mask
+insert:  (reg &amp; ~(mask &lt;&lt; pos)) | ((value &amp; mask) &lt;&lt; pos)</code></pre>
+
+<p>Insert is two steps on purpose: clear the field in <code>reg</code>,
+then OR in the masked value shifted into place. Extract is the same mask
+applied after a shift the other way.</p>
+
+<h2>Where it goes wrong</h2>
+
+<div class="trap">
+<p>Three bugs account for nearly every wrong answer. Building the mask as <code>(1u &lt;&lt; width) - 1</code> is undefined for a 32-bit field. Forgetting to mask <code>value</code> lets a too-wide value spill into the bits above the field. And OR-ing the new value in without first clearing the old field leaves old bits behind wherever the new value has a zero. Run through the visible tests with these in mind: the 32-bit and the <code>0x1F</code>-into-4-bits cases are there on purpose.</p>
+</div>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cpp_register_field.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

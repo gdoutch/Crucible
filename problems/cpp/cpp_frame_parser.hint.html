@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Byte-Stream Frame Parser State Machine · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C++ · fiendish</p>
+  <h1>Byte-Stream Frame Parser State Machine</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Persist everything in Parser, switch on the state</h2>
+
+<pre><code>case 0: if (byte == 0xAA) state = 1;                        return 0
+case 1: if (byte &lt; 1 || byte &gt; 16) state = 0; else start payload   return 0
+case 2: store byte; sum = (uint8_t)(sum + byte); if full -> state 3  return 0
+case 3: state = 0; return (uint8_t)(sum + byte) == 0 ? expected : 0</code></pre>
+
+<p>Validate the length in state 1, <em>before</em> state 2 ever stores a
+byte -- that single check is what keeps the payload array safe. Every path out
+of state 3 resets the state.</p>
+
+<h2>Where it goes wrong</h2>
+
+<div class="trap">
+<p>This is where firmware earns its reputation. Trusting the length byte overwrites memory past the payload buffer, and the guard bytes will tell you. Resetting the state only on a good frame means one bad checksum eats the next frame's start byte too. Letting the 8-bit sum grow into an <code>int</code> breaks the "sums to zero" test for every valid frame. Keeping parser state in <code>static</code> locals works for the first test line and fails the second. Treat each of those as a separate test you can run by hand against the visible cases.</p>
+</div>
+
+<footer>
+  <p>Ready for the whole thing?
+    <a href="cpp_frame_parser.solution.html">Read the worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

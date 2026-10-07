@@ -1,0 +1,56 @@
+{
+  "id": "cpp_ring_buffer",
+  "title": "Fixed-Size Ring Buffer (No Heap)",
+  "language": "cpp",
+  "difficulty": "medium",
+  "topics": [
+    "embedded",
+    "circular buffer",
+    "fixed-width types",
+    "no heap"
+  ],
+  "timeout_seconds": 5,
+  "statement": "A UART receive path, a sensor log, a command queue: firmware is full of\n**ring buffers** -- a fixed array used as a queue, with read and write\npositions that wrap round the end. There is no `new`, no `std::vector`, and\nno room to grow: when it is full, it is full.\n\n## The type\n\n```\nconstexpr unsigned kRingCapacity = 8;\n\nstruct RingBuffer\n{\n    std::uint8_t data[kRingCapacity];\n    std::uint8_t head;    // index where the next byte is written\n    std::uint8_t tail;    // index where the next byte is read\n    std::uint8_t count;   // bytes currently stored, 0..kRingCapacity\n};\n```\n\n## Your functions\n\n```\nvoid Init(RingBuffer& rb);\nbool Push(RingBuffer& rb, std::uint8_t value);\nbool Pop(RingBuffer& rb, std::uint8_t& value);\n```\n\n- `Init` makes the buffer empty.\n- `Push` stores `value` and returns `true`, **or returns `false` and\n  changes nothing** if the buffer is already full. It never overwrites\n  unread data.\n- `Pop` removes the **oldest** byte into `value` and returns `true`, or\n  returns `false` and leaves `value` alone if the buffer is empty.\n\nBytes come out in the order they went in, across any number of wraps.\n\n## Watch out\n\n- **`head == tail` is ambiguous:** it means both \"empty\" and \"full\". That\n  is exactly why `count` is in the struct -- use it to decide, do not infer\n  from the indices.\n- **Wrap the indices** (`% kRingCapacity`, or a mask). An index of\n  `kRingCapacity` is one past the array.\n- **A rejected `Push` must leave every field alone.** Advancing `head`\n  before checking for room silently corrupts the buffer.\n- Arithmetic on `std::uint8_t` promotes to `int`; assign the wrapped result\n  back, and the types take care of themselves.\n",
+  "starter_code": "#include <cstdint>\n\nconstexpr unsigned kRingCapacity = 8;\n\nstruct RingBuffer\n{\n    std::uint8_t data[kRingCapacity];\n    std::uint8_t head;\n    std::uint8_t tail;\n    std::uint8_t count;\n};\n\nvoid Init(RingBuffer& rb)\n{\n    // your code here\n}\n\nbool Push(RingBuffer& rb, std::uint8_t value)\n{\n    // your code here\n    return false;\n}\n\nbool Pop(RingBuffer& rb, std::uint8_t& value)\n{\n    // your code here\n    return false;\n}\n",
+  "harness": "#include <cstdint>\n#include <iostream>\n#include <string>\n\n// The solution file defines these identically; the layout must match.\nconstexpr unsigned kRingCapacity = 8;\n\nstruct RingBuffer\n{\n    std::uint8_t data[kRingCapacity];\n    std::uint8_t head;\n    std::uint8_t tail;\n    std::uint8_t count;\n};\n\nvoid Init(RingBuffer& rb);\nbool Push(RingBuffer& rb, std::uint8_t value);\nbool Pop(RingBuffer& rb, std::uint8_t& value);\n\nint main()\n{\n    int n;\n    while (std::cin >> n)\n    {\n        RingBuffer rb;\n        // Poison the struct so an Init that forgets a field is visible.\n        rb.head = 5;\n        rb.tail = 3;\n        rb.count = 7;\n        Init(rb);\n        for (int i = 0; i < n; i++)\n        {\n            std::string op;\n            std::cin >> op;\n            if (op == \"push\")\n            {\n                int v;\n                std::cin >> v;\n                std::cout << (Push(rb, static_cast<std::uint8_t>(v)) ? \"+\" : \"!\");\n            }\n            else\n            {\n                std::uint8_t out = 0xEE;\n                if (Pop(rb, out))\n                {\n                    std::cout << static_cast<int>(out);\n                }\n                else\n                {\n                    std::cout << \"E\" << (out == 0xEE ? \"\" : \"?\");\n                }\n            }\n            std::cout << (i + 1 < n ? \" \" : \"\");\n        }\n        std::cout << \"\\n\";\n    }\n    return 0;\n}\n",
+  "generator": {
+    "count": 4,
+    "source": "\"\"\"Random push/pop sequences, biased to fill the buffer and wrap it several\ntimes.\"\"\"\n\n\ndef generate(rng, count):\n    return [_case(rng, i + 1) for i in range(count)]\n\n\ndef _case(rng, index):\n    ops = []\n    bias = rng.choice([0.4, 0.6, 0.8])\n    for _ in range(rng.randint(12, 30)):\n        if rng.random() < bias:\n            ops.append(\"push %d\" % rng.randint(0, 255))\n        else:\n            ops.append(\"pop\")\n    return {\"name\": \"%d operations, push bias %.1f #%d\" % (len(ops), bias, index),\n            \"stdin\": \"%d\\n%s\\n\" % (len(ops), \"\\n\".join(ops))}\n"
+  },
+  "tests": [
+    {
+      "name": "pop from a fresh buffer fails",
+      "stdin": "1\npop\n",
+      "expected_stdout": "E"
+    },
+    {
+      "name": "first in, first out",
+      "stdin": "5\npush 10\npush 20\npush 30\npop\npop\n",
+      "expected_stdout": "+ + + 10 20"
+    },
+    {
+      "name": "the ninth push is rejected",
+      "stdin": "10\npush 1\npush 2\npush 3\npush 4\npush 5\npush 6\npush 7\npush 8\npush 9\npop\n",
+      "expected_stdout": "+ + + + + + + + ! 1",
+      "description": "Eight pushes fill it; the ninth returns false and the oldest byte (1) is still the first out."
+    },
+    {
+      "name": "a rejected push changes nothing",
+      "stdin": "14\npush 1\npush 2\npush 3\npush 4\npush 5\npush 6\npush 7\npush 8\npush 9\npop\npop\npop\npop\npop\n",
+      "expected_stdout": "+ + + + + + + + ! 1 2 3 4 5",
+      "description": "Bytes 1..8 must come out in order; 9 was never stored."
+    },
+    {
+      "name": "indices wrap round the end of the array",
+      "stdin": "21\npush 1\npush 2\npush 3\npush 4\npush 5\npush 6\npop\npop\npop\npop\npop\npush 7\npush 8\npush 9\npush 10\npush 11\npush 12\npop\npop\npop\npop\n",
+      "expected_stdout": "+ + + + + + 1 2 3 4 5 + + + + + + 6 7 8 9"
+    },
+    {
+      "name": "a full buffer is distinguishable from an empty one",
+      "stdin": "18\npush 0\npush 1\npush 2\npush 3\npush 4\npush 5\npush 6\npush 7\npop\npop\npop\npop\npop\npop\npop\npop\npop\npush 9\n",
+      "expected_stdout": "+ + + + + + + + 0 1 2 3 4 5 6 7 E +",
+      "description": "After eight pushes and eight pops head == tail again, and the buffer is empty, not full."
+    }
+  ],
+  "reference_solution_b64": "I2luY2x1ZGUgPGNzdGRpbnQ+Cgpjb25zdGV4cHIgdW5zaWduZWQga1JpbmdDYXBhY2l0eSA9IDg7CgpzdHJ1Y3QgUmluZ0J1ZmZlcgp7CiAgICBzdGQ6OnVpbnQ4X3QgZGF0YVtrUmluZ0NhcGFjaXR5XTsKICAgIHN0ZDo6dWludDhfdCBoZWFkOwogICAgc3RkOjp1aW50OF90IHRhaWw7CiAgICBzdGQ6OnVpbnQ4X3QgY291bnQ7Cn07Cgp2b2lkIEluaXQoUmluZ0J1ZmZlciYgcmIpCnsKICAgIHJiLmhlYWQgPSAwOwogICAgcmIudGFpbCA9IDA7CiAgICByYi5jb3VudCA9IDA7Cn0KCmJvb2wgUHVzaChSaW5nQnVmZmVyJiByYiwgc3RkOjp1aW50OF90IHZhbHVlKQp7CiAgICBpZiAocmIuY291bnQgPT0ga1JpbmdDYXBhY2l0eSkKICAgIHsKICAgICAgICByZXR1cm4gZmFsc2U7CiAgICB9CiAgICByYi5kYXRhW3JiLmhlYWRdID0gdmFsdWU7CiAgICByYi5oZWFkID0gc3RhdGljX2Nhc3Q8c3RkOjp1aW50OF90PigocmIuaGVhZCArIDEpICUga1JpbmdDYXBhY2l0eSk7CiAgICByYi5jb3VudCsrOwogICAgcmV0dXJuIHRydWU7Cn0KCmJvb2wgUG9wKFJpbmdCdWZmZXImIHJiLCBzdGQ6OnVpbnQ4X3QmIHZhbHVlKQp7CiAgICBpZiAocmIuY291bnQgPT0gMCkKICAgIHsKICAgICAgICByZXR1cm4gZmFsc2U7CiAgICB9CiAgICB2YWx1ZSA9IHJiLmRhdGFbcmIudGFpbF07CiAgICByYi50YWlsID0gc3RhdGljX2Nhc3Q8c3RkOjp1aW50OF90PigocmIudGFpbCArIDEpICUga1JpbmdDYXBhY2l0eSk7CiAgICByYi5jb3VudC0tOwogICAgcmV0dXJuIHRydWU7Cn0K"
+}
