@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solution — Firmware Update Across Three Processors · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · Flow · hard</p>
+  <h1>Firmware Update Across Three Processors</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">A model answer to compare against. Yours may differ in
+    names and split; check it covers the same data, checks and failure
+    handling.</p>
+</header>
+
+<h2>Update state diagram</h2>
+
+<pre class="mermaid">stateDiagram-v2
+    [*] --> Idle
+    Idle --> Downloading: manifest offered
+    Downloading --> Verifying: all images staged
+    Downloading --> Idle: download fails
+    Verifying --> Idle: bad signature or hash
+    Verifying --> Installing: valid, compatible
+    Installing --> SafeState: written to inactive slots
+    SafeState --> TrialBoot: device idled, switch slots
+    TrialBoot --> Confirmed: self-test and comms OK
+    TrialBoot --> RolledBack: test fails or timeout
+    RolledBack --> Idle: old slots active
+    Confirmed --> [*]</pre>
+
+<p class="mermaid-note">Not drawn? Rendering needs a script fetched from a
+  CDN. Offline, read each line as <code>from --&gt; to: event</code>.</p>
+
+<h2>Who verifies what</h2>
+
+<table>
+  <tr><th>Item</th><th>Verified by</th><th>Key</th></tr>
+  <tr><td>Manifest: versions, hashes, compatibility</td><td>Coordinator</td>
+      <td>Platform signing key</td></tr>
+  <tr><td>Radio and coordinator images</td><td>Coordinator, then each
+      bootloader</td><td>Platform key</td></tr>
+  <tr><td>OEM image</td><td>Coordinator, then the sandbox bootloader</td>
+      <td>OEM key <strong>and</strong> platform approval</td></tr>
+</table>
+
+<div class="note">
+<p>The radio processor downloads, but never decides. It is untrusted, so the
+  coordinator checks the manifest and every hash itself.</p>
+</div>
+
+<h2>Recovery</h2>
+
+<table>
+  <tr><th>Power lost during</th><th>Outcome</th></tr>
+  <tr><td>Download</td><td>Staging incomplete. Old images still active.
+      Resume or restart</td></tr>
+  <tr><td>Install</td><td>Only inactive slots touched. Old images boot</td></tr>
+  <tr><td>Slot switch</td><td>Bootloader trial counter. New slot gets a
+      limited number of attempts, then falls back</td></tr>
+  <tr><td>Trial boot</td><td>Not confirmed, so the next boot reverts</td></tr>
+</table>
+
+<h2>Compatibility</h2>
+
+<ul>
+  <li>The coordinator-to-sandbox interface carries a <strong>version
+    number</strong>.</li>
+  <li>The coordinator supports the current and the previous interface
+    version.</li>
+  <li>The manifest states which combinations are valid. The coordinator
+    refuses any other.</li>
+  <li>Switch order: coordinator first (it understands both), then sandbox,
+    then radio.</li>
+</ul>
+
+<div class="trap">
+<p>The classic failure is a half-applied release: the new coordinator boots,
+  the old OEM driver does not speak its protocol, and the device stops. Plan
+  for overlapping compatibility, not a perfect simultaneous switch.</p>
+</div>
+
+<h2>Anti-rollback</h2>
+
+<ul>
+  <li>Each image carries a security version.</li>
+  <li>The bootloader refuses any image below the value in a monotonic counter,
+    for example in OTP fuses.</li>
+  <li>The counter is raised only <strong>after</strong> the new image is
+    confirmed. Raise it earlier and a failed update cannot roll back.</li>
+</ul>
+
+<h2>The load during the update</h2>
+
+<p>Before switching slots, take the device to its safe state, such as zero
+  power, and confirm it. The OEM driver's lease would do this anyway; doing
+  it deliberately makes it predictable.</p>
+
+<h2>Point to raise</h2>
+
+<p>When does the update run? Thousands of devices rebooting at the same
+  moment is a grid event. Spread updates over a window, and avoid times when
+  the device is committed to a service.</p>
+
+<h2>Self-marking checklist</h2>
+
+<ul>
+  <li>A/B slots, with the old image kept until confirmed?</li>
+  <li>Coordinator verifies, not the radio?</li>
+  <li>OEM image needs both OEM and platform approval?</li>
+  <li>Power loss covered at every step?</li>
+  <li>Interface versioning between coordinator and sandbox?</li>
+  <li>Anti-rollback counter raised only after confirmation?</li>
+  <li>Device put into a safe state before switching?</li>
+</ul>
+
+<footer>
+  <p><a href="flow_edge_firmware_update.question.html">← Question</a></p>
+</footer>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  if (window.mermaid) {
+    var dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    mermaid.initialize({ startOnLoad: true, theme: dark ? "dark" : "default" });
+  }
+</script>
+</body>
+</html>

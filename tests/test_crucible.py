@@ -980,6 +980,14 @@ class TestExercises(unittest.TestCase):
         for problem in shipped:
             with self.subTest(problem=problem.id):
                 self.assertEqual(guides.missing(problem), [])
+                page = guides.find(problem, guides.QUESTION).path.read_text(
+                    encoding="utf-8")
+                # The timer reads its length from the page; it must agree
+                # with the time limit the app shows in the banner.
+                self.assertIn(
+                    f'data-minutes="{problem.time_limit_minutes}"', page)
+                self.assertIn('src="../timer.js"', page)
+        self.assertTrue((PROBLEMS_ROOT / "timer.js").is_file())
 
 
 # ---------------------------------------------------------------------------

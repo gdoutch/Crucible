@@ -1,0 +1,14 @@
+{
+  "id": "flow_edge_firewall",
+  "title": "Designing the Hardware Firewall",
+  "language": "exercise",
+  "difficulty": "hard",
+  "topics": [
+    "security",
+    "threat model",
+    "trust boundaries",
+    "message validation"
+  ],
+  "time_limit_minutes": 30,
+  "statement": "Decide what the coordinator checks on every message, and draw the trust boundaries.\n\nThis is a **pen-and-paper exercise**. Nothing is compiled, run, randomised or marked.\n\n## The module\n\nAn edge connectivity module sits inside a home energy device, such as a battery, heat pump or EV charger. It has three processors:\n\n- **Radio processor**: RISC-V, real-time OS. Wi-Fi 6, BLE 5.4 and Thread. Runs the HTTP and MQTT links to the cloud.\n- **Coordinator**: dual-core Cortex-M33, 150 MHz, 520 kB SRAM, real-time OS. A **hardware firewall**: it inspects every message between the device and the network. It also runs scheduling and user features.\n- **OEM sandbox**: a second dual-core Cortex-M33, 150 MHz, 520 kB SRAM. Runs the device maker's driver, written in C against an SDK. It receives **simple instantaneous commands** from the coordinator.\n\nIt also has:\n\n- Device interfaces: GPIO, SPI at 10 MHz, I2C, PWM, UART, and 8 ADC channels at 500 kS/s combined.\n- A **dedicated Modbus link** to the site's grid meter.\n- Signed firmware, verified at boot. Storage encrypted with a key unique to each device.\n\n## The scenario\n\nThe coordinator is described as a **hardware firewall**. It inspects every message between the device and the network.\n\nAssume any one of these could be hostile:\n\n- a message arriving from the cloud,\n- the radio processor, if its firmware is compromised,\n- the OEM driver, if it has a bug or is malicious.\n\n## Your task\n\n- Draw the **trust boundaries**, and the links that cross them.\n- List the checks the coordinator makes on an **inbound** command, in order.\n- List the checks it makes on **outbound** data from the OEM driver.\n- Say what a compromised radio processor can and cannot do in your design.\n\n## How to use it\n\n- Open **Guides > Question for this exercise**. It has a 30 minute timer.\n- Answer on paper.\n- When the timer ends, open **Guides > Worked solution** and compare.\n\n## If time remains\n\n- Is TLS on the radio processor enough? Why or why not?\n- How does the coordinator parse untrusted bytes safely?\n- How is the firewall's own policy updated?"
+}

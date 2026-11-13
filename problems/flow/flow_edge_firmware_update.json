@@ -1,0 +1,14 @@
+{
+  "id": "flow_edge_firmware_update",
+  "title": "Firmware Update Across Three Processors",
+  "language": "exercise",
+  "difficulty": "hard",
+  "topics": [
+    "secure boot",
+    "OTA update",
+    "A/B partitions",
+    "versioning"
+  ],
+  "time_limit_minutes": 30,
+  "statement": "Update the firmware on all three processors without ever leaving the device unbootable.\n\nThis is a **pen-and-paper exercise**. Nothing is compiled, run, randomised or marked.\n\n## The module\n\nAn edge connectivity module sits inside a home energy device, such as a battery, heat pump or EV charger. It has three processors:\n\n- **Radio processor**: RISC-V, real-time OS. Wi-Fi 6, BLE 5.4 and Thread. Runs the HTTP and MQTT links to the cloud.\n- **Coordinator**: dual-core Cortex-M33, 150 MHz, 520 kB SRAM, real-time OS. A **hardware firewall**: it inspects every message between the device and the network. It also runs scheduling and user features.\n- **OEM sandbox**: a second dual-core Cortex-M33, 150 MHz, 520 kB SRAM. Runs the device maker's driver, written in C against an SDK. It receives **simple instantaneous commands** from the coordinator.\n\nIt also has:\n\n- Device interfaces: GPIO, SPI at 10 MHz, I2C, PWM, UART, and 8 ADC channels at 500 kS/s combined.\n- A **dedicated Modbus link** to the site's grid meter.\n- Signed firmware, verified at boot. Storage encrypted with a key unique to each device.\n\n## The scenario\n\nAssume the module receives updates over the air.\n\nOne release may change any of the three images: radio, coordinator and OEM sandbox. The OEM image is built by the device maker against the SDK.\n\nPower can be lost at any moment. The device may be running a battery at full power when the update arrives.\n\n## Your task\n\n- Draw the **update flow** from download to confirmed, as a state diagram.\n- Say who verifies what, and with which key.\n- Say how a failed update recovers, including power loss at each step.\n- Say how you stop the coordinator and the OEM driver ending up on incompatible versions.\n\n## How to use it\n\n- Open **Guides > Question for this exercise**. It has a 30 minute timer.\n- Answer on paper.\n- When the timer ends, open **Guides > Worked solution** and compare.\n\n## If time remains\n\n- How do you stop an attacker installing an old, vulnerable image?\n- In what order do the three processors switch over?\n- What does the device do with its load while it reboots?"
+}

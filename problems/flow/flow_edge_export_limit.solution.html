@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solution — Grid Meter Polling and Export Limiting · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · Flow · medium</p>
+  <h1>Grid Meter Polling and Export Limiting</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">A model answer to compare against. Yours may differ in
+    names and split; check it covers the same data, checks and failure
+    handling.</p>
+</header>
+
+<h2>Data flow diagram</h2>
+
+<pre class="mermaid">flowchart LR
+    GM["Grid meter"]
+    subgraph CO["Coordinator"]
+        MB["Modbus RTU master"]
+        VAL["Validate<br/>CRC, timeout, range, age"]
+        CTL["Export limiter<br/>(control loop)"]
+        FS["Fail-safe monitor"]
+    end
+    SB["OEM sandbox<br/>(inverter driver)"]
+    INV["Inverter"]
+
+    MB -- "read request: address, function, register, count, CRC" --> GM
+    GM -- "response: signed active power, CRC" --> MB
+    MB -- "raw registers" --> VAL
+    VAL -- "grid power + timestamp" --> CTL
+    VAL -- "miss count, last good time" --> FS
+    CTL -- "max discharge power" --> SB
+    FS -- "force limit to safe value" --> SB
+    SB -- "power setpoint" --> INV
+    INV -- "actual output" --> SB
+    SB -- "actual output" --> CTL</pre>
+
+<p class="mermaid-note">Not drawn? Rendering needs a script fetched from a
+  CDN. Offline, the tables below carry the same content.</p>
+
+<h2>Polling the meter</h2>
+
+<table>
+  <tr><th>Item</th><th>Choice</th></tr>
+  <tr><td>Request</td><td>Function 0x03 or 0x04 for the active-power
+      registers. One request, contiguous registers</td></tr>
+  <tr><td>Rate</td><td>Every 200 ms to 1 s. Fast enough for the control loop,
+      slow enough for the bus speed</td></tr>
+  <tr><td>Framing</td><td>RTU: a 3.5-character silent gap ends a frame</td></tr>
+  <tr><td>Integrity</td><td>CRC-16/MODBUS on every reply. Check the address,
+      function code and byte count too</td></tr>
+  <tr><td>Timeout</td><td>About 100 to 200 ms per request. Count misses</td></tr>
+  <tr><td>Decoding</td><td>Signed 32-bit, often two registers. <strong>Word
+      order differs between meters</strong>, so make it configuration</td></tr>
+</table>
+
+<h2>The control loop</h2>
+
+<ol>
+  <li>Grid power is measured, with export negative (or positive, by
+    convention; pick one and enforce it).</li>
+  <li>Headroom = limit − current export − margin.</li>
+  <li>New maximum discharge = current inverter output + headroom.</li>
+  <li>Slew-limit the change, so the loop does not oscillate.</li>
+  <li>Send the result to the sandbox as a <strong>limit</strong>, with a
+    lease.</li>
+</ol>
+
+<div class="note">
+<p>The limit is on the site, not the battery. The house load changes all the
+  time, so the battery's allowance changes with it. That is why it is a loop
+  and not a fixed setting.</p>
+</div>
+
+<h2>When the meter stops answering</h2>
+
+<table>
+  <tr><th>Condition</th><th>Response</th></tr>
+  <tr><td>One bad CRC or timeout</td><td>Retry on the next poll. Keep the last
+      value</td></tr>
+  <tr><td>Reading older than a few seconds</td><td>Treat as unknown. Force the
+      limit to a value that cannot breach export, for example zero
+      discharge</td></tr>
+  <tr><td>Reading out of range</td><td>Discard it. Count it as a miss</td></tr>
+  <tr><td>Persistent loss</td><td>Stay in the safe limit. Raise a fault to
+      the cloud</td></tr>
+</table>
+
+<div class="trap">
+<p>The easy miss is the <strong>sign convention</strong>. A current
+  transformer fitted backwards flips import and export, and the limiter then
+  pushes the wrong way. Check it at commissioning: turn the battery on and
+  see which way the reading moves.</p>
+</div>
+
+<h2>Point to raise</h2>
+
+<p>The export-limitation rules in your market set the response time and the
+  fail-safe behaviour. In Great Britain, for example, that is G100. Read them
+  before choosing the timeouts.</p>
+
+<h2>Self-marking checklist</h2>
+
+<ul>
+  <li>Modbus master drawn in the coordinator, not the sandbox?</li>
+  <li>CRC and timeout checked on every reply?</li>
+  <li>Word order and sign convention mentioned?</li>
+  <li>Control loop uses headroom, not a fixed limit?</li>
+  <li>Slew limiting mentioned?</li>
+  <li>Stale reading forces a safe limit?</li>
+</ul>
+
+<footer>
+  <p><a href="flow_edge_export_limit.question.html">← Question</a></p>
+</footer>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  if (window.mermaid) {
+    var dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    mermaid.initialize({ startOnLoad: true, theme: dark ? "dark" : "default" });
+  }
+</script>
+</body>
+</html>

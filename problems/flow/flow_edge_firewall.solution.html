@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solution — Designing the Hardware Firewall · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · Flow · hard</p>
+  <h1>Designing the Hardware Firewall</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">A model answer to compare against. Yours may differ in
+    names and split; check it covers the same data, checks and failure
+    handling.</p>
+</header>
+
+<h2>Trust boundaries</h2>
+
+<pre class="mermaid">flowchart LR
+    subgraph UNTRUSTED["Untrusted"]
+        CL["Cloud and internet"]
+        RP["Radio processor"]
+    end
+    subgraph TRUSTED["Trusted"]
+        CO["Coordinator<br/>(keys, policy, parser)"]
+    end
+    subgraph CONTAINED["Contained"]
+        SB["OEM sandbox"]
+        DEV["Device"]
+    end
+
+    CL -- "TLS" --> RP
+    RP -- "framed, signed command" --> CO
+    CO -- "validated setpoint with lease" --> SB
+    SB -- "status, declared telemetry" --> CO
+    CO -- "filtered telemetry" --> RP
+    SB -- "device protocol" --> DEV</pre>
+
+<p class="mermaid-note">Not drawn? Rendering needs a script fetched from a
+  CDN. Offline, the tables below carry the same content.</p>
+
+<div class="note">
+<p>The OEM sandbox is not trusted either. It is <strong>contained</strong>:
+  separate silicon, a single defined link, and nothing it sends is believed
+  without checking.</p>
+</div>
+
+<h2>Inbound checks, in order</h2>
+
+<p>Cheap checks first, so junk is rejected before it costs anything.</p>
+
+<ol>
+  <li><strong>Framing</strong>: length field within a fixed maximum, frame
+    complete, frame CRC good.</li>
+  <li><strong>Authenticity</strong>: signature or MAC verified with a key held
+    only in the coordinator.</li>
+  <li><strong>Freshness</strong>: monotonic counter or nonce, and a time
+    window. Rejects replays.</li>
+  <li><strong>Allow-list</strong>: message type is one the policy names.
+    Unknown types are dropped, not passed through.</li>
+  <li><strong>Semantics</strong>: every field in range for this device and
+    this site. 3 kW is fine; 300 kW is not.</li>
+  <li><strong>State</strong>: allowed now? For example, no discharge while a
+    fault is active.</li>
+  <li><strong>Rate</strong>: no more than N commands per second.</li>
+</ol>
+
+<p>Anything that fails is dropped, counted and logged. The firewall
+  <strong>fails closed</strong>.</p>
+
+<h2>Outbound checks</h2>
+
+<table>
+  <tr><th>Check</th><th>Why</th></tr>
+  <tr><td>Only declared telemetry types</td><td>The OEM code cannot invent a
+      new channel</td></tr>
+  <tr><td>Size and rate caps</td><td>Stops a bug flooding the uplink</td></tr>
+  <tr><td>No raw sockets, no chosen hosts</td><td>The sandbox cannot reach
+      the internet directly</td></tr>
+  <tr><td>Field validation</td><td>Bad data never reaches the cloud as
+      truth</td></tr>
+  <tr><td>Data minimisation</td><td>Only what the product needs. This is
+      household data</td></tr>
+</table>
+
+<h2>A compromised radio processor</h2>
+
+<table>
+  <tr><th>Can</th><th>Cannot</th></tr>
+  <tr><td>Drop, delay or reorder messages</td><td>Forge a command: it has
+      no signing key</td></tr>
+  <tr><td>Replay old messages</td><td>Make a replay succeed: freshness check</td></tr>
+  <tr><td>Send malformed frames</td><td>Crash the coordinator: bounded
+      parser</td></tr>
+  <tr><td>Deny service</td><td>Reach the OEM sandbox: no link exists</td></tr>
+</table>
+
+<div class="trap">
+<p>TLS alone is not enough. It ends on the radio processor, which is in the
+  untrusted zone. Commands need <strong>end-to-end authentication</strong>
+  from the cloud to the coordinator.</p>
+</div>
+
+<h2>Parsing untrusted bytes</h2>
+
+<ul>
+  <li>Fixed maximum frame size. Static buffers. No <code>malloc</code>.</li>
+  <li>Length fields checked before use. No pointer arithmetic on unchecked
+    values.</li>
+  <li>One parser, small, and fuzzed in CI.</li>
+  <li>Watchdog, so a hang becomes a reset rather than a stuck firewall.</li>
+</ul>
+
+<h2>Point to raise</h2>
+
+<p>The policy itself is a target. The allow-list and range limits must be
+  signed, versioned and protected against rollback, like firmware.</p>
+
+<h2>Self-marking checklist</h2>
+
+<ul>
+  <li>Radio processor placed in the untrusted zone?</li>
+  <li>OEM sandbox treated as contained, not trusted?</li>
+  <li>End-to-end authentication, not just TLS?</li>
+  <li>Replay protection?</li>
+  <li>Allow-list and range checks?</li>
+  <li>Outbound filtering as well as inbound?</li>
+  <li>Fail closed?</li>
+</ul>
+
+<footer>
+  <p><a href="flow_edge_firewall.question.html">← Question</a></p>
+</footer>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  if (window.mermaid) {
+    var dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    mermaid.initialize({ startOnLoad: true, theme: dark ? "dark" : "default" });
+  }
+</script>
+</body>
+</html>

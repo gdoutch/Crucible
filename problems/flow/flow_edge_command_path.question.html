@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Question — Edge Module: From Cloud Command to Device · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide question">
+
+<header>
+  <p class="crumb">Crucible · Flow · medium</p>
+  <h1>Edge Module: From Cloud Command to Device</h1>
+  <p class="kind">Question</p>
+  <p class="lede">Pen and paper. Nothing is compiled, randomised or marked
+    for you. Set the timer, answer, then compare with the solution sheet.</p>
+</header>
+
+<div class="timer" data-minutes="20">
+  <output></output>
+  <button type="button" data-go>Start</button>
+  <button type="button" data-reset>Reset</button>
+  <span>Allotted: <strong>20 minutes</strong></span>
+</div>
+
+<p>Trace one cloud command through a three-processor edge module, and draw it.</p>
+
+<h2>The module</h2>
+
+<p>An edge connectivity module sits inside a home energy device, such as a
+  battery, heat pump or EV charger. It has three processors:</p>
+
+<table>
+  <tr><th>Processor</th><th>Hardware</th><th>Role</th></tr>
+  <tr><td>Radio processor</td><td>RISC-V, real-time OS. Wi-Fi 6, BLE 5.4,
+      Thread</td><td>HTTP and MQTT links to the cloud</td></tr>
+  <tr><td>Coordinator</td><td>Dual-core Cortex-M33, 150 MHz, 520 kB SRAM,
+      real-time OS</td><td><strong>Hardware firewall</strong>: inspects every
+      message between device and network. Runs scheduling and user
+      features</td></tr>
+  <tr><td>OEM sandbox</td><td>Second dual-core Cortex-M33, 150 MHz, 520 kB
+      SRAM</td><td>Runs the device maker's driver, written in C against an
+      SDK. Receives <strong>simple instantaneous commands</strong></td></tr>
+</table>
+
+<p>It also has:</p>
+
+<ul>
+  <li>Device interfaces: GPIO, SPI at 10 MHz, I²C, PWM, UART, and 8 ADC
+    channels at 500 kS/s combined.</li>
+  <li>A <strong>dedicated Modbus link</strong> to the site's grid meter.</li>
+  <li>Signed firmware, verified at boot. Storage encrypted with a key unique
+    to each device.</li>
+</ul>
+
+<h2>The scenario</h2>
+
+<p>The device is a home battery. A user sets this in the app:</p>
+
+<blockquote><p><strong>Charge the battery at 3 kW until 06:00.</strong></p></blockquote>
+
+<h2>Your task</h2>
+
+<ol>
+  <li>Draw the <strong>component diagram</strong>: cloud, the three processors, the battery's power electronics and the grid meter.</li>
+  <li>Trace the command from the cloud to the battery. Label each link with the <strong>data passed</strong>.</li>
+  <li>Trace the telemetry back. Label it the same way.</li>
+</ol>
+
+<h2>Stretch prompts</h2>
+
+<p>Only if time remains.</p>
+
+<ul>
+  <li>Which processor holds "until 06:00", and why not the others?</li>
+  <li>What does the OEM driver actually receive?</li>
+  <li>Which links cross a trust boundary?</li>
+  <li>What stops the radio processor talking to the OEM sandbox directly?</li>
+</ul>
+
+<footer>
+  <p><a href="flow_edge_command_path.solution.html">Solution sheet →</a>
+    (no peeking until the timer ends)</p>
+</footer>
+
+</main>
+
+<script src="../timer.js"></script>
+</body>
+</html>

@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Question — Losing the Network, Then the Coordinator · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide question">
+
+<header>
+  <p class="crumb">Crucible · Flow · hard</p>
+  <h1>Losing the Network, Then the Coordinator</h1>
+  <p class="kind">Question</p>
+  <p class="lede">Pen and paper. Nothing is compiled, randomised or marked
+    for you. Set the timer, answer, then compare with the solution sheet.</p>
+</header>
+
+<div class="timer" data-minutes="30">
+  <output></output>
+  <button type="button" data-go>Start</button>
+  <button type="button" data-reset>Reset</button>
+  <span>Allotted: <strong>30 minutes</strong></span>
+</div>
+
+<p>Design what the device does as each layer above it fails.</p>
+
+<h2>The module</h2>
+
+<p>An edge connectivity module sits inside a home energy device, such as a
+  battery, heat pump or EV charger. It has three processors:</p>
+
+<table>
+  <tr><th>Processor</th><th>Hardware</th><th>Role</th></tr>
+  <tr><td>Radio processor</td><td>RISC-V, real-time OS. Wi-Fi 6, BLE 5.4,
+      Thread</td><td>HTTP and MQTT links to the cloud</td></tr>
+  <tr><td>Coordinator</td><td>Dual-core Cortex-M33, 150 MHz, 520 kB SRAM,
+      real-time OS</td><td><strong>Hardware firewall</strong>: inspects every
+      message between device and network. Runs scheduling and user
+      features</td></tr>
+  <tr><td>OEM sandbox</td><td>Second dual-core Cortex-M33, 150 MHz, 520 kB
+      SRAM</td><td>Runs the device maker's driver, written in C against an
+      SDK. Receives <strong>simple instantaneous commands</strong></td></tr>
+</table>
+
+<p>It also has:</p>
+
+<ul>
+  <li>Device interfaces: GPIO, SPI at 10 MHz, I²C, PWM, UART, and 8 ADC
+    channels at 500 kS/s combined.</li>
+  <li>A <strong>dedicated Modbus link</strong> to the site's grid meter.</li>
+  <li>Signed firmware, verified at boot. Storage encrypted with a key unique
+    to each device.</li>
+</ul>
+
+<h2>The scenario</h2>
+
+<p>The device is an EV charger. It is charging a car at <strong>7 kW</strong>
+  on a schedule the user set for overnight.</p>
+
+<p>Three things go wrong, one at a time:</p>
+
+<ol>
+  <li>The internet connection drops for six hours.</li>
+  <li>The radio processor resets.</li>
+  <li>The coordinator hangs, while the OEM driver is still running the
+    charge.</li>
+</ol>
+
+<h2>Your task</h2>
+
+<ol>
+  <li>For each failure, say how it is <strong>detected</strong>, and by which processor.</li>
+  <li>For each failure, say what the device <strong>does</strong>.</li>
+  <li>Draw the OEM driver's behaviour as a <strong>state diagram</strong>.</li>
+  <li>Say what happens when everything comes back.</li>
+</ol>
+
+<h2>Stretch prompts</h2>
+
+<p>Only if time remains.</p>
+
+<ul>
+  <li>How does the coordinator keep time with no network?</li>
+  <li>What happens to six hours of telemetry?</li>
+  <li>Is "off" always the safe state?</li>
+  <li>What if ten thousand chargers recover at the same second?</li>
+</ul>
+
+<footer>
+  <p><a href="flow_edge_comms_loss.solution.html">Solution sheet →</a>
+    (no peeking until the timer ends)</p>
+</footer>
+
+</main>
+
+<script src="../timer.js"></script>
+</body>
+</html>

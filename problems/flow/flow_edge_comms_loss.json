@@ -1,0 +1,14 @@
+{
+  "id": "flow_edge_comms_loss",
+  "title": "Losing the Network, Then the Coordinator",
+  "language": "exercise",
+  "difficulty": "hard",
+  "topics": [
+    "fail-safe",
+    "watchdogs",
+    "leases",
+    "state machines"
+  ],
+  "time_limit_minutes": 30,
+  "statement": "Design what the device does as each layer above it fails.\n\nThis is a **pen-and-paper exercise**. Nothing is compiled, run, randomised or marked.\n\n## The module\n\nAn edge connectivity module sits inside a home energy device, such as a battery, heat pump or EV charger. It has three processors:\n\n- **Radio processor**: RISC-V, real-time OS. Wi-Fi 6, BLE 5.4 and Thread. Runs the HTTP and MQTT links to the cloud.\n- **Coordinator**: dual-core Cortex-M33, 150 MHz, 520 kB SRAM, real-time OS. A **hardware firewall**: it inspects every message between the device and the network. It also runs scheduling and user features.\n- **OEM sandbox**: a second dual-core Cortex-M33, 150 MHz, 520 kB SRAM. Runs the device maker's driver, written in C against an SDK. It receives **simple instantaneous commands** from the coordinator.\n\nIt also has:\n\n- Device interfaces: GPIO, SPI at 10 MHz, I2C, PWM, UART, and 8 ADC channels at 500 kS/s combined.\n- A **dedicated Modbus link** to the site's grid meter.\n- Signed firmware, verified at boot. Storage encrypted with a key unique to each device.\n\n## The scenario\n\nThe device is an EV charger. It is charging a car at **7 kW** on a schedule the user set for overnight.\n\nThree things go wrong, one at a time:\n\n1. The internet connection drops for six hours.\n2. The radio processor resets.\n3. The coordinator hangs, while the OEM driver is still running the charge.\n\n## Your task\n\n- For each failure, say how it is **detected**, and by which processor.\n- For each failure, say what the device **does**.\n- Draw the OEM driver's behaviour as a **state diagram**.\n- Say what happens when everything comes back.\n\n## How to use it\n\n- Open **Guides > Question for this exercise**. It has a 30 minute timer.\n- Answer on paper.\n- When the timer ends, open **Guides > Worked solution** and compare.\n\n## If time remains\n\n- How does the coordinator keep time with no network?\n- What happens to six hours of telemetry?\n- Is \"off\" always the safe state?\n- What if ten thousand chargers recover at the same second?"
+}

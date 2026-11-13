@@ -1,0 +1,14 @@
+{
+  "id": "flow_edge_export_limit",
+  "title": "Grid Meter Polling and Export Limiting",
+  "language": "exercise",
+  "difficulty": "medium",
+  "topics": [
+    "Modbus",
+    "control loop",
+    "data flow",
+    "fail-safe"
+  ],
+  "time_limit_minutes": 20,
+  "statement": "Read the grid meter over Modbus and keep the site under its export limit.\n\nThis is a **pen-and-paper exercise**. Nothing is compiled, run, randomised or marked.\n\n## The module\n\nAn edge connectivity module sits inside a home energy device, such as a battery, heat pump or EV charger. It has three processors:\n\n- **Radio processor**: RISC-V, real-time OS. Wi-Fi 6, BLE 5.4 and Thread. Runs the HTTP and MQTT links to the cloud.\n- **Coordinator**: dual-core Cortex-M33, 150 MHz, 520 kB SRAM, real-time OS. A **hardware firewall**: it inspects every message between the device and the network. It also runs scheduling and user features.\n- **OEM sandbox**: a second dual-core Cortex-M33, 150 MHz, 520 kB SRAM. Runs the device maker's driver, written in C against an SDK. It receives **simple instantaneous commands** from the coordinator.\n\nIt also has:\n\n- Device interfaces: GPIO, SPI at 10 MHz, I2C, PWM, UART, and 8 ADC channels at 500 kS/s combined.\n- A **dedicated Modbus link** to the site's grid meter.\n- Signed firmware, verified at boot. Storage encrypted with a key unique to each device.\n\n## The scenario\n\nThe device is a battery with an inverter. The network operator limits the site's **export to 3.68 kW**.\n\nThe grid meter is on the module's dedicated Modbus RTU link. It reports active power at the grid connection.\n\n## Your task\n\n- Draw the **data flow** from the meter to the inverter's power command. Label each link.\n- Say how you poll the meter: what, how often, and how you detect a bad reply.\n- Say how you turn the reading into a power limit for the battery.\n- Say what happens when the meter stops answering.\n\n## How to use it\n\n- Open **Guides > Question for this exercise**. It has a 20 minute timer.\n- Answer on paper.\n- When the timer ends, open **Guides > Worked solution** and compare.\n\n## If time remains\n\n- Which way round is the sign? How do you know?\n- What stops the loop oscillating?\n- How quickly must the fail-safe act, and who decides that?"
+}

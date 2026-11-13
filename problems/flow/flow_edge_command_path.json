@@ -1,0 +1,14 @@
+{
+  "id": "flow_edge_command_path",
+  "title": "Edge Module: From Cloud Command to Device",
+  "language": "exercise",
+  "difficulty": "medium",
+  "topics": [
+    "component diagram",
+    "data flow",
+    "multi-processor",
+    "firmware architecture"
+  ],
+  "time_limit_minutes": 20,
+  "statement": "Trace one cloud command through a three-processor edge module, and draw it.\n\nThis is a **pen-and-paper exercise**. Nothing is compiled, run, randomised or marked.\n\n## The module\n\nAn edge connectivity module sits inside a home energy device, such as a battery, heat pump or EV charger. It has three processors:\n\n- **Radio processor**: RISC-V, real-time OS. Wi-Fi 6, BLE 5.4 and Thread. Runs the HTTP and MQTT links to the cloud.\n- **Coordinator**: dual-core Cortex-M33, 150 MHz, 520 kB SRAM, real-time OS. A **hardware firewall**: it inspects every message between the device and the network. It also runs scheduling and user features.\n- **OEM sandbox**: a second dual-core Cortex-M33, 150 MHz, 520 kB SRAM. Runs the device maker's driver, written in C against an SDK. It receives **simple instantaneous commands** from the coordinator.\n\nIt also has:\n\n- Device interfaces: GPIO, SPI at 10 MHz, I2C, PWM, UART, and 8 ADC channels at 500 kS/s combined.\n- A **dedicated Modbus link** to the site's grid meter.\n- Signed firmware, verified at boot. Storage encrypted with a key unique to each device.\n\n## The scenario\n\nThe device is a home battery. A user sets this in the app:\n\n**Charge the battery at 3 kW until 06:00.**\n\n## Your task\n\n- Draw the **component diagram**: cloud, the three processors, the battery's power electronics and the grid meter.\n- Trace the command from the cloud to the battery. Label each link with the **data passed**.\n- Trace the telemetry back. Label it the same way.\n\n## How to use it\n\n- Open **Guides > Question for this exercise**. It has a 20 minute timer.\n- Answer on paper.\n- When the timer ends, open **Guides > Worked solution** and compare.\n\n## If time remains\n\n- Which processor holds \"until 06:00\", and why not the others?\n- What does the OEM driver actually receive?\n- Which links cross a trust boundary?\n- What stops the radio processor talking to the OEM sandbox directly?"
+}

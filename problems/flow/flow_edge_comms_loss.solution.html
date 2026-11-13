@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solution — Losing the Network, Then the Coordinator · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · Flow · hard</p>
+  <h1>Losing the Network, Then the Coordinator</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">A model answer to compare against. Yours may differ in
+    names and split; check it covers the same data, checks and failure
+    handling.</p>
+</header>
+
+<h2>Detection and response</h2>
+
+<table>
+  <tr><th>Failure</th><th>Detected by</th><th>Response</th></tr>
+  <tr><td>Internet down</td><td>Coordinator: no MQTT keep-alive via the
+      radio</td><td>Carry on with the stored schedule. Buffer telemetry</td></tr>
+  <tr><td>Radio reset</td><td>Coordinator: radio heartbeat stops</td>
+      <td>No effect on control. Re-sync when it returns</td></tr>
+  <tr><td>Coordinator hang</td><td>Sandbox: setpoint lease expires.
+      Coordinator watchdog resets it</td><td>Sandbox ramps to the safe state.
+      Coordinator reboots</td></tr>
+</table>
+
+<h2>The OEM driver's state machine</h2>
+
+<pre class="mermaid">stateDiagram-v2
+    [*] --> Safe
+    Safe --> Active: valid setpoint with lease
+    Active --> Active: setpoint refreshed
+    Active --> Ramping: lease expired
+    Ramping --> Safe: output at safe level
+    Ramping --> Active: valid setpoint again
+    Active --> Safe: device fault
+    Safe --> Safe: stale or invalid setpoint ignored</pre>
+
+<p class="mermaid-note">Not drawn? Rendering needs a script fetched from a
+  CDN. Offline, read each line as <code>from --&gt; to: event</code>.</p>
+
+<div class="note">
+<p>The key idea is the <strong>lease</strong>. Every instantaneous command is
+  valid for a few seconds, and the coordinator refreshes it every second. The
+  sandbox needs no knowledge of why commands stopped. It only needs a clock
+  of its own.</p>
+</div>
+
+<h2>Running without the network</h2>
+
+<ul>
+  <li>The schedule is stored in the coordinator, so it keeps running.</li>
+  <li><strong>Time</strong>: a real-time clock, last synchronised over the
+    network. Track the time since the last sync, and the worst-case drift.</li>
+  <li>Schedules have a horizon, for example 24 hours. Past it, fall back to
+    the device's default behaviour.</li>
+  <li><strong>Telemetry</strong>: a bounded ring buffer in flash, with
+    sequence numbers. When full, drop the oldest, or thin it out. Never block
+    control because the buffer is full.</li>
+</ul>
+
+<h2>Recovery</h2>
+
+<ul>
+  <li>A rebooted coordinator reads its persisted schedule. It does not replay
+    commands that have already expired.</li>
+  <li>It re-establishes the lease, then ramps power up, rather than
+    stepping.</li>
+  <li>Buffered telemetry is sent after live data, at a limited rate.</li>
+  <li><strong>Randomised delay</strong> before resuming high power. Thousands
+    of chargers stepping to 7 kW at once is a load step on the grid.</li>
+</ul>
+
+<div class="trap">
+<p>"Fail safe" does not mean "turn off". For a charger, zero is usually fine.
+  For a heat pump in winter, or a battery providing backup power, off may be
+  the unsafe choice. The safe state is defined per device type, by the
+  device maker.</p>
+</div>
+
+<h2>Watchdogs, layered</h2>
+
+<table>
+  <tr><th>Layer</th><th>Watches</th></tr>
+  <tr><td>Hardware watchdog on each processor</td><td>Its own main loop</td></tr>
+  <tr><td>Coordinator</td><td>Radio heartbeat, sandbox status messages</td></tr>
+  <tr><td>Sandbox</td><td>Lease on every setpoint</td></tr>
+  <tr><td>Device</td><td>Its own protections, independent of the module</td></tr>
+</table>
+
+<h2>Point to raise</h2>
+
+<p>If the sandbox hangs, the coordinator can see it, but can it act? It
+  needs a path that does not depend on the sandbox, such as a reset line or a
+  hardware enable to the device.</p>
+
+<h2>Self-marking checklist</h2>
+
+<ul>
+  <li>Each failure has a named detector?</li>
+  <li>Schedule survives loss of the network?</li>
+  <li>Time keeping without the network considered?</li>
+  <li>Lease, or equivalent, on commands to the sandbox?</li>
+  <li>Bounded telemetry buffer?</li>
+  <li>Ramp and randomised delay on recovery?</li>
+  <li>Safe state defined per device, not assumed to be off?</li>
+</ul>
+
+<footer>
+  <p><a href="flow_edge_comms_loss.question.html">← Question</a></p>
+</footer>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  if (window.mermaid) {
+    var dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    mermaid.initialize({ startOnLoad: true, theme: dark ? "dark" : "default" });
+  }
+</script>
+</body>
+</html>

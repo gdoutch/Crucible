@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solution — Edge Module: From Cloud Command to Device · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · Flow · medium</p>
+  <h1>Edge Module: From Cloud Command to Device</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">A model answer to compare against. Yours may differ in
+    names and split; check it covers the same data, checks and failure
+    handling.</p>
+</header>
+
+<h2>Component diagram</h2>
+
+<pre class="mermaid">flowchart LR
+    CL["Cloud"]
+    subgraph MOD["Edge module"]
+        RP["Radio processor<br/>(untrusted transport)"]
+        CO["Coordinator<br/>(firewall + scheduler)"]
+        SB["OEM sandbox<br/>(device driver)"]
+    end
+    BAT["Battery power electronics"]
+    GM["Grid meter"]
+
+    CL -- "MQTT over TLS: schedule command, id, expiry" --> RP
+    RP -- "framed message, unchanged" --> CO
+    CO -- "instantaneous setpoint: +3000 W, lease 5 s" --> SB
+    SB -- "device protocol: register writes" --> BAT
+    BAT -- "measured power, state of charge, faults" --> SB
+    SB -- "status: power, SoC, fault codes" --> CO
+    GM -- "Modbus: grid import / export" --> CO
+    CO -- "validated telemetry, command ack" --> RP
+    RP -- "MQTT publish" --> CL</pre>
+
+<p class="mermaid-note">Not drawn? Rendering needs a script fetched from a
+  CDN. Offline, the tables below carry the same content.</p>
+
+<h2>Downward: the command</h2>
+
+<table>
+  <tr><th>Link</th><th>Data</th></tr>
+  <tr><td>Cloud → radio</td><td>MQTT over TLS. A schedule command: type,
+      power 3 kW, end time 06:00, command id, issue time</td></tr>
+  <tr><td>Radio → coordinator</td><td>The same message, framed over the
+      inter-chip link. The radio does not interpret it</td></tr>
+  <tr><td>Coordinator (internal)</td><td>Validate: known type, in range,
+      authentic, not a replay. Store as a schedule entry</td></tr>
+  <tr><td>Coordinator → sandbox</td><td>Every second while the schedule is
+      active: an <strong>instantaneous</strong> setpoint, +3000 W, with a
+      short lease</td></tr>
+  <tr><td>Sandbox → battery</td><td>The maker's own protocol, for example
+      register writes over UART, SPI or Modbus</td></tr>
+</table>
+
+<h2>Upward: the telemetry</h2>
+
+<table>
+  <tr><th>Link</th><th>Data</th></tr>
+  <tr><td>Battery → sandbox</td><td>Measured power, state of charge, faults</td></tr>
+  <tr><td>Sandbox → coordinator</td><td>Status in the SDK's fixed format:
+      power, SoC, fault codes</td></tr>
+  <tr><td>Grid meter → coordinator</td><td>Grid import / export over the
+      dedicated Modbus link</td></tr>
+  <tr><td>Coordinator → radio</td><td>Validated, rate-limited telemetry and
+      the command acknowledgement</td></tr>
+  <tr><td>Radio → cloud</td><td>MQTT publish</td></tr>
+</table>
+
+<h2>The same command over time</h2>
+
+<pre class="mermaid">sequenceDiagram
+    participant Cloud
+    participant Radio
+    participant Coordinator
+    participant Sandbox
+    participant Battery
+    Cloud->>Radio: schedule(3 kW until 06:00)
+    Radio->>Coordinator: framed message
+    Coordinator->>Coordinator: validate, store schedule
+    Coordinator-->>Cloud: ack (via radio)
+    loop every 1 s until 06:00
+        Coordinator->>Sandbox: setpoint +3000 W, lease 5 s
+        Sandbox->>Battery: write power register
+        Battery-->>Sandbox: measured power, SoC
+        Sandbox-->>Coordinator: status
+    end
+    Coordinator->>Sandbox: setpoint 0 W at 06:00</pre>
+
+<div class="note">
+<p>The key insight: <strong>"until 06:00" lives in the coordinator</strong>.
+  The OEM driver only ever sees "do this now, for the next few seconds". That
+  keeps the maker's code simple, and keeps scheduling, time and policy in the
+  trusted processor.</p>
+</div>
+
+<div class="trap">
+<p>The common mistake is a line from the radio processor straight to the OEM
+  sandbox. Every message must pass through the coordinator. That is what
+  "hardware firewall" means.</p>
+</div>
+
+<h2>Why this split</h2>
+
+<ul>
+  <li>The radio is the most exposed part, so it gets no authority. It only
+    moves bytes.</li>
+  <li>The coordinator is the single place that decides. Policy is checked
+    once, in code the platform owns.</li>
+  <li>The sandbox holds device knowledge only. It can be written by a device
+    maker who knows nothing about the cloud.</li>
+</ul>
+
+<h2>Point to raise</h2>
+
+<p>What does the battery do if the setpoints stop arriving? The lease answers
+  that, but somebody must define the safe state for each device type.</p>
+
+<h2>Self-marking checklist</h2>
+
+<ul>
+  <li>All three processors drawn as separate components?</li>
+  <li>No direct link between radio and sandbox?</li>
+  <li>Schedule held in the coordinator?</li>
+  <li>Sandbox receives an instantaneous setpoint, not the schedule?</li>
+  <li>Grid meter drawn into the coordinator?</li>
+  <li>Telemetry path labelled as well as the command path?</li>
+</ul>
+
+<footer>
+  <p><a href="flow_edge_command_path.question.html">← Question</a></p>
+</footer>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  if (window.mermaid) {
+    var dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    mermaid.initialize({ startOnLoad: true, theme: dark ? "dark" : "default" });
+  }
+</script>
+</body>
+</html>

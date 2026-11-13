@@ -1052,6 +1052,15 @@ worked solution.
 | --- | --- | --- | --- |
 | **medium** | Pen & paper | Digger Drive Control | component diagram, data flow, functional safety, CAN |
 | | Pen & paper | 2 MB XML on a 1 MB Microcontroller | embedded, streaming, parsing, memory |
+| | Pen & paper | Edge Module: From Cloud Command to Device | component diagram, data flow, multi-processor |
+| | Pen & paper | Grid Meter Polling and Export Limiting | Modbus, control loop, fail-safe |
+| **hard** | Pen & paper | Designing the Hardware Firewall | security, threat model, trust boundaries |
+| | Pen & paper | Firmware Update Across Three Processors | secure boot, OTA update, A/B partitions |
+| | Pen & paper | Losing the Network, Then the Coordinator | fail-safe, watchdogs, leases |
+
+The five "edge module" exercises share one scenario: a connectivity module
+with three processors (radio, coordinator and firewall, OEM sandbox) inside a
+home energy device. They are written as firmware interview questions.
 
 What is different from an ordinary problem:
 
@@ -1083,7 +1092,8 @@ and the reference solution are not needed.
 ```
 
 `time_limit_minutes` is a whole number from 1 to 480, and defaults to 20. The
-Question page's timer is written into the page itself, so change it there too.
+Question page's timer is `problems/timer.js`, driven by `data-minutes` on the
+page's `.timer` element. A test checks that the two agree.
 
 ```text
 problems/flow/
@@ -1439,7 +1449,7 @@ problems/
   vhdl/                5 problems,             + .solution.html
   uml/                 2 problems,             + .diagram.html
   safety/              3 problems
-  flow/                2 exercises,            + .question.html + .solution.html
+  flow/                7 exercises,            + .question.html + .solution.html
 tests/
   test_crucible.py
 ```
