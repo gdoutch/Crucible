@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Question — Digger Drive Control: Seat and Console Joysticks · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide question">
+
+<header>
+  <p class="crumb">Crucible · Flow · hard</p>
+  <h1>Digger Drive Control: Seat and Console Joysticks</h1>
+  <p class="kind">Question</p>
+  <p class="lede">Pen and paper. Nothing is compiled, randomised or marked
+    for you. Set the timer, answer, then compare with the solution sheet.
+    This builds on <em>Digger Drive Control</em>, so do that one first.</p>
+</header>
+
+<div class="timer" data-minutes="30">
+  <output></output>
+  <button type="button" data-go>Start</button>
+  <button type="button" data-reset>Reset</button>
+  <span>Allotted: <strong>30 minutes</strong></span>
+</div>
+
+<h2>The scenario</h2>
+
+<p>A digger has a <strong>seat that can rotate</strong> (north / south).</p>
+
+<p>The <strong>seat joystick</strong> is fixed to the armrest, so it turns with
+  the operator. Its reading is relative to the operator.</p>
+
+<p>There is also a <strong>console joystick</strong>, fixed to the console and
+  always <strong>facing forward</strong> (north).</p>
+
+<p>Drive direction and gear selection depend on the state of these inputs:</p>
+
+<ul>
+  <li><strong>Seat north:</strong> the console joystick is the <strong>master
+    controller</strong>. The seat joystick also works.</li>
+  <li><strong>Seat south:</strong> the console joystick is
+    <strong>disabled</strong>.</li>
+</ul>
+
+<h2>Your task</h2>
+
+<ol>
+  <li>Draw the <strong>component diagram</strong>, with both joysticks.</li>
+  <li>Label each link with the <strong>data passed</strong>.</li>
+  <li>Give the <strong>arbitration rule</strong>: for every seat position and
+    every joystick state, which input drives the machine, and in which
+    direction?</li>
+</ol>
+
+<h2>Stretch prompts</h2>
+
+<p>Only if time remains.</p>
+
+<ul>
+  <li>What if both joysticks are deflected, in different directions, with the
+    seat north?</li>
+  <li>What if the console joystick is deflected while the seat is south?</li>
+  <li>What happens to a console joystick that is held while the seat
+    rotates?</li>
+  <li>What if one joystick fails, or its message is lost?</li>
+</ul>
+
+<footer>
+  <p><a href="flow_digger_dual_joystick.solution.html">Solution sheet →</a>
+    (no peeking until the timer ends)</p>
+</footer>
+
+</main>
+
+<script src="../timer.js"></script>
+</body>
+</html>

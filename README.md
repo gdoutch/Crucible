@@ -583,8 +583,8 @@ the stylesheet does not load the pages are still ordinary readable HTML.
 
 ## What is in the box
 
-105 problems — 52 in C, 12 in C++, 4 in Python, 15 in C#, 12 in Java, 3 in
-x86-64 assembly, 5 in VHDL and 7 pen-and-paper
+106 problems — 52 in C, 12 in C++, 4 in Python, 15 in C#, 12 in Java, 3 in
+x86-64 assembly, 5 in VHDL and 8 pen-and-paper
 [exercises](#pen-and-paper-exercises). Every code problem mixes hand-written
 edge cases with randomised ones where it has a generator, and ships a hint and
 a worked solution.
@@ -1086,7 +1086,8 @@ worked solution.
 | | Pen & paper | 2 MB XML on a 1 MB Microcontroller | embedded, streaming, parsing, memory |
 | | Pen & paper | Edge Module: From Cloud Command to Device | component diagram, data flow, multi-processor |
 | | Pen & paper | Grid Meter Polling and Export Limiting | Modbus, control loop, fail-safe |
-| **hard** | Pen & paper | Designing the Hardware Firewall | security, threat model, trust boundaries |
+| **hard** | Pen & paper | Digger Drive Control: Seat and Console Joysticks | arbitration, component diagram, functional safety |
+| | Pen & paper | Designing the Hardware Firewall | security, threat model, trust boundaries |
 | | Pen & paper | Firmware Update Across Three Processors | secure boot, OTA update, A/B partitions |
 | | Pen & paper | Losing the Network, Then the Coordinator | fail-safe, watchdogs, leases |
 
@@ -1481,7 +1482,7 @@ problems/
   vhdl/                5 problems,             + .solution.html
   uml/                 2 problems,             + .diagram.html
   safety/              3 problems
-  flow/                7 exercises,            + .question.html + .solution.html
+  flow/                8 exercises,            + .question.html + .solution.html
 tests/
   test_crucible.py
 ```

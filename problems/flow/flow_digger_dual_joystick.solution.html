@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solution — Digger Drive Control: Seat and Console Joysticks · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · Flow · hard</p>
+  <h1>Digger Drive Control: Seat and Console Joysticks</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">A model answer to compare against. The brief leaves a few
+    rules open; the choices made here are marked, and each is a question to
+    take back to the risk assessment.</p>
+</header>
+
+<h2>Component diagram</h2>
+
+<pre class="mermaid">flowchart LR
+    SJ["Seat joystick<br/>(on armrest, operator-relative)"]
+    CJ["Console joystick<br/>(fixed, machine-forward)"]
+    SW["Seat position sensors<br/>(2 redundant switches)"]
+    OC["Seat occupancy sensor"]
+    SP["Machine speed sensor"]
+    DC["Drive controller<br/>(source selection, direction, gear)"]
+    TX["Transmission / drive ECU"]
+    HMI["Operator display"]
+
+    SJ -- "stick axis, gear request, alive+CRC" --> DC
+    CJ -- "stick axis, gear request, alive+CRC" --> DC
+    SW -- "seat N/S, moving, valid, alive+CRC" --> DC
+    OC -- "occupied" --> DC
+    SP -- "ground speed, valid" --> DC
+    DC -- "direction F/N/R, gear, alive+CRC" --> TX
+    TX -- "actual gear, actual speed, fault" --> DC
+    DC -- "active source, direction shown, fault code" --> HMI</pre>
+
+<p class="mermaid-note">Not drawn? Rendering needs a script fetched from a
+  CDN. Offline, the tables below carry the same content.</p>
+
+<h2>What is new on the diagram</h2>
+
+<table>
+  <tr><th>From</th><th>To</th><th>Data</th></tr>
+  <tr><td>Console joystick</td><td>Drive controller</td>
+      <td>Stick position (forward / neutral / back) in <strong>machine
+          frame</strong>, gear request, alive counter, CRC</td></tr>
+  <tr><td>Drive controller</td><td>Operator display</td>
+      <td>Which source is <strong>active</strong>, in addition to the
+          direction and fault code. The operator must be able to see who is
+          driving</td></tr>
+</table>
+
+<p>Everything else is as in <em>Digger Drive Control</em>. The seat joystick
+  is still operator-relative. The console joystick is already in the
+  machine's frame, so it is <strong>never inverted</strong>.</p>
+
+<div class="note">
+<p>The key insight: the two joysticks live in <strong>different frames</strong>.
+  The seat stick needs the seat position to become a machine direction. The
+  console stick is machine-forward by construction. Both are reduced to one
+  common form, a machine-frame direction, before they are compared.</p>
+</div>
+
+<h2>Arbitration rule</h2>
+
+<p>The controller first decides the <strong>seat state</strong>, then which
+  source is allowed, then reduces it to one command.</p>
+
+<table>
+  <tr><th>Seat state</th><th>Console joystick</th><th>Seat joystick</th></tr>
+  <tr><td>North, valid, stationary</td><td><strong>Master.</strong> Used as
+      read</td><td>Used only when the console is in neutral</td></tr>
+  <tr><td>South, valid, stationary</td><td><strong>Disabled.</strong>
+      Ignored, whatever it reads</td><td>Used, with direction inverted</td></tr>
+  <tr><td>Moving, unknown, or switches disagree</td><td>Ignored</td>
+      <td>Ignored. Command <strong>neutral</strong></td></tr>
+  <tr><td>Unoccupied</td><td>See the note below</td><td>Ignored. Command
+      neutral</td></tr>
+</table>
+
+<h3>With the seat north</h3>
+
+<table>
+  <tr><th>Console</th><th>Seat stick</th><th>Command</th></tr>
+  <tr><td>Neutral</td><td>Neutral</td><td>Neutral</td></tr>
+  <tr><td>Neutral</td><td>Forward / back</td><td>Seat stick (not inverted)</td></tr>
+  <tr><td>Forward / back</td><td>Neutral</td><td>Console</td></tr>
+  <tr><td>Forward / back</td><td>Same direction</td><td>Console</td></tr>
+  <tr><td>Forward / back</td><td>Opposite direction</td><td>Console wins
+      (it is the master), <em>or</em> neutral. See the point to raise</td></tr>
+</table>
+
+<h3>With the seat south</h3>
+
+<table>
+  <tr><th>Console</th><th>Seat stick</th><th>Command</th></tr>
+  <tr><td>Anything</td><td>Neutral</td><td>Neutral</td></tr>
+  <tr><td>Anything</td><td>Forward</td><td>Machine <strong>reverse</strong>
+      (the operator faces south)</td></tr>
+  <tr><td>Anything</td><td>Back</td><td>Machine <strong>forward</strong></td></tr>
+</table>
+
+<h2>Safety rules to specify</h2>
+
+<table>
+  <tr><th>Condition</th><th>Command</th></tr>
+  <tr><td>Seat moving, unknown, or the two switches disagree</td>
+      <td>Neutral</td></tr>
+  <tr><td>Seat unoccupied</td><td>Neutral</td></tr>
+  <tr><td>After <strong>any</strong> seat rotation</td>
+      <td>Neutral until <strong>both</strong> joysticks are in neutral, then
+          re-engage</td></tr>
+  <tr><td>Source changes (master lost or regained)</td>
+      <td>Neutral until the newly active stick is in neutral</td></tr>
+  <tr><td>Direction reversal</td>
+      <td>Only below a speed threshold, and via neutral</td></tr>
+  <tr><td>Lost, stale or corrupt message from the active source</td>
+      <td>Neutral, and raise a fault</td></tr>
+</table>
+
+<div class="trap">
+<p>The easy miss is the console joystick <strong>held forward through a
+  rotation</strong>. Seat north: console forward means machine forward. Rotate
+  to south: the console is now disabled, and the seat stick takes over with
+  its direction inverted. If the seat stick happens to be held, the machine
+  can change direction on its own, with nobody having chosen it.</p>
+<p>The re-engage rule must therefore cover <strong>both</strong> joysticks, and
+  must apply on every change of source, not only after a rotation.</p>
+</div>
+
+<div class="trap">
+<p>The second miss is treating "disabled" as "absent". A disabled console
+  joystick is still sending messages. Its deflection must be ignored, but its
+  message must not be allowed to <em>fault</em> the machine, and it must not
+  be lost from the re-engage check, because it becomes the master again when
+  the seat returns north.</p>
+</div>
+
+<h2>Why this split</h2>
+
+<p>All sources are raw. One controller owns the selection. The selection rule
+  is then one function of (seat state, console, seat stick), which can be
+  analysed, unit tested as a truth table, and traced to the hazard
+  analysis.</p>
+
+<p>A common alternative is to put the "disable" in the console joystick's own
+  electronics, so it goes quiet when the seat is south. That puts safety logic
+  in a second place, and the seat position would have to be sent to it. It is
+  better as a rule in the controller. A hardware interlock is the exception,
+  and is the point below.</p>
+
+<h2>Points to raise</h2>
+
+<ul>
+  <li><strong>"Master" is not defined.</strong> Does it mean it wins every
+    conflict, or only that it is preferred when both are active? With
+    opposing deflections, neutral is the more conservative answer. Ask which
+    one the risk assessment wants.</li>
+  <li><strong>Unoccupied seat.</strong> With the seat north and nobody in it,
+    should the console stick drive the machine? An operator standing at the
+    console is a legitimate use on some machines, and is a hazard on others.
+    This decides whether the occupancy sensor gates the console at all.</li>
+  <li><strong>A failed console joystick.</strong> Falling back to the seat
+    stick keeps the machine usable. It also means a failed master is quietly
+    replaced. Neutral and a fault is the safer default.</li>
+  <li><strong>Independent interlock.</strong> Does the risk assessment accept
+    software alone for the disable, or does it need a hardware interlock on
+    seat position? That drives the required safety integrity level, for
+    example the Performance Level under ISO 13849, or the ISO 25119 level for
+    this type of machine.</li>
+</ul>
+
+<h2>Self-marking checklist</h2>
+
+<ul>
+  <li>Both joysticks drawn, each with its own link to the controller?</li>
+  <li>Console stick labelled as machine-frame, seat stick as
+    operator-relative?</li>
+  <li>Console never inverted; seat stick inverted only when south?</li>
+  <li>Console disabled when south, and ignored whatever it reads?</li>
+  <li>Master rule stated for the north case, including both deflected?</li>
+  <li>Neutral after rotation covers <strong>both</strong> sticks?</li>
+  <li>Display shows which source is active?</li>
+  <li>Neutral on any doubt: moving, unknown, unoccupied, lost message?</li>
+</ul>
+
+<footer>
+  <p><a href="flow_digger_dual_joystick.question.html">← Question</a> ·
+     <a href="flow_digger_drive.solution.html">The original exercise →</a></p>
+</footer>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  if (window.mermaid) {
+    var dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    mermaid.initialize({ startOnLoad: true, theme: dark ? "dark" : "default" });
+  }
+</script>
+</body>
+</html>

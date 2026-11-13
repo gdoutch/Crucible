@@ -1,0 +1,15 @@
+{
+  "id": "flow_digger_dual_joystick",
+  "title": "Digger Drive Control: Seat and Console Joysticks",
+  "language": "exercise",
+  "difficulty": "hard",
+  "topics": [
+    "component diagram",
+    "data flow",
+    "arbitration",
+    "functional safety",
+    "CAN"
+  ],
+  "time_limit_minutes": 30,
+  "statement": "Extend the digger drive design with a second joystick, and say which one is in control.\n\nThis is a **pen-and-paper exercise**. Nothing is compiled, run, randomised or marked. It builds on *Digger Drive Control*, so do that one first.\n\n## The scenario\n\nA digger has a **seat that can rotate** (north / south).\n\nThe **seat joystick** is fixed to the armrest, so it turns with the operator. Its reading is relative to the operator.\n\nThere is also a **console joystick**, fixed to the console and always **facing forward** (north).\n\nDrive direction and gear selection depend on the state of these inputs:\n\n- **Seat north:** the console joystick is the **master controller**. The seat joystick also works.\n- **Seat south:** the console joystick is **disabled**.\n\n## Your task\n\n- Draw the **component diagram**, with both joysticks.\n- Label each link with the **data passed**.\n- Give the **arbitration rule**: for every seat position and every joystick state, which input drives the machine, and in which direction?\n\n## How to use it\n\n- Open **Guides > Question for this exercise**. It has a 30 minute timer.\n- Answer on paper.\n- When the timer ends, open **Guides > Worked solution** and compare.\n\n## If time remains\n\n- What if both joysticks are deflected, in different directions, with the seat north?\n- What if the console joystick is deflected while the seat is south?\n- What happens to a console joystick that is held while the seat rotates?\n- What if one joystick fails, or its message is lost?"
+}
