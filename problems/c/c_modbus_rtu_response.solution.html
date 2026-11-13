@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Decode a Modbus RTU Read Response · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>Decode a Modbus RTU Read Response</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The idea</h2>
+
+<p>Six checks in a fixed order, then one conversion. Each check makes the next one safe.</p>
+
+<table>
+  <tr><th>After this check passes</th><th>You may now read</th></tr>
+  <tr><td>1. <code>len &gt;= 5</code></td><td>The last two bytes (the CRC) and <code>frame[0]</code>, <code>frame[1]</code></td></tr>
+  <tr><td>2. CRC good</td><td>Everything else. The frame is intact</td></tr>
+  <tr><td>6. <code>len == 9</code></td><td><code>frame[3]</code> to <code>frame[6]</code></td></tr>
+</table>
+
+<h2>CRC-16/MODBUS</h2>
+
+<pre><code>static uint16_t crc16_modbus(const uint8_t *data, size_t len)
+{
+    uint16_t crc = 0xFFFFu;
+    for (size_t i = 0; i &lt; len; i++) {
+        crc ^= data[i];
+        for (int bit = 0; bit &lt; 8; bit++) {
+            if ((crc &amp; 1u) != 0u) {
+                crc = (uint16_t)((crc &gt;&gt; 1) ^ 0xA001u);
+            } else {
+                crc = (uint16_t)(crc &gt;&gt; 1);
+            }
+        }
+    }
+    return crc;
+}</code></pre>
+
+<p>This is the reflected form: bits are processed least significant first, so the polynomial
+  <code>0x8005</code> appears as <code>0xA001</code>. Initial value <code>0xFFFF</code>, no final XOR.
+  Check value: the CRC of the ASCII bytes <code>"123456789"</code> is <code>0x4B37</code>.</p>
+
+<h2>The function</h2>
+
+<pre><code>int modbus_read_response(const uint8_t *frame, size_t len,
+                         uint8_t expected_addr, int32_t *value_out)
+{
+    if (len &lt; 5) {
+        return -1;
+    }
+    uint16_t received = (uint16_t)(frame[len - 2] | (frame[len - 1] &lt;&lt; 8));
+    if (crc16_modbus(frame, len - 2) != received) {
+        return -2;
+    }
+    if (frame[0] != expected_addr) {
+        return -3;
+    }
+    if ((frame[1] &amp; 0x80u) != 0u) {
+        return -4;
+    }
+    if (frame[1] != 0x03u) {
+        return -5;
+    }
+    if (len != 9 || frame[2] != 4) {
+        return -6;
+    }
+    uint32_t raw = ((uint32_t)frame[3] &lt;&lt; 24) | ((uint32_t)frame[4] &lt;&lt; 16)
+                 | ((uint32_t)frame[5] &lt;&lt; 8) | (uint32_t)frame[6];
+    *value_out = (int32_t)raw;
+    return 0;
+}</code></pre>
+
+<div class="trap">
+<p>The CRC is sent <strong>low byte first</strong>, unlike every other 16-bit value in Modbus.
+  Getting this backwards makes every good frame fail, so it is found quickly. The
+  quieter mistakes are reading <code>frame[3]</code> before checking the length, and putting the
+  address check before the CRC check.</p>
+</div>
+
+<h2>Why the CRC comes before the address</h2>
+
+<p>A corrupted frame has no trustworthy address. If you compared the address first, a noisy frame would be
+  reported as "wrong device", which sends the debugging in the wrong direction. Integrity first, then
+  meaning.</p>
+
+<h2>Word order is configuration in the real world</h2>
+
+<p>Here the high word comes first. Meters differ, and some send the low word first. A real driver makes
+  the word order a setting, and the commissioning step confirms it against a known load.</p>
+
+<h2>Sign</h2>
+
+<p>The raw <code>0xFFFFFFFB</code> is <code>-5</code> when read as <code>int32_t</code>. Build it in
+  <code>uint32_t</code> so every shift is well defined, then convert once at the end.</p>
+
+<footer>
+  <p><a href="c_modbus_rtu_response.hint.html">← Hint</a></p>
+</footer>
+
+</main>
+</body>
+</html>

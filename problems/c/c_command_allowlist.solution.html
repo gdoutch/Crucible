@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Validate an Untrusted Command Frame · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · hard</p>
+  <h1>Validate an Untrusted Command Frame</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The idea</h2>
+
+<p>Every byte read is preceded by the check that makes it safe. Unknown means rejected. Failure changes
+  nothing.</p>
+
+<pre><code>int validate_command(const uint8_t *frame, size_t len, uint32_t *last_counter)
+{
+    if (len &lt; 6) {
+        return -1;
+    }
+    size_t paylen = frame[1];
+    if (len != 2 + paylen + 4) {
+        return -1;
+    }
+
+    switch (frame[0]) {
+    case 0x01: {
+        if (paylen != 2) {
+            return -3;
+        }
+        int32_t value = (int16_t)(uint16_t)(((uint16_t)frame[2] &lt;&lt; 8) | frame[3]);
+        if (value &lt; -7000 || value &gt; 7000) {
+            return -4;
+        }
+        break;
+    }
+    case 0x02:
+        if (paylen != 1) {
+            return -3;
+        }
+        if (frame[2] &gt; 3) {
+            return -4;
+        }
+        break;
+    case 0x03: {
+        if (paylen != 2) {
+            return -3;
+        }
+        uint32_t value = ((uint32_t)frame[2] &lt;&lt; 8) | frame[3];
+        if (value &gt; 10000u) {
+            return -4;
+        }
+        break;
+    }
+    default:
+        return -2;
+    }
+
+    const uint8_t *c = &amp;frame[2 + paylen];
+    uint32_t counter = ((uint32_t)c[0] &lt;&lt; 24) | ((uint32_t)c[1] &lt;&lt; 16)
+                     | ((uint32_t)c[2] &lt;&lt; 8) | (uint32_t)c[3];
+    if (counter &lt;= *last_counter) {
+        return -5;
+    }
+    *last_counter = counter;
+    return 0;
+}</code></pre>
+
+<h2>Every read, and what protects it</h2>
+
+<table>
+  <tr><th>Read</th><th>Made safe by</th></tr>
+  <tr><td><code>frame[1]</code></td><td><code>len &gt;= 6</code></td></tr>
+  <tr><td><code>frame[2]</code>, <code>frame[3]</code></td><td><code>len == 2 + paylen + 4</code>, and <code>paylen</code> checked per type</td></tr>
+  <tr><td>The four counter bytes</td><td>The same length equation, with <code>paylen</code> now known to be right</td></tr>
+</table>
+
+<p>The check <code>len != 2 + paylen + 4</code> cannot overflow, because <code>paylen</code> is at most
+  255. If the length field were 16 or 32 bits wide, you would write it as
+  <code>paylen != len - 6</code> after the <code>len &gt;= 6</code> check, which cannot overflow
+  either.</p>
+
+<h2>The traps</h2>
+
+<div class="trap">
+<p><strong>Updating the counter too early.</strong> If a frame is range-checked after the counter is
+  stored, one out-of-range frame with counter <code>100</code> locks out every legitimate frame below
+  it. An attacker needs no key to do this. The test "a rejected frame does not move the counter"
+  exists for this.</p>
+</div>
+
+<div class="trap">
+<p><strong>The signed 16-bit conversion.</strong> <code>frame[2] &lt;&lt; 8 | frame[3]</code> is an
+  <code>int</code> between 0 and 65535. It is only negative after the cast to <code>int16_t</code>.
+  Skip the cast and <code>0xFFFF</code> is 65535, which fails the range check, when it should be
+  <code>-1</code>, which passes.</p>
+</div>
+
+<h2>Allow-list, not block-list</h2>
+
+<p>The default case rejects. A type nobody has thought about is refused rather than passed through. A
+  block-list has to anticipate every bad input. An allow-list only has to describe the good ones.</p>
+
+<h2>Where this sits in a real design</h2>
+
+<p>This is the semantic layer of a firewall. Before it come framing and authentication, which prove who
+  sent the frame. This layer decides whether the <em>content</em> is something the device is willing to do,
+  with this value, now. Note that the counter check only means something once the frame has been
+  authenticated. An unauthenticated counter proves nothing.</p>
+
+<footer>
+  <p><a href="c_command_allowlist.hint.html">← Hint</a></p>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Validate an Untrusted Command Frame · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · hard</p>
+  <h1>Validate an Untrusted Command Frame</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Where to start</h2>
+
+<ul>
+  <li><strong>Never read what you have not yet bounded.</strong> List every byte you read, and next to each write the check that makes it safe.</li>
+  <li><code>paylen</code> is attacker-controlled. Compare it with <code>len</code> before you use it to find the counter.</li>
+  <li>Order matters. A frame that is wrong in two ways returns the code of the first check in the table.</li>
+  <li>The allow-list is a table in the statement. Consider how to write it so that adding a fourth command means adding one line.</li>
+</ul>
+
+<details>
+<summary>Still stuck?</summary>
+<p>A <code>switch</code> on the type is the simplest shape: each case checks its own payload
+  length and range, and <code>default</code> is the rejection. The counter check is common to every case, so
+  it belongs after the switch.</p>
+</details>
+
+<h2>Before you run it</h2>
+
+<p>Read the test names in the app. Each one is a sentence about a case you might have missed.
+  If you can predict the output of every one by hand, your design is probably right.</p>
+
+<footer>
+  <p><a href="c_command_allowlist.solution.html">Worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

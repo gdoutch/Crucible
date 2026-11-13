@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Choose a Boot Slot (A/B Update with Anti-Rollback) · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>Choose a Boot Slot (A/B Update with Anti-Rollback)</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Where to start</h2>
+
+<ul>
+  <li><strong>Separate the two questions.</strong> First: can this slot boot at all? Then: which of the slots that can boot is better? Write them as two steps.</li>
+  <li>A small helper that answers the first question for one slot keeps the second step short, and it only has to be right once.</li>
+  <li>Trial boots only matter for an image that is <em>not</em> confirmed. Read the third rule slowly.</li>
+  <li>Version and security version are separate fields with separate jobs. One orders releases. The other is a floor.</li>
+</ul>
+
+<details>
+<summary>Still stuck?</summary>
+<p>List the cases for two slots: both bootable, one, none. Decide the return value for each
+  before you write a line. Then check which one your tie-break lands in.</p>
+</details>
+
+<h2>Before you run it</h2>
+
+<p>Read the test names in the app. Each one is a sentence about a case you might have missed.
+  If you can predict the output of every one by hand, your design is probably right.</p>
+
+<footer>
+  <p><a href="c_ab_slot_select.solution.html">Worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

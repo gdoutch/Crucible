@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — RMS Voltage, RMS Current and Real Power in Fixed Point · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · hard</p>
+  <h1>RMS Voltage, RMS Current and Real Power in Fixed Point</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The idea</h2>
+
+<p>Three 64-bit accumulators, three divisions, two exact integer square roots.</p>
+
+<pre><code>/* Exact floor(sqrt(x)) by the digit-by-digit method. No floating point. */
+static uint32_t isqrt64(uint64_t x)
+{
+    uint64_t result = 0;
+    uint64_t bit = (uint64_t)1 &lt;&lt; 62;
+
+    while (bit &gt; x) {
+        bit &gt;&gt;= 2;
+    }
+    while (bit != 0) {
+        if (x &gt;= result + bit) {
+            x -= result + bit;
+            result = (result &gt;&gt; 1) + bit;
+        } else {
+            result &gt;&gt;= 1;
+        }
+        bit &gt;&gt;= 2;
+    }
+    return (uint32_t)result;
+}
+
+void rms_power(const int16_t *v, const int16_t *i, size_t n,
+               uint32_t *vrms_out, uint32_t *irms_out, int32_t *p_out)
+{
+    uint64_t sum_vv = 0;
+    uint64_t sum_ii = 0;
+    int64_t sum_vi = 0;
+
+    for (size_t k = 0; k &lt; n; k++) {
+        int64_t a = v[k];
+        int64_t b = i[k];
+        sum_vv += (uint64_t)(a * a);
+        sum_ii += (uint64_t)(b * b);
+        sum_vi += a * b;
+    }
+
+    *vrms_out = isqrt64(sum_vv / n);
+    *irms_out = isqrt64(sum_ii / n);
+    *p_out = (int32_t)(sum_vi / (int64_t)n);
+}</code></pre>
+
+<h2>The bit budget</h2>
+
+<table>
+  <tr><th>Quantity</th><th>Largest magnitude</th><th>Bits</th></tr>
+  <tr><td>One sample</td><td>32768</td><td>16 (signed)</td></tr>
+  <tr><td>One square or product</td><td>2<sup>30</sup></td><td>31</td></tr>
+  <tr><td>Sum over 4096 samples</td><td>2<sup>42</sup></td><td>43</td></tr>
+  <tr><td>Mean</td><td>2<sup>30</sup></td><td>31 (so the result of the root is 16 bits)</td></tr>
+</table>
+
+<p>The sum overflows <code>int32_t</code> and <code>uint32_t</code> long before 4096 samples. A
+  32-bit accumulator survives only 4 full-scale samples. That is the first hidden failure in the
+  exercise, and the "longest buffer" test finds it.</p>
+
+<h2>Why the digit-by-digit root</h2>
+
+<p>It finds the answer one bit at a time, from the top, by testing whether the next bit fits. Each step is
+  an add, a compare and a shift. It is exact, it needs no multiply or divide, and it runs a fixed 32
+  iterations. That makes it predictable on a core with no hardware divider.</p>
+
+<div class="trap">
+<p><strong>A floating-point square root.</strong> A <code>double</code> has 53 bits of mantissa. A 43-bit
+  sum is fine, but a 64-bit one is not, so the rounded result can be one too high. It also drags in a
+  library and, on many parts, a software floating point routine. The "just below a perfect square" test
+  is there to catch the one-too-high result.</p>
+</div>
+
+<div class="trap">
+<p><strong>The order of operations.</strong> <code>isqrt(sum / n)</code> and <code>isqrt(sum) / sqrt(n)</code>
+  differ. The first is what the statement asks for. Taking the mean with rounding rather than flooring
+  changes results too, where the mean is not a whole number.</p>
+</div>
+
+<h2>The sign of the power</h2>
+
+<p>Real power <code>P = mean(v * i)</code>. It is positive when current flows in the direction of the
+  voltage, and negative when it flows back. For a battery, that is charging versus discharging. A meter
+  that reports <code>abs(P)</code> or clamps at zero cannot tell import from export. The sum must stay
+  signed all the way to the end.</p>
+
+<h2>Real, apparent and reactive</h2>
+
+<p>The three outputs give you apparent power <code>S = Vrms * Irms</code>, real power <code>P</code>,
+  and from them the power factor <code>P / S</code>. When the current lags the voltage by a quarter cycle,
+  the in-phase test gives <code>P</code> near zero, while <code>S</code> is not. That gap is reactive
+  power.</p>
+
+<h2>Point to raise</h2>
+
+<p>This assumes a whole number of mains cycles in the buffer. With a partial cycle, the mean is biased. A
+  real meter locks its sampling to the line frequency, or windows the data.</p>
+
+<footer>
+  <p><a href="c_rms_power.hint.html">← Hint</a></p>
+</footer>
+
+</main>
+</body>
+</html>

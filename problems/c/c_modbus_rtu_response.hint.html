@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Decode a Modbus RTU Read Response · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>Decode a Modbus RTU Read Response</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Where to start</h2>
+
+<ul>
+  <li><strong>Order is the specification.</strong> The table fixes which error wins when a frame is wrong in two ways. A frame with a bad CRC <em>and</em> the wrong address is <code>-2</code>.</li>
+  <li>Write the CRC as a small helper over <code>(data, len)</code>. Test it on its own against a frame you can check by hand.</li>
+  <li>Two bytes of CRC are at the <strong>end</strong>, low byte first. Build the 16-bit value from them before comparing.</li>
+  <li>Think about which indexes each check is allowed to touch. Check 1 is what makes <code>frame[len - 2]</code> safe.</li>
+</ul>
+
+<details>
+<summary>Still stuck?</summary>
+<p>Build the value in <code>uint32_t</code>, shifting each byte in. Convert to
+  <code>int32_t</code> only at the end. Shifting a <code>uint8_t</code> left by 24 promotes it to
+  <code>int</code>, which can overflow. Cast it first.</p>
+</details>
+
+<h2>Before you run it</h2>
+
+<p>Read the test names in the app. Each one is a sentence about a case you might have missed.
+  If you can predict the output of every one by hand, your design is probably right.</p>
+
+<footer>
+  <p><a href="c_modbus_rtu_response.solution.html">Worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

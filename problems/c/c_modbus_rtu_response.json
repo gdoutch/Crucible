@@ -1,0 +1,82 @@
+{
+  "id": "c_modbus_rtu_response",
+  "title": "Decode a Modbus RTU Read Response",
+  "language": "c",
+  "difficulty": "medium",
+  "topics": [
+    "embedded",
+    "modbus",
+    "crc",
+    "validation"
+  ],
+  "timeout_seconds": 5,
+  "statement": "Decode a Modbus RTU reply from a grid meter, and refuse it unless every check passes.\n\nA meter reports active power as a **signed 32-bit value in two 16-bit holding registers**. You asked for both registers with function `0x03`. The reply is one frame of bytes.\n\n## The frame\n\nA good reply is **9 bytes**:\n\n```\naddr  func  bytecount  r1hi r1lo r2hi r2lo  crc_lo crc_hi\n 0     1       2        3    4    5    6      7      8\n```\n\n- `func` is `0x03`, `bytecount` is `4`.\n- The value is `r1` then `r2`, **high word first**, as a signed 32-bit number, big-endian.\n- The CRC is **CRC-16/MODBUS**: polynomial `0xA001` (reflected), initial value `0xFFFF`, no final XOR. It covers every byte before it. It is sent **low byte first**.\n\nAn **exception reply** is shorter: `addr, func|0x80, code, crc_lo, crc_hi` (5 bytes).\n\n## Your function\n\n```\nint modbus_read_response(const uint8_t *frame, size_t len,\n                         uint8_t expected_addr, int32_t *value_out);\n```\n\nRun the checks **in this order** and return the first code that applies. Write `*value_out` only on success.\n\n| Order | Check | Return |\n| --- | --- | --- |\n| 1 | `len < 5` | `-1` |\n| 2 | CRC over `frame[0 .. len-3]` does not match the last two bytes | `-2` |\n| 3 | `frame[0] != expected_addr` | `-3` |\n| 4 | `frame[1]` has bit `0x80` set (exception reply) | `-4` |\n| 5 | `frame[1] != 0x03` | `-5` |\n| 6 | `len != 9` or `frame[2] != 4` | `-6` |\n| | all good | `0` |\n\nThe harness prints `OK <value>` or `ERR <code>`. Each input line is the expected address, then the frame bytes, all in hex.\n\n## Watch out\n\n- Check the length **before** you read the CRC bytes.\n- Do not read `frame[3]` onwards until step 6 has passed. A 5-byte exception frame has no data bytes.\n- The value is signed. A raw `0xFFFFFFFB` is `-5`.",
+  "starter_code": "#include <stddef.h>\n#include <stdint.h>\n\n/**\n * @brief Validate and decode a Modbus RTU read reply carrying a signed 32-bit\n *        value in two registers.\n *\n * @param frame         The received bytes.\n * @param len           How many bytes were received.\n * @param expected_addr The slave address the request was sent to.\n * @param value_out     Receives the decoded value. Written only on success.\n * @return 0 on success, otherwise a negative code (see the statement).\n */\nint modbus_read_response(const uint8_t *frame, size_t len,\n                         uint8_t expected_addr, int32_t *value_out)\n{\n    /* your code here */\n    (void)frame;\n    (void)len;\n    (void)expected_addr;\n    (void)value_out;\n    return -1;\n}\n",
+  "harness": "#include <stddef.h>\n#include <stdint.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n\n/* Provided by the candidate in solution.c */\nint modbus_read_response(const uint8_t *frame, size_t len,\n                         uint8_t expected_addr, int32_t *value_out);\n\nint main(void)\n{\n    char line[1024];\n    while (fgets(line, sizeof line, stdin) != NULL) {\n        uint8_t frame[256];\n        size_t len = 0;\n        char *p = line;\n        char *end;\n        unsigned long addr = strtoul(p, &end, 16);\n        if (end == p) {\n            continue;\n        }\n        p = end;\n        for (;;) {\n            unsigned long v = strtoul(p, &end, 16);\n            if (end == p || len >= sizeof frame) {\n                break;\n            }\n            frame[len++] = (uint8_t)v;\n            p = end;\n        }\n        int32_t value = 0;\n        int rc = modbus_read_response(frame, len, (uint8_t)addr, &value);\n        if (rc == 0) {\n            printf(\"OK %d\\n\", (int)value);\n        } else {\n            printf(\"ERR %d\\n\", rc);\n        }\n    }\n    return 0;\n}\n",
+  "reference_solution_b64": "I2luY2x1ZGUgPHN0ZGRlZi5oPgojaW5jbHVkZSA8c3RkaW50Lmg+CgpzdGF0aWMgdWludDE2X3QgY3JjMTZfbW9kYnVzKGNvbnN0IHVpbnQ4X3QgKmRhdGEsIHNpemVfdCBsZW4pCnsKICAgIHVpbnQxNl90IGNyYyA9IDB4RkZGRnU7CiAgICBmb3IgKHNpemVfdCBpID0gMDsgaSA8IGxlbjsgaSsrKSB7CiAgICAgICAgY3JjIF49IGRhdGFbaV07CiAgICAgICAgZm9yIChpbnQgYml0ID0gMDsgYml0IDwgODsgYml0KyspIHsKICAgICAgICAgICAgaWYgKChjcmMgJiAxdSkgIT0gMHUpIHsKICAgICAgICAgICAgICAgIGNyYyA9ICh1aW50MTZfdCkoKGNyYyA+PiAxKSBeIDB4QTAwMXUpOwogICAgICAgICAgICB9IGVsc2UgewogICAgICAgICAgICAgICAgY3JjID0gKHVpbnQxNl90KShjcmMgPj4gMSk7CiAgICAgICAgICAgIH0KICAgICAgICB9CiAgICB9CiAgICByZXR1cm4gY3JjOwp9CgppbnQgbW9kYnVzX3JlYWRfcmVzcG9uc2UoY29uc3QgdWludDhfdCAqZnJhbWUsIHNpemVfdCBsZW4sCiAgICAgICAgICAgICAgICAgICAgICAgICB1aW50OF90IGV4cGVjdGVkX2FkZHIsIGludDMyX3QgKnZhbHVlX291dCkKewogICAgaWYgKGxlbiA8IDUpIHsKICAgICAgICByZXR1cm4gLTE7CiAgICB9CiAgICB1aW50MTZfdCByZWNlaXZlZCA9ICh1aW50MTZfdCkoZnJhbWVbbGVuIC0gMl0gfCAoZnJhbWVbbGVuIC0gMV0gPDwgOCkpOwogICAgaWYgKGNyYzE2X21vZGJ1cyhmcmFtZSwgbGVuIC0gMikgIT0gcmVjZWl2ZWQpIHsKICAgICAgICByZXR1cm4gLTI7CiAgICB9CiAgICBpZiAoZnJhbWVbMF0gIT0gZXhwZWN0ZWRfYWRkcikgewogICAgICAgIHJldHVybiAtMzsKICAgIH0KICAgIGlmICgoZnJhbWVbMV0gJiAweDgwdSkgIT0gMHUpIHsKICAgICAgICByZXR1cm4gLTQ7CiAgICB9CiAgICBpZiAoZnJhbWVbMV0gIT0gMHgwM3UpIHsKICAgICAgICByZXR1cm4gLTU7CiAgICB9CiAgICBpZiAobGVuICE9IDkgfHwgZnJhbWVbMl0gIT0gNCkgewogICAgICAgIHJldHVybiAtNjsKICAgIH0KICAgIHVpbnQzMl90IHJhdyA9ICgodWludDMyX3QpZnJhbWVbM10gPDwgMjQpIHwgKCh1aW50MzJfdClmcmFtZVs0XSA8PCAxNikKICAgICAgICAgICAgICAgICB8ICgodWludDMyX3QpZnJhbWVbNV0gPDwgOCkgfCAodWludDMyX3QpZnJhbWVbNl07CiAgICAqdmFsdWVfb3V0ID0gKGludDMyX3QpcmF3OwogICAgcmV0dXJuIDA7Cn0K",
+  "tests": [
+    {
+      "name": "a good reply, 1234",
+      "stdin": "01 01 03 04 00 00 04 D2 78 AE\n",
+      "expected_stdout": "OK 1234"
+    },
+    {
+      "name": "a negative value",
+      "stdin": "01 01 03 04 FF FF FB 2E 39 3B\n",
+      "expected_stdout": "OK -1234",
+      "description": "The raw value is 0xFFFFFBxx: sign matters."
+    },
+    {
+      "name": "a bad CRC",
+      "stdin": "01 01 03 04 00 00 04 D2 78 51\n",
+      "expected_stdout": "ERR -2"
+    },
+    {
+      "name": "the wrong slave address",
+      "stdin": "02 01 03 04 00 00 04 D2 78 AE\n",
+      "expected_stdout": "ERR -3",
+      "description": "The CRC is fine. The address is not the one we asked."
+    },
+    {
+      "name": "an exception reply",
+      "stdin": "01 01 83 02 C0 F1\n",
+      "expected_stdout": "ERR -4",
+      "description": "Five bytes, bit 0x80 set. There are no data bytes to read."
+    },
+    {
+      "name": "a short frame",
+      "stdin": "01 01 03\n",
+      "expected_stdout": "ERR -1"
+    },
+    {
+      "name": "no bytes at all",
+      "stdin": "01 \n",
+      "expected_stdout": "ERR -1"
+    },
+    {
+      "name": "the right function, the wrong size",
+      "stdin": "01 01 03 02 00 0A 38 43\n",
+      "expected_stdout": "ERR -6"
+    },
+    {
+      "name": "a bytecount that disagrees",
+      "stdin": "01 01 03 05 00 00 04 D2 45 6E\n",
+      "expected_stdout": "ERR -6"
+    },
+    {
+      "name": "a different function code",
+      "stdin": "01 01 04 04 00 00 00 01 3A 44\n",
+      "expected_stdout": "ERR -5"
+    },
+    {
+      "name": "the largest positive value",
+      "stdin": "01 01 03 04 7F FF FF FF D2 67\n",
+      "expected_stdout": "OK 2147483647"
+    },
+    {
+      "name": "the most negative value",
+      "stdin": "01 01 03 04 80 00 00 00 D3 F3\n",
+      "expected_stdout": "OK -2147483648"
+    }
+  ]
+}

@@ -1,0 +1,83 @@
+{
+  "id": "c_ab_slot_select",
+  "title": "Choose a Boot Slot (A/B Update with Anti-Rollback)",
+  "language": "c",
+  "difficulty": "medium",
+  "topics": [
+    "embedded",
+    "bootloader",
+    "ota",
+    "structs"
+  ],
+  "timeout_seconds": 5,
+  "statement": "A device keeps two firmware slots, **A** and **B**. An update is written to the inactive slot. The bootloader then has to decide which slot to start. Write that decision.\n\n## The slot header\n\n```\nstruct slot_header {\n    int      valid;             /* image signature and hash verified */\n    uint32_t version;           /* the release number */\n    uint32_t security_version;  /* the anti-rollback number */\n    uint32_t trial_remaining;   /* boots left for an unconfirmed image */\n    int      confirmed;         /* the image has proved it works */\n};\n```\n\n## The rules\n\nA slot is **bootable** only if **all** of these hold:\n\n- `valid` is non-zero.\n- `security_version >= min_security_version`. This is the anti-rollback floor, held in fuses.\n- It is `confirmed`, **or** it still has `trial_remaining > 0` boots left.\n\nThen choose:\n\n- If both are bootable, take the one with the **higher `version`**. On a tie, take **A**.\n- If only one is bootable, take it.\n- If neither is, report that.\n\n## Your function\n\n```\nint select_slot(const struct slot_header *a, const struct slot_header *b,\n                uint32_t min_security_version);\n```\n\nReturn `0` for A, `1` for B, `-1` if neither can boot.\n\nThe harness reads, on each line, the five fields of A, the five fields of B, then `min_security_version`.\n\n## Watch out\n\n- A newer image that has used up its trial boots without ever confirming is **not** bootable, however high its version. That is how a bad update rolls back.\n- The anti-rollback floor applies to both slots, including a confirmed one.\n- `version` and `security_version` are different numbers. Do not mix them up.",
+  "starter_code": "#include <stdint.h>\n\nstruct slot_header {\n    int      valid;\n    uint32_t version;\n    uint32_t security_version;\n    uint32_t trial_remaining;\n    int      confirmed;\n};\n\n/**\n * @brief Decide which firmware slot to boot.\n *\n * @param a                    Header of slot A.\n * @param b                    Header of slot B.\n * @param min_security_version Anti-rollback floor.\n * @return 0 for A, 1 for B, -1 if neither slot can boot.\n */\nint select_slot(const struct slot_header *a, const struct slot_header *b,\n                uint32_t min_security_version)\n{\n    /* your code here */\n    (void)a;\n    (void)b;\n    (void)min_security_version;\n    return -1;\n}\n",
+  "harness": "#include <inttypes.h>\n#include <stdint.h>\n#include <stdio.h>\n\n/* Same struct as the candidate's. */\nstruct slot_header {\n    int      valid;\n    uint32_t version;\n    uint32_t security_version;\n    uint32_t trial_remaining;\n    int      confirmed;\n};\n\n/* Provided by the candidate in solution.c */\nint select_slot(const struct slot_header *a, const struct slot_header *b,\n                uint32_t min_security_version);\n\nstatic int read_slot(struct slot_header *s)\n{\n    return scanf(\"%d %\" SCNu32 \" %\" SCNu32 \" %\" SCNu32 \" %d\",\n                 &s->valid, &s->version, &s->security_version,\n                 &s->trial_remaining, &s->confirmed) == 5;\n}\n\nint main(void)\n{\n    struct slot_header a, b;\n    uint32_t floor_version;\n    while (read_slot(&a) && read_slot(&b)\n           && scanf(\"%\" SCNu32, &floor_version) == 1) {\n        printf(\"%d\\n\", select_slot(&a, &b, floor_version));\n    }\n    return 0;\n}\n",
+  "reference_solution_b64": "I2luY2x1ZGUgPHN0ZGludC5oPgoKc3RydWN0IHNsb3RfaGVhZGVyIHsKICAgIGludCAgICAgIHZhbGlkOwogICAgdWludDMyX3QgdmVyc2lvbjsKICAgIHVpbnQzMl90IHNlY3VyaXR5X3ZlcnNpb247CiAgICB1aW50MzJfdCB0cmlhbF9yZW1haW5pbmc7CiAgICBpbnQgICAgICBjb25maXJtZWQ7Cn07CgpzdGF0aWMgaW50IGJvb3RhYmxlKGNvbnN0IHN0cnVjdCBzbG90X2hlYWRlciAqcywgdWludDMyX3QgbWluX3NlY3VyaXR5X3ZlcnNpb24pCnsKICAgIHJldHVybiBzLT52YWxpZCAhPSAwCiAgICAgICAgJiYgcy0+c2VjdXJpdHlfdmVyc2lvbiA+PSBtaW5fc2VjdXJpdHlfdmVyc2lvbgogICAgICAgICYmIChzLT5jb25maXJtZWQgIT0gMCB8fCBzLT50cmlhbF9yZW1haW5pbmcgPiAwdSk7Cn0KCmludCBzZWxlY3Rfc2xvdChjb25zdCBzdHJ1Y3Qgc2xvdF9oZWFkZXIgKmEsIGNvbnN0IHN0cnVjdCBzbG90X2hlYWRlciAqYiwKICAgICAgICAgICAgICAgIHVpbnQzMl90IG1pbl9zZWN1cml0eV92ZXJzaW9uKQp7CiAgICBpbnQgYV9vayA9IGJvb3RhYmxlKGEsIG1pbl9zZWN1cml0eV92ZXJzaW9uKTsKICAgIGludCBiX29rID0gYm9vdGFibGUoYiwgbWluX3NlY3VyaXR5X3ZlcnNpb24pOwoKICAgIGlmIChhX29rICYmIGJfb2spIHsKICAgICAgICByZXR1cm4gKGItPnZlcnNpb24gPiBhLT52ZXJzaW9uKSA/IDEgOiAwOwogICAgfQogICAgaWYgKGFfb2spIHsKICAgICAgICByZXR1cm4gMDsKICAgIH0KICAgIGlmIChiX29rKSB7CiAgICAgICAgcmV0dXJuIDE7CiAgICB9CiAgICByZXR1cm4gLTE7Cn0K",
+  "tests": [
+    {
+      "name": "both confirmed, B is newer",
+      "stdin": "1 5 1 0 1 1 6 1 0 1 1\n",
+      "expected_stdout": "1"
+    },
+    {
+      "name": "both confirmed, A is newer",
+      "stdin": "1 7 1 0 1 1 6 1 0 1 1\n",
+      "expected_stdout": "0"
+    },
+    {
+      "name": "equal versions: A wins",
+      "stdin": "1 6 1 0 1 1 6 1 0 1 1\n",
+      "expected_stdout": "0"
+    },
+    {
+      "name": "new image on trial, boots left",
+      "stdin": "1 5 1 0 1 1 6 1 3 0 1\n",
+      "expected_stdout": "1",
+      "description": "Unconfirmed but still on trial. Newest wins."
+    },
+    {
+      "name": "new image used its trial boots",
+      "stdin": "1 5 1 0 1 1 6 1 0 0 1\n",
+      "expected_stdout": "0",
+      "description": "Never confirmed, no boots left. Roll back to A."
+    },
+    {
+      "name": "the newer image failed verification",
+      "stdin": "1 5 1 0 1 0 6 1 3 0 1\n",
+      "expected_stdout": "0"
+    },
+    {
+      "name": "older image is below the anti-rollback floor",
+      "stdin": "1 5 1 0 1 1 4 1 0 1 2\n",
+      "expected_stdout": "-1",
+      "description": "Both have security_version 1, below the floor of 2. Neither boots."
+    },
+    {
+      "name": "only the new image meets the floor",
+      "stdin": "1 5 1 0 1 1 6 2 1 0 2\n",
+      "expected_stdout": "1"
+    },
+    {
+      "name": "a high version number is not a high security version",
+      "stdin": "1 9 1 0 1 1 3 2 0 1 2\n",
+      "expected_stdout": "1"
+    },
+    {
+      "name": "neither slot is valid",
+      "stdin": "0 5 1 0 1 0 6 1 3 0 1\n",
+      "expected_stdout": "-1"
+    },
+    {
+      "name": "A is invalid, B is the only choice",
+      "stdin": "0 9 9 9 1 1 1 1 0 1 1\n",
+      "expected_stdout": "1"
+    },
+    {
+      "name": "a confirmed slot with zero trial boots",
+      "stdin": "1 8 3 0 1 1 2 3 0 1 3\n",
+      "expected_stdout": "0",
+      "description": "Confirmed means trial_remaining no longer matters."
+    }
+  ]
+}

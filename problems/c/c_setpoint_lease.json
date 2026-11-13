@@ -1,0 +1,94 @@
+{
+  "id": "c_setpoint_lease",
+  "title": "Setpoint Lease With a Safe Ramp-Down",
+  "language": "c",
+  "difficulty": "medium",
+  "topics": [
+    "embedded",
+    "timers",
+    "fail-safe",
+    "unsigned-arithmetic"
+  ],
+  "timeout_seconds": 5,
+  "statement": "A supervisor sends a device **power setpoints**. Each one is only valid for a short time, called a **lease**. If the supervisor goes quiet, the device must ramp its output down to zero by itself.\n\nWrite the function that says what the device should output *right now*.\n\n## Your function\n\n```\nint32_t lease_output(uint32_t now_ms, uint32_t last_refresh_ms,\n                     uint32_t lease_ms, uint32_t ramp_ms, int32_t setpoint);\n```\n\n- `last_refresh_ms` is when the current `setpoint` was last received.\n- `elapsed = now_ms - last_refresh_ms`.\n- While `elapsed <= lease_ms`, output the `setpoint` unchanged.\n- After that, the lease has **expired**. Let `over = elapsed - lease_ms`.\n  - If `over >= ramp_ms`, output `0`.\n  - Otherwise ramp **linearly** from `setpoint` to `0` over `ramp_ms`:\n\n```\noutput = setpoint * (ramp_ms - over) / ramp_ms\n```\n\n  The division **truncates towards zero**, as C does. `ramp_ms` of `0` means no ramp: output `0` as soon as the lease expires.\n\nThe setpoint is signed: positive charges, negative discharges. The millisecond clock is a free-running 32-bit counter and **wraps**.\n\nThe harness reads `now last lease ramp setpoint` on each line and prints the output.\n\n## Watch out\n\n- The clock wraps. Subtract the unsigned values. Do not compare them.\n- `setpoint * (ramp_ms - over)` does not fit in 32 bits. Use 64-bit arithmetic.\n- Do not divide by `ramp_ms` when it is zero.\n- Both signs of `setpoint` must ramp towards zero, not past it.",
+  "starter_code": "#include <stdint.h>\n\n/**\n * @brief The output the device should apply now, given the last setpoint and\n *        when it was received.\n *\n * @param now_ms          Current free-running millisecond counter.\n * @param last_refresh_ms Counter value when `setpoint` was last refreshed.\n * @param lease_ms        How long a setpoint stays valid.\n * @param ramp_ms         How long the ramp to zero takes once expired.\n * @param setpoint        The last setpoint received (signed).\n * @return The output to apply.\n */\nint32_t lease_output(uint32_t now_ms, uint32_t last_refresh_ms,\n                     uint32_t lease_ms, uint32_t ramp_ms, int32_t setpoint)\n{\n    /* your code here */\n    (void)now_ms;\n    (void)last_refresh_ms;\n    (void)lease_ms;\n    (void)ramp_ms;\n    return setpoint;\n}\n",
+  "harness": "#include <inttypes.h>\n#include <stdint.h>\n#include <stdio.h>\n\n/* Provided by the candidate in solution.c */\nint32_t lease_output(uint32_t now_ms, uint32_t last_refresh_ms,\n                     uint32_t lease_ms, uint32_t ramp_ms, int32_t setpoint);\n\nint main(void)\n{\n    uint32_t now, last, lease, ramp;\n    int32_t setpoint;\n    while (scanf(\"%\" SCNu32 \" %\" SCNu32 \" %\" SCNu32 \" %\" SCNu32 \" %\" SCNd32,\n                 &now, &last, &lease, &ramp, &setpoint) == 5) {\n        printf(\"%\" PRId32 \"\\n\", lease_output(now, last, lease, ramp, setpoint));\n    }\n    return 0;\n}\n",
+  "reference_solution_b64": "I2luY2x1ZGUgPHN0ZGludC5oPgoKaW50MzJfdCBsZWFzZV9vdXRwdXQodWludDMyX3Qgbm93X21zLCB1aW50MzJfdCBsYXN0X3JlZnJlc2hfbXMsCiAgICAgICAgICAgICAgICAgICAgIHVpbnQzMl90IGxlYXNlX21zLCB1aW50MzJfdCByYW1wX21zLCBpbnQzMl90IHNldHBvaW50KQp7CiAgICB1aW50MzJfdCBlbGFwc2VkID0gbm93X21zIC0gbGFzdF9yZWZyZXNoX21zOwogICAgaWYgKGVsYXBzZWQgPD0gbGVhc2VfbXMpIHsKICAgICAgICByZXR1cm4gc2V0cG9pbnQ7CiAgICB9CiAgICB1aW50MzJfdCBvdmVyID0gZWxhcHNlZCAtIGxlYXNlX21zOwogICAgaWYgKG92ZXIgPj0gcmFtcF9tcykgewogICAgICAgIHJldHVybiAwOwogICAgfQogICAgaW50NjRfdCBzY2FsZWQgPSAoaW50NjRfdClzZXRwb2ludCAqIChpbnQ2NF90KShyYW1wX21zIC0gb3Zlcik7CiAgICByZXR1cm4gKGludDMyX3QpKHNjYWxlZCAvIChpbnQ2NF90KXJhbXBfbXMpOwp9Cg==",
+  "tests": [
+    {
+      "name": "lease still valid",
+      "stdin": "1500 1000 5000 3000 3000\n",
+      "expected_stdout": "3000"
+    },
+    {
+      "name": "exactly at the end of the lease",
+      "stdin": "6000 1000 5000 3000 3000\n",
+      "expected_stdout": "3000",
+      "description": "elapsed equals lease_ms: still valid."
+    },
+    {
+      "name": "one millisecond past the lease",
+      "stdin": "6001 1000 5000 3000 3000\n",
+      "expected_stdout": "2999"
+    },
+    {
+      "name": "halfway down the ramp",
+      "stdin": "7500 1000 5000 3000 3000\n",
+      "expected_stdout": "1500"
+    },
+    {
+      "name": "ramp finished",
+      "stdin": "9000 1000 5000 3000 3000\n",
+      "expected_stdout": "0"
+    },
+    {
+      "name": "far past the end",
+      "stdin": "900000 1000 5000 3000 3000\n",
+      "expected_stdout": "0"
+    },
+    {
+      "name": "negative setpoint ramps towards zero",
+      "stdin": "7500 1000 5000 3000 -3000\n",
+      "expected_stdout": "-1500"
+    },
+    {
+      "name": "truncates towards zero, positive",
+      "stdin": "6001 1000 5000 3 10\n",
+      "expected_stdout": "6"
+    },
+    {
+      "name": "truncates towards zero, negative",
+      "stdin": "6001 1000 5000 3 -10\n",
+      "expected_stdout": "-6",
+      "description": "-10 * 2 / 3 is -6 in C, not -7."
+    },
+    {
+      "name": "no ramp configured",
+      "stdin": "6001 1000 5000 0 3000\n",
+      "expected_stdout": "0",
+      "description": "ramp_ms is zero. Do not divide by it."
+    },
+    {
+      "name": "the counter wrapped, lease valid",
+      "stdin": "500 4294967000 5000 3000 3000\n",
+      "expected_stdout": "3000",
+      "description": "now is numerically smaller than last. 796 ms really passed."
+    },
+    {
+      "name": "the counter wrapped, mid-ramp",
+      "stdin": "7000 4294966296 5000 3000 3000\n",
+      "expected_stdout": "0"
+    },
+    {
+      "name": "large setpoint, no overflow",
+      "stdin": "6001 1000 5000 4000000000 2147483647\n",
+      "expected_stdout": "2147483646",
+      "description": "setpoint times the remaining ramp does not fit in 32 bits."
+    },
+    {
+      "name": "most negative setpoint",
+      "stdin": "6001 1000 5000 4000000000 -2147483648\n",
+      "expected_stdout": "-2147483647"
+    }
+  ]
+}

@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Choose a Boot Slot (A/B Update with Anti-Rollback) · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>Choose a Boot Slot (A/B Update with Anti-Rollback)</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The idea</h2>
+
+<p>One helper to decide eligibility. One function to compare the eligible.</p>
+
+<pre><code>static int bootable(const struct slot_header *s, uint32_t min_security_version)
+{
+    return s-&gt;valid != 0
+        &amp;&amp; s-&gt;security_version &gt;= min_security_version
+        &amp;&amp; (s-&gt;confirmed != 0 || s-&gt;trial_remaining &gt; 0u);
+}
+
+int select_slot(const struct slot_header *a, const struct slot_header *b,
+                uint32_t min_security_version)
+{
+    int a_ok = bootable(a, min_security_version);
+    int b_ok = bootable(b, min_security_version);
+
+    if (a_ok &amp;&amp; b_ok) {
+        return (b-&gt;version &gt; a-&gt;version) ? 1 : 0;
+    }
+    if (a_ok) {
+        return 0;
+    }
+    if (b_ok) {
+        return 1;
+    }
+    return -1;
+}</code></pre>
+
+<h2>The tie-break</h2>
+
+<p><code>b-&gt;version &gt; a-&gt;version</code> picks B only if it is strictly newer. Equal versions fall through
+  to A. That gives a deterministic answer, which matters in a bootloader: the same inputs must always
+  boot the same slot.</p>
+
+<h2>How the rollback works</h2>
+
+<table>
+  <tr><th>Stage</th><th>Slot B state</th><th>Result</th></tr>
+  <tr><td>Just installed</td><td>valid, trial 3, unconfirmed</td><td>Boot B</td></tr>
+  <tr><td>Boots, fails, resets (x3)</td><td>trial 2, 1, 0</td><td>Boot B each time</td></tr>
+  <tr><td>Fourth reset</td><td>trial 0, unconfirmed</td><td><strong>Not bootable. Boot A</strong></td></tr>
+  <tr><td>Boots and passes its self-test</td><td>confirmed</td><td>Boot B from now on</td></tr>
+</table>
+
+<p>The trial counter is the whole recovery mechanism. A bootloader decrements it on each boot. The
+  application confirms the image once it has proved it works. A bad image can only burn through its
+  counter. It cannot lock the device.</p>
+
+<div class="trap">
+<p><strong>Choosing by version before checking bootability.</strong> "Take the higher version, and fall
+  back if it fails" is two ideas tangled together. It breaks when the newest image is the one that cannot
+  boot. Decide eligibility first, then choose from what is left.</p>
+</div>
+
+<div class="trap">
+<p><strong>Applying the anti-rollback floor only to the new image.</strong> The floor is about every
+  image. The old, confirmed one may be exactly the vulnerable version the floor exists to forbid. If both
+  fail the floor, the right answer is <code>-1</code>, and the device must stop in recovery. It should
+  not boot the insecure image.</p>
+</div>
+
+<h2>Point to raise</h2>
+
+<p>The floor in fuses is raised only after the new image is <em>confirmed</em>. Raise it when the update is
+  merely installed, and a failed update can no longer roll back, because the old image is now below the
+  floor.</p>
+
+<footer>
+  <p><a href="c_ab_slot_select.hint.html">← Hint</a></p>
+</footer>
+
+</main>
+</body>
+</html>

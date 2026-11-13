@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked solution — Setpoint Lease With a Safe Ramp-Down · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>Setpoint Lease With a Safe Ramp-Down</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">This page contains the complete answer and explains why each
+    part of it is there.</p>
+</header>
+
+<h2>The idea</h2>
+
+<p>One subtraction, two comparisons, one scaled division.</p>
+
+<pre><code>int32_t lease_output(uint32_t now_ms, uint32_t last_refresh_ms,
+                     uint32_t lease_ms, uint32_t ramp_ms, int32_t setpoint)
+{
+    uint32_t elapsed = now_ms - last_refresh_ms;
+    if (elapsed &lt;= lease_ms) {
+        return setpoint;
+    }
+    uint32_t over = elapsed - lease_ms;
+    if (over &gt;= ramp_ms) {
+        return 0;
+    }
+    int64_t scaled = (int64_t)setpoint * (int64_t)(ramp_ms - over);
+    return (int32_t)(scaled / (int64_t)ramp_ms);
+}</code></pre>
+
+<h2>The three regions</h2>
+
+<table>
+  <tr><th>elapsed</th><th>Region</th><th>Output</th></tr>
+  <tr><td><code>0 .. lease</code></td><td>Valid</td><td>setpoint</td></tr>
+  <tr><td><code>lease .. lease + ramp</code></td><td>Ramping</td><td>setpoint, scaled down</td></tr>
+  <tr><td><code>&gt;= lease + ramp</code></td><td>Finished</td><td>0</td></tr>
+</table>
+
+<h2>Why each line is there</h2>
+
+<ul>
+  <li><strong><code>now_ms - last_refresh_ms</code></strong>: unsigned subtraction wraps modulo 2<sup>32</sup>,
+    and so does the counter. The result is the true elapsed time even when <code>now</code> is
+    numerically smaller. Compare the two readings directly and you fail every wrapped case.</li>
+  <li><strong>The early return at <code>over &gt;= ramp_ms</code></strong> means the division only runs
+    when <code>ramp_ms &gt; over &gt;= 1</code>. So <code>ramp_ms</code> is at least 2 there. A zero ramp
+    never divides.</li>
+  <li><strong>64-bit product</strong>: <code>2147483647 * 4000000000</code> is about 8.6e18. That is below
+    9.22e18, the limit of <code>int64_t</code>. In 32 bits it overflows, which for signed values is
+    undefined behaviour.</li>
+  <li><strong>Truncation</strong>: C division truncates towards zero. <code>-10 * 2 / 3</code> is
+    <code>-6</code>. For a ramp this is what you want: the magnitude only ever falls, and never
+    overshoots zero.</li>
+</ul>
+
+<div class="trap">
+<p>The slip that passes ordinary tests: doing the scaling in <code>int32_t</code> or
+  <code>uint32_t</code>. It works for small setpoints, then fails on a large one, or on a negative
+  one where the unsigned multiply wraps. The two extreme-setpoint tests exist to catch this.</p>
+</div>
+
+<h2>Why a lease at all</h2>
+
+<p>The supervisor never has to say "stop". Silence means stop. The device needs only its own clock, so
+  it is safe against a crashed supervisor, a dropped link, and a reset on the other side, all with no
+  extra message. The ramp avoids a hard step to zero, which can be a shock to the grid or the
+  load.</p>
+
+<h2>Point to raise</h2>
+
+<p>"Zero" is the safe state for a charger. For a heat pump in winter or a battery giving backup power it
+  may not be. The lease mechanism is the same. The safe value is a per-device decision.</p>
+
+<footer>
+  <p><a href="c_setpoint_lease.hint.html">← Hint</a></p>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — RMS Voltage, RMS Current and Real Power in Fixed Point · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · hard</p>
+  <h1>RMS Voltage, RMS Current and Real Power in Fixed Point</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Where to start</h2>
+
+<ul>
+  <li><strong>Size the accumulators before writing any code.</strong> Largest square, times the largest <code>n</code>. How many bits? Do it for the product sum too, and note it is signed.</li>
+  <li>Integer square root has no library function. The exact-floor requirement rules out a float <code>sqrt</code>, because a 64-bit value does not fit a double exactly.</li>
+  <li>A simple way to get an exact integer square root is to find the answer one bit at a time, from the top, keeping the running result.</li>
+  <li>Follow the formula literally: sum, divide (floor), then root. Taking the root first, or dividing after, gives different answers.</li>
+</ul>
+
+<details>
+<summary>Still stuck?</summary>
+<p>If you want something simpler than the bit-by-bit method, a binary search for the largest
+  <code>r</code> with <code>r * r &lt;= x</code> is exact too. Choose the upper bound so that
+  <code>r * r</code> cannot overflow while you test it.</p>
+</details>
+
+<h2>Before you run it</h2>
+
+<p>Read the test names in the app. Each one is a sentence about a case you might have missed.
+  If you can predict the output of every one by hand, your design is probably right.</p>
+
+<footer>
+  <p><a href="c_rms_power.solution.html">Worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

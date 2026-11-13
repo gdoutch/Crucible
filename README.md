@@ -583,9 +583,11 @@ the stylesheet does not load the pages are still ordinary readable HTML.
 
 ## What is in the box
 
-98 problems — 47 in C, 12 in C++, 4 in Python, 15 in C#, 12 in Java, 3 in
-x86-64 assembly and 5 in VHDL. Every one of them mixes hand-written edge cases
-with four randomised ones, and ships a hint and a worked solution.
+105 problems — 52 in C, 12 in C++, 4 in Python, 15 in C#, 12 in Java, 3 in
+x86-64 assembly, 5 in VHDL and 7 pen-and-paper
+[exercises](#pen-and-paper-exercises). Every code problem mixes hand-written
+edge cases with randomised ones where it has a generator, and ships a hint and
+a worked solution.
 
 The C set is deliberately weighted towards the things C makes you think about
 and other languages do not: what the pointer points at, who owns the memory,
@@ -890,6 +892,36 @@ where several of these ideas meet at once.
   A fixed test sends a good frame, a corrupted one, and a frame that is only
   valid counted from *before* the corrupted one arrived, proving a rejected
   frame never moves the baseline.
+
+### Connected-device firmware
+
+Five C problems come from the firmware inside a connected home energy
+device: a meter on a serial bus, an untrusted network, an over-the-air update
+and a supervisor that can go quiet. They are paired with the five
+pen-and-paper "edge module" [exercises](#pen-and-paper-exercises). The
+hand-written cases are checked against an independent model of each rule, not
+against the reference solution.
+
+| | Problem | Topics |
+| --- | --- | --- |
+| **medium** | Decode a Modbus RTU Read Response | embedded, modbus, crc, validation |
+| | Setpoint Lease With a Safe Ramp-Down | embedded, timers, fail-safe, unsigned-arithmetic |
+| | Choose a Boot Slot (A/B Update with Anti-Rollback) | embedded, bootloader, ota, structs |
+| **hard** | Validate an Untrusted Command Frame | embedded, security, validation, bounds |
+| | RMS Voltage, RMS Current and Real Power in Fixed Point | embedded, metering, fixed-point, overflow |
+
+- **Decode a Modbus RTU Read Response** is a fixed order of six checks. The
+  order is the specification: each check makes the next read safe.
+- **Setpoint Lease** is a function of elapsed time only: valid, ramping,
+  finished. It combines a wrapping clock, a 64-bit product and a signed
+  truncating division.
+- **Choose a Boot Slot** separates "can it boot" from "which is better". A
+  newer image that has used up its trial boots must lose.
+- **Validate an Untrusted Command Frame** must be safe on any bytes. A
+  rejected frame must not move the replay counter.
+- **RMS and Real Power** needs 64-bit accumulators, an exact integer square
+  root and a signed power. A floating-point `sqrt` is one too high on some
+  inputs.
 
 ### Written to MISRA C:2012
 
@@ -1440,7 +1472,7 @@ crucible/
     theme.py           palettes and ttk styling
 problems/
   guides.css           shared by every guide page
-  c/                   42 problems, each with .json + .hint.html
+  c/                   52 problems, each with .json + .hint.html
   cpp/                 12 problems,            + .solution.html
   python/              3 problems,             + .solution.html
   csharp/              15 problems,            + .solution.html (+ fr_FR)

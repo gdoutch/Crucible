@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hint — Setpoint Lease With a Safe Ramp-Down · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide hint">
+
+<header>
+  <p class="crumb">Crucible · C · medium</p>
+  <h1>Setpoint Lease With a Safe Ramp-Down</h1>
+  <p class="kind">Hint</p>
+  <p class="lede">A nudge in the right direction. The full answer is on the
+    worked-solution page, so nothing below gives it away.</p>
+</header>
+
+<h2>Where to start</h2>
+
+<ul>
+  <li><strong>Elapsed time first.</strong> Everything else is built on <code>now - last</code>, so get the wrap right there and nowhere else.</li>
+  <li>There are three regions: valid, ramping, finished. Draw them on a line and mark the boundaries. <code>&lt;=</code> and <code>&gt;=</code> are in the statement for a reason.</li>
+  <li>The ramp is a straight line from <code>setpoint</code> at <code>over = 0</code> to <code>0</code> at <code>over = ramp_ms</code>. Work out the value at the halfway point by hand.</li>
+  <li>Size the intermediate product. Largest setpoint times the largest remaining ramp: how many bits?</li>
+</ul>
+
+<details>
+<summary>Still stuck?</summary>
+<p>The finished region returns before you divide, so a zero <code>ramp_ms</code>
+  never reaches the division. Check that this is true for your ordering of the tests.</p>
+</details>
+
+<h2>Before you run it</h2>
+
+<p>Read the test names in the app. Each one is a sentence about a case you might have missed.
+  If you can predict the output of every one by hand, your design is probably right.</p>
+
+<footer>
+  <p><a href="c_setpoint_lease.solution.html">Worked solution →</a></p>
+</footer>
+
+</main>
+</body>
+</html>

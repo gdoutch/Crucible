@@ -1,0 +1,100 @@
+{
+  "id": "c_command_allowlist",
+  "title": "Validate an Untrusted Command Frame",
+  "language": "c",
+  "difficulty": "hard",
+  "topics": [
+    "embedded",
+    "security",
+    "validation",
+    "bounds"
+  ],
+  "timeout_seconds": 5,
+  "statement": "A device receives command frames from a network it does not trust. Before anything acts on one, a validator must check it. The validator has to be **safe on any bytes at all**: it must never read outside the frame it was given.\n\n## The frame\n\n```\ntype  paylen  payload (paylen bytes)  counter (4 bytes, big-endian)\n 0      1      2 .. 2+paylen-1         2+paylen .. 5+paylen\n```\n\nTotal length is exactly `2 + paylen + 4`.\n\n## The policy (an allow-list)\n\n| `type` | Name | `paylen` | Payload | Allowed range |\n| --- | --- | --- | --- | --- |\n| `0x01` | SET_POWER | 2 | signed 16-bit, big-endian | `-7000 .. 7000` |\n| `0x02` | SET_MODE | 1 | unsigned 8-bit | `0 .. 3` |\n| `0x03` | SET_LIMIT | 2 | unsigned 16-bit, big-endian | `0 .. 10000` |\n\nAny other `type` is **not allowed**.\n\n## Your function\n\n```\nint validate_command(const uint8_t *frame, size_t len, uint32_t *last_counter);\n```\n\nRun the checks **in this order**. Return the first code that applies.\n\n| Order | Check | Return |\n| --- | --- | --- |\n| 1 | `len < 6`, or `len != 2 + paylen + 4` | `-1` |\n| 2 | `type` is not in the table | `-2` |\n| 3 | `paylen` is not the one the table gives for this `type` | `-3` |\n| 4 | the payload value is outside its range | `-4` |\n| 5 | `counter <= *last_counter` (a replay) | `-5` |\n| | all good | `0` |\n\nOn success, and **only** on success, set `*last_counter` to this frame's counter. A rejected frame must not change it. The first counter ever accepted must be at least 1, because the harness starts `*last_counter` at `0`.\n\nThe harness feeds one frame per line, in hex, to the **same** `last_counter`, and prints one return code per line.\n\n## Watch out\n\n- You may read `frame[1]` only after you know `len >= 6`. You may read the payload only after the length check.\n- Never trust `paylen` to be consistent with `len`. Check it first.\n- SET_POWER is **signed**. `0xFFFF` is `-1`, which is in range.\n- A replay is rejected even when everything else is valid.",
+  "starter_code": "#include <stddef.h>\n#include <stdint.h>\n\n/**\n * @brief Validate one untrusted command frame against the allow-list.\n *\n * @param frame        The received bytes.\n * @param len          How many bytes were received.\n * @param last_counter Highest counter accepted so far. Updated only when the\n *                     frame is accepted.\n * @return 0 if the frame is acceptable, otherwise a negative code.\n */\nint validate_command(const uint8_t *frame, size_t len, uint32_t *last_counter)\n{\n    /* your code here */\n    (void)frame;\n    (void)len;\n    (void)last_counter;\n    return -1;\n}\n",
+  "harness": "#include <stddef.h>\n#include <stdint.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n\n/* Provided by the candidate in solution.c */\nint validate_command(const uint8_t *frame, size_t len, uint32_t *last_counter);\n\nint main(void)\n{\n    char line[1024];\n    uint32_t last_counter = 0;\n    while (fgets(line, sizeof line, stdin) != NULL) {\n        uint8_t frame[256];\n        size_t len = 0;\n        char *p = line;\n        for (;;) {\n            char *end;\n            unsigned long v = strtoul(p, &end, 16);\n            if (end == p || len >= sizeof frame) {\n                break;\n            }\n            frame[len++] = (uint8_t)v;\n            p = end;\n        }\n        printf(\"%d\\n\", validate_command(frame, len, &last_counter));\n    }\n    return 0;\n}\n",
+  "reference_solution_b64": "I2luY2x1ZGUgPHN0ZGRlZi5oPgojaW5jbHVkZSA8c3RkaW50Lmg+CgppbnQgdmFsaWRhdGVfY29tbWFuZChjb25zdCB1aW50OF90ICpmcmFtZSwgc2l6ZV90IGxlbiwgdWludDMyX3QgKmxhc3RfY291bnRlcikKewogICAgaWYgKGxlbiA8IDYpIHsKICAgICAgICByZXR1cm4gLTE7CiAgICB9CiAgICBzaXplX3QgcGF5bGVuID0gZnJhbWVbMV07CiAgICBpZiAobGVuICE9IDIgKyBwYXlsZW4gKyA0KSB7CiAgICAgICAgcmV0dXJuIC0xOwogICAgfQoKICAgIHN3aXRjaCAoZnJhbWVbMF0pIHsKICAgIGNhc2UgMHgwMTogewogICAgICAgIGlmIChwYXlsZW4gIT0gMikgewogICAgICAgICAgICByZXR1cm4gLTM7CiAgICAgICAgfQogICAgICAgIGludDMyX3QgdmFsdWUgPSAoaW50MTZfdCkodWludDE2X3QpKCgodWludDE2X3QpZnJhbWVbMl0gPDwgOCkgfCBmcmFtZVszXSk7CiAgICAgICAgaWYgKHZhbHVlIDwgLTcwMDAgfHwgdmFsdWUgPiA3MDAwKSB7CiAgICAgICAgICAgIHJldHVybiAtNDsKICAgICAgICB9CiAgICAgICAgYnJlYWs7CiAgICB9CiAgICBjYXNlIDB4MDI6CiAgICAgICAgaWYgKHBheWxlbiAhPSAxKSB7CiAgICAgICAgICAgIHJldHVybiAtMzsKICAgICAgICB9CiAgICAgICAgaWYgKGZyYW1lWzJdID4gMykgewogICAgICAgICAgICByZXR1cm4gLTQ7CiAgICAgICAgfQogICAgICAgIGJyZWFrOwogICAgY2FzZSAweDAzOiB7CiAgICAgICAgaWYgKHBheWxlbiAhPSAyKSB7CiAgICAgICAgICAgIHJldHVybiAtMzsKICAgICAgICB9CiAgICAgICAgdWludDMyX3QgdmFsdWUgPSAoKHVpbnQzMl90KWZyYW1lWzJdIDw8IDgpIHwgZnJhbWVbM107CiAgICAgICAgaWYgKHZhbHVlID4gMTAwMDB1KSB7CiAgICAgICAgICAgIHJldHVybiAtNDsKICAgICAgICB9CiAgICAgICAgYnJlYWs7CiAgICB9CiAgICBkZWZhdWx0OgogICAgICAgIHJldHVybiAtMjsKICAgIH0KCiAgICBjb25zdCB1aW50OF90ICpjID0gJmZyYW1lWzIgKyBwYXlsZW5dOwogICAgdWludDMyX3QgY291bnRlciA9ICgodWludDMyX3QpY1swXSA8PCAyNCkgfCAoKHVpbnQzMl90KWNbMV0gPDwgMTYpCiAgICAgICAgICAgICAgICAgICAgIHwgKCh1aW50MzJfdCljWzJdIDw8IDgpIHwgKHVpbnQzMl90KWNbM107CiAgICBpZiAoY291bnRlciA8PSAqbGFzdF9jb3VudGVyKSB7CiAgICAgICAgcmV0dXJuIC01OwogICAgfQogICAgKmxhc3RfY291bnRlciA9IGNvdW50ZXI7CiAgICByZXR1cm4gMDsKfQo=",
+  "tests": [
+    {
+      "name": "a valid SET_POWER",
+      "stdin": "01 02 0B B8 00 00 00 01\n",
+      "expected_stdout": "0"
+    },
+    {
+      "name": "a valid SET_MODE",
+      "stdin": "02 01 02 00 00 00 01\n",
+      "expected_stdout": "0"
+    },
+    {
+      "name": "a valid SET_LIMIT",
+      "stdin": "03 02 27 10 00 00 00 01\n",
+      "expected_stdout": "0"
+    },
+    {
+      "name": "negative power is in range",
+      "stdin": "01 02 FF FF 00 00 00 01\n",
+      "expected_stdout": "0",
+      "description": "0xFFFF is -1 as a signed 16-bit value."
+    },
+    {
+      "name": "power at both limits",
+      "stdin": "01 02 1B 58 00 00 00 01\n01 02 E4 A8 00 00 00 02\n",
+      "expected_stdout": "0\n0"
+    },
+    {
+      "name": "power just out of range",
+      "stdin": "01 02 1B 59 00 00 00 01\n01 02 E4 A7 00 00 00 02\n",
+      "expected_stdout": "-4\n-4",
+      "description": "Rejected frames leave the counter alone, so counter 1 and 2 are both still fresh."
+    },
+    {
+      "name": "mode and limit out of range",
+      "stdin": "02 01 04 00 00 00 01\n03 02 27 11 00 00 00 01\n",
+      "expected_stdout": "-4\n-4"
+    },
+    {
+      "name": "an unknown type",
+      "stdin": "09 01 01 00 00 00 01\n",
+      "expected_stdout": "-2"
+    },
+    {
+      "name": "the right type with the wrong payload size",
+      "stdin": "01 01 01 00 00 00 01\n02 02 00 01 00 00 00 01\n",
+      "expected_stdout": "-3\n-3"
+    },
+    {
+      "name": "a lying length field",
+      "stdin": "01 09 00 05 00 00 00 01\n01 00 00 05 00 00 00 01\n",
+      "expected_stdout": "-1\n-1",
+      "description": "paylen disagrees with how many bytes arrived."
+    },
+    {
+      "name": "too short to be a frame",
+      "stdin": "01\n01 00 00 00 00\n\n",
+      "expected_stdout": "-1\n-1\n-1",
+      "description": "Five bytes and none. Nothing may be read past the end."
+    },
+    {
+      "name": "a replay is refused",
+      "stdin": "02 01 01 00 00 00 05\n02 01 01 00 00 00 05\n02 01 01 00 00 00 04\n02 01 01 00 00 00 06\n",
+      "expected_stdout": "0\n-5\n-5\n0",
+      "description": "Counters must strictly increase."
+    },
+    {
+      "name": "a rejected frame does not move the counter",
+      "stdin": "02 01 09 00 00 00 64\n02 01 01 00 00 00 01\n",
+      "expected_stdout": "-4\n0",
+      "description": "The first frame is out of range. It must not raise last_counter to 100."
+    },
+    {
+      "name": "the first counter must be positive",
+      "stdin": "02 01 01 00 00 00 00\n02 01 01 00 00 00 01\n",
+      "expected_stdout": "-5\n0"
+    },
+    {
+      "name": "the largest counter",
+      "stdin": "02 01 01 FF FF FF FF\n02 01 01 FF FF FF FF\n",
+      "expected_stdout": "0\n-5"
+    }
+  ]
+}
