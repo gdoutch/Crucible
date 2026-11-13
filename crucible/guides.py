@@ -47,6 +47,7 @@ from . import i18n
 from .i18n import t
 from .problem import Problem
 
+QUESTION = "question"
 HINT = "hint"
 SOLUTION = "solution"
 DIAGRAM = "diagram"
@@ -60,6 +61,7 @@ DIAGRAM = "diagram"
 #: text this module generates, so there is nothing here for it to follow.
 #: Order is menu order.
 KINDS = {
+    QUESTION: "Question",
     DIAGRAM: "Diagram",
     HINT: "Hint",
     SOLUTION: "Worked solution",
@@ -70,6 +72,10 @@ KINDS = {
 #: `missing` reports against this rather than against `KINDS`, which is what
 #: keeps `--guides` from nagging about a diagram FizzBuzz has no use for.
 REQUIRED = (HINT, SOLUTION)
+
+#: A pen-and-paper exercise has no tests to hint at, so it ships the question
+#: page (the timer lives there) and the worked solution instead.
+REQUIRED_EXERCISE = (QUESTION, SOLUTION)
 
 
 def kind_label(kind: str) -> str:
@@ -137,7 +143,8 @@ def missing(problem: Problem) -> list[str]:
     Used by `--guides` and by the tests. A missing diagram is not a gap --
     most problems have no diagram to draw.
     """
-    return [kind for kind in REQUIRED if find(problem, kind) is None]
+    required = REQUIRED_EXERCISE if problem.exercise else REQUIRED
+    return [kind for kind in required if find(problem, kind) is None]
 
 
 def open_in_browser(guide: Guide) -> bool:

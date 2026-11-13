@@ -36,6 +36,7 @@ python -m crucible
 - [Randomised test data](#randomised-test-data)
 - [Hints and worked solutions](#hints-and-worked-solutions)
 - [What is in the box](#what-is-in-the-box)
+- [Pen-and-paper exercises](#pen-and-paper-exercises)
 - [Writing a problem](#writing-a-problem)
 - [Adding a language](#adding-a-language)
 - [Internationalisation](#internationalisation)
@@ -527,6 +528,7 @@ ship a third:
 | **Hint** (`F1`) | The idea, the traps, the cases to think about — and a `Still stuck?` block that folds open into a stronger nudge. No finished answer in it. |
 | **Worked solution** | The whole answer: the code, a table tracing it running on a real test case, why each edge case comes out right, the complexity, and the wrong turns worth recognising. |
 | **Diagram** (`F2`) | Only for problems whose specification *is* a diagram. Renders the statement's Mermaid source as a picture. |
+| **Question** | Only for [pen-and-paper exercises](#pen-and-paper-exercises), which have a Question page and a Worked solution instead of a Hint. |
 
 They are HTML files opened in your browser rather than rendered in the app,
 which is not laziness. A guide is a document — headings, tables, a trace of the
@@ -1039,6 +1041,57 @@ The safety three are chosen for having exactly one right answer:
   because a check that has never failed is indistinguishable from one that is
   wired up wrong.
 
+## Pen-and-paper exercises
+
+Some questions cannot be compiled, randomised or marked: "draw the component
+diagram", "which hazards did you find". Crucible holds these as **exercises**.
+You get a question and an allotted time, answer on paper, then compare with a
+worked solution.
+
+| | Language | Exercise | Topics |
+| --- | --- | --- | --- |
+| **medium** | Pen & paper | Digger Drive Control | component diagram, data flow, functional safety, CAN |
+| | Pen & paper | 2 MB XML on a 1 MB Microcontroller | embedded, streaming, parsing, memory |
+
+What is different from an ordinary problem:
+
+- The language is **Pen & paper exercise** in the language picker.
+- **Go** is disabled. There is no build, no test run and no reference gate.
+- The **Question** page (`Guides > Question for this exercise`) holds the
+  scenario and a countdown timer. Start, pause and reset are on the page.
+- The **Worked solution** page is the sheet you compare with. It opens behind
+  the same "are you sure" prompt as any other solution.
+- There is **no hint page**. `--guides` expects a question and a solution
+  instead.
+- The editor is a scratch pad. Nothing reads it.
+- Exercises never count towards the solved total.
+- `--verify` skips them.
+
+An exercise is a JSON file with `"language": "exercise"`. `harness`, `tests`
+and the reference solution are not needed.
+
+```json
+{
+  "id": "flow_digger_drive",
+  "title": "Digger Drive Control",
+  "language": "exercise",
+  "difficulty": "medium",
+  "topics": ["component diagram", "data flow"],
+  "time_limit_minutes": 20,
+  "statement": "..."
+}
+```
+
+`time_limit_minutes` is a whole number from 1 to 480, and defaults to 20. The
+Question page's timer is written into the page itself, so change it there too.
+
+```text
+problems/flow/
+  flow_digger_drive.json
+  flow_digger_drive.question.html
+  flow_digger_drive.solution.html
+```
+
 ## Writing a problem
 
 One JSON file under `problems/`. Subdirectories are searched recursively and
@@ -1386,6 +1439,7 @@ problems/
   vhdl/                5 problems,             + .solution.html
   uml/                 2 problems,             + .diagram.html
   safety/              3 problems
+  flow/                2 exercises,            + .question.html + .solution.html
 tests/
   test_crucible.py
 ```

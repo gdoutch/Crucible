@@ -189,6 +189,8 @@ def cmd_verify(root: Path, seed: int | None) -> int:
     broken = 0
     skipped = 0
     for problem in library.problems:
+        if problem.exercise:
+            continue  # pen and paper: nothing to build, run or verify
         status = problem.language.toolchain()
         if not status.available:
             print(t("cli.verify.skip_row", title=problem.title, summary=status.summary))

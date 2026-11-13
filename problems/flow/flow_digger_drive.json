@@ -1,0 +1,14 @@
+{
+  "id": "flow_digger_drive",
+  "title": "Digger Drive Control",
+  "language": "exercise",
+  "difficulty": "medium",
+  "topics": [
+    "component diagram",
+    "data flow",
+    "functional safety",
+    "CAN"
+  ],
+  "time_limit_minutes": 20,
+  "statement": "Draw the component diagram, and the data passed between the components.\n\nThis is a **pen-and-paper exercise**. Nothing is compiled, run, randomised or marked.\n\n## The scenario\n\nA digger has a **drive joystick** and a **seat that can rotate** (north / south).\n\nThe joystick is **fixed to the armrest of the seat**, so it turns with the operator.\n\nDrive direction and gear selection depend on the state of these inputs.\n\n## Your task\n\n- Draw the **component diagram**.\n- Label each link with the **data passed** between the components.\n\n## How to use it\n\n- Open **Guides > Question for this exercise**. It has a 20 minute timer.\n- Answer on paper.\n- When the timer ends, open **Guides > Worked solution** and compare.\n\n## If time remains\n\n- Where does the direction logic live, and why there?\n- What happens when the seat is moving, or the sensors disagree?\n- What happens to a joystick that is held while the seat rotates?\n- What must the design do when a message is lost or corrupt?"
+}

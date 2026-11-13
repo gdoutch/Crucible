@@ -89,7 +89,8 @@
       "timeout_out_of_range": "{file}: 'timeout_seconds' must be between 0 and 120",
       "topics_not_list": "{file}: 'topics' must be a list",
       "directory_not_found": "Problem directory not found: {root}",
-      "duplicate_id": "Duplicate problem id '{id}' -- ids must be unique"
+      "duplicate_id": "Duplicate problem id '{id}' -- ids must be unique",
+      "exercise_time_limit": "{file}: \"time_limit_minutes\" must be a whole number from 1 to 480."
     }
   },
   "editor": {
@@ -124,6 +125,7 @@
   },
   "guides": {
     "kind": {
+      "question": "Question",
       "diagram": "Diagram",
       "hint": "Hint",
       "solution": "Worked solution"
@@ -264,6 +266,12 @@
       "exit": {
         "runtime_error": "the simulation did not exit cleanly (exit status {code}) -- see stderr for GHDL's own report, e.g. an assertion failure or a value that std.textio could not parse"
       }
+    },
+    "exercise": {
+      "display_name": "Pen & paper exercise",
+      "summary": "no toolchain needed",
+      "detail": "Exercises are answered on paper and compared with a worked solution.",
+      "not_runnable": "This is a pen-and-paper exercise. There is nothing to build or run."
     }
   },
   "app": {
@@ -306,6 +314,7 @@
       },
       "guides": {
         "title": "Guides",
+        "question": "Question for this exercise",
         "diagram": "Diagram for this problem\tF2",
         "hint": "Hint for this problem\tF1",
         "solution": "Worked solution for this problem…",
@@ -373,7 +382,8 @@
       "duration_ms": "{ms:.0f} ms",
       "run_anyway_button": "Run anyway",
       "randomised_building_row": "building {count} randomised case(s)…",
-      "not_run": "not run"
+      "not_run": "not run",
+      "exercise_row": "pen and paper — nothing to run"
     },
     "detail": {
       "input_label": "INPUT (stdin)",
@@ -418,7 +428,8 @@
       "data_set_note": "  {count} of them are randomised (data set #{seed} — press Ctrl+R for another).",
       "all_passed": "All {total} tests passed — nice work.",
       "summary_to_go": "{summary}  ({failed} to go)",
-      "passed_fraction": "{passed}/{total} passed"
+      "passed_fraction": "{passed}/{total} passed",
+      "exercise": "Pen-and-paper exercise · {minutes} minutes · not compiled or marked — answer on paper, then compare with the worked solution."
     },
     "build": {
       "command_line": "$ {command}\n\n",
@@ -448,7 +459,7 @@
       "show_solution_message": "This opens the complete answer to {title}, with the code and an explanation of every part of it.{nudge}\n\nOpen it?",
       "show_solution_hint_nudge": "\n\nThe hint (F1) gives you the idea without the code.",
       "guides_help_title": "About the guides",
-      "guides_help_message": "Pages that open in your browser rather than in the app:\n\n  Diagram          the problem's specification, drawn. Only the\n                   problems whose spec IS a diagram have one\n  Hint             the idea, the traps, and the cases to think\n                   about -- no answer in it\n  Worked solution  the whole answer, a trace of it running, and\n                   the wrong turns worth recognising\n\nThey live beside the problem file and are found by name:\n\n  c_sum_array.json\n  c_sum_array.hint.html\n  c_sum_array.solution.html\n\nThere is nothing to register -- drop the files next to the JSON\nand this menu picks them up. They share problems/guides.css.\n\nA diagram page renders its Mermaid source with a script fetched\nfrom a CDN. With no network it shows the source instead, which\nis the same specification in text -- and that text is in the\nproblem statement too, so the app never needs the network.\n\n'python -m crucible --guides' lists which problems are missing\na hint or a worked solution.",
+      "guides_help_message": "Pages that open in your browser rather than in the app:\n\n  Diagram          the problem's specification, drawn. Only the\n                   problems whose spec IS a diagram have one\n  Hint             the idea, the traps, and the cases to think\n                   about -- no answer in it\n  Worked solution  the whole answer, a trace of it running, and\n                   the wrong turns worth recognising\n\nThey live beside the problem file and are found by name:\n\n  c_sum_array.json\n  c_sum_array.hint.html\n  c_sum_array.solution.html\n\nThere is nothing to register -- drop the files next to the JSON\nand this menu picks them up. They share problems/guides.css.\n\nA diagram page renders its Mermaid source with a script fetched\nfrom a CDN. With no network it shows the source instead, which\nis the same specification in text -- and that text is in the\nproblem statement too, so the app never needs the network.\n\n'python -m crucible --guides' lists which problems are missing\na hint or a worked solution.\n\nA pen-and-paper exercise has a Question page instead of tests:\nit holds the timer, and the worked solution is what you compare\nyour answer against.",
       "about_title": "About {app_name}",
       "about_message": "{app_name}\n\nA practice harness for compiled and interpreted languages.\nTest cases are always shown in full; reference solutions never are.\n\nProblems: {problems_root}\nProfile:  {username}  ({profile_root})\nPython:   {python_version}",
       "about_no_profile": "(none yet)",

@@ -89,7 +89,8 @@
       "timeout_out_of_range": "{file} : « timeout_seconds » doit être compris entre 0 et 120",
       "topics_not_list": "{file} : « topics » doit être une liste",
       "directory_not_found": "Répertoire des problèmes introuvable : {root}",
-      "duplicate_id": "Identifiant de problème en double « {id} » -- les identifiants doivent être uniques"
+      "duplicate_id": "Identifiant de problème en double « {id} » -- les identifiants doivent être uniques",
+      "exercise_time_limit": "{file} : « time_limit_minutes » doit être un entier de 1 à 480."
     }
   },
   "editor": {
@@ -124,6 +125,7 @@
   },
   "guides": {
     "kind": {
+      "question": "Question",
       "diagram": "Diagramme",
       "hint": "Indice",
       "solution": "Solution détaillée"
@@ -264,6 +266,12 @@
       "exit": {
         "runtime_error": "la simulation ne s'est pas terminée proprement (code de sortie {code}) -- voir stderr pour le rapport de GHDL, par exemple un échec d'assertion ou une valeur que std.textio n'a pas pu analyser"
       }
+    },
+    "exercise": {
+      "display_name": "Exercice papier-crayon",
+      "summary": "aucune chaîne d’outils requise",
+      "detail": "Les exercices se font sur papier et se comparent à une solution détaillée.",
+      "not_runnable": "Ceci est un exercice papier-crayon. Il n’y a rien à compiler ni à exécuter."
     }
   },
   "app": {
@@ -306,6 +314,7 @@
       },
       "guides": {
         "title": "Guides",
+        "question": "Question de cet exercice",
         "diagram": "Diagramme de ce problème\tF2",
         "hint": "Indice pour ce problème\tF1",
         "solution": "Solution détaillée de ce problème…",
@@ -373,7 +382,8 @@
       "duration_ms": "{ms:.0f} ms",
       "run_anyway_button": "Exécuter quand même",
       "randomised_building_row": "construction de {count} cas aléatoire(s)…",
-      "not_run": "non exécuté"
+      "not_run": "non exécuté",
+      "exercise_row": "papier et crayon — rien à exécuter"
     },
     "detail": {
       "input_label": "ENTRÉE (stdin)",
@@ -418,7 +428,8 @@
       "data_set_note": "  {count} d'entre eux sont aléatoires (jeu de données n° {seed} — appuyez sur Ctrl+R pour un autre).",
       "all_passed": "Les {total} tests ont tous réussi — beau travail.",
       "summary_to_go": "{summary}  ({failed} restant(s))",
-      "passed_fraction": "{passed}/{total} réussis"
+      "passed_fraction": "{passed}/{total} réussis",
+      "exercise": "Exercice papier-crayon · {minutes} minutes · ni compilé ni noté — répondez sur papier, puis comparez avec la solution détaillée."
     },
     "build": {
       "command_line": "$ {command}\n\n",
@@ -448,7 +459,7 @@
       "show_solution_message": "Cela ouvre la réponse complète à {title}, avec le code et une explication de chaque partie.{nudge}\n\nL'ouvrir ?",
       "show_solution_hint_nudge": "\n\nL'indice (F1) donne la piste sans révéler le code.",
       "guides_help_title": "À propos des guides",
-      "guides_help_message": "Des pages qui s'ouvrent dans votre navigateur plutôt que dans l'application :\n\n  Diagramme        la spécification du problème, dessinée. Seuls\n                   les problèmes dont la spécification EST un\n                   diagramme en ont un\n  Indice           l'idée, les pièges, et les cas auxquels penser\n                   -- sans la réponse\n  Solution détaillée  la réponse complète, une trace de son\n                   exécution, et les fausses pistes à reconnaître\n\nElles se trouvent à côté du fichier du problème et sont repérées\npar leur nom :\n\n  c_sum_array.json\n  c_sum_array.hint.html\n  c_sum_array.solution.html\n\nIl n'y a rien à enregistrer -- déposez les fichiers à côté du\nJSON et ce menu les détecte. Elles partagent problems/guides.css.\n\nUne page de diagramme affiche sa source Mermaid grâce à un script\nrécupéré depuis un CDN. Sans réseau, elle affiche la source à la\nplace, qui est la même spécification en texte -- et ce texte se\ntrouve aussi dans l'énoncé du problème, donc l'application n'a\njamais besoin du réseau.\n\n'python -m crucible --guides' liste les problèmes auxquels il\nmanque un indice ou une solution détaillée.",
+      "guides_help_message": "Des pages qui s'ouvrent dans votre navigateur plutôt que dans l'application :\n\n  Diagramme        la spécification du problème, dessinée. Seuls\n                   les problèmes dont la spécification EST un\n                   diagramme en ont un\n  Indice           l'idée, les pièges, et les cas auxquels penser\n                   -- sans la réponse\n  Solution détaillée  la réponse complète, une trace de son\n                   exécution, et les fausses pistes à reconnaître\n\nElles se trouvent à côté du fichier du problème et sont repérées\npar leur nom :\n\n  c_sum_array.json\n  c_sum_array.hint.html\n  c_sum_array.solution.html\n\nIl n'y a rien à enregistrer -- déposez les fichiers à côté du\nJSON et ce menu les détecte. Elles partagent problems/guides.css.\n\nUne page de diagramme affiche sa source Mermaid grâce à un script\nrécupéré depuis un CDN. Sans réseau, elle affiche la source à la\nplace, qui est la même spécification en texte -- et ce texte se\ntrouve aussi dans l'énoncé du problème, donc l'application n'a\njamais besoin du réseau.\n\n'python -m crucible --guides' liste les problèmes auxquels il\nmanque un indice ou une solution détaillée.\n\nUn exercice papier-crayon a une page Question à la place des tests :\nelle contient le minuteur, et la solution détaillée sert à\ncomparer votre réponse.",
       "about_title": "À propos de {app_name}",
       "about_message": "{app_name}\n\nUn environnement de pratique pour langages compilés et interprétés.\nLes cas de test sont toujours affichés en entier ; les solutions de\nréférence ne le sont jamais.\n\nProblèmes : {problems_root}\nProfil :    {username}  ({profile_root})\nPython :    {python_version}",
       "about_no_profile": "(aucun pour l'instant)",

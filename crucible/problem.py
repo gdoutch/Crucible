@@ -38,6 +38,10 @@ from .i18n import t
 
 DIFFICULTIES = ("easy", "medium", "hard", "fiendish")
 DEFAULT_TIMEOUT = 5.0
+#: Language id of a pen-and-paper exercise: no code, no tests, no reference.
+#: See `crucible.languages.exercise_lang`.
+EXERCISE_LANGUAGE = "exercise"
+DEFAULT_TIME_LIMIT_MINUTES = 20
 DEFAULT_GENERATED_CASES = 4
 MAX_GENERATED_CASES = 25
 
@@ -141,6 +145,14 @@ class Problem:
     generated_tests: tuple[TestCase, ...] = ()
     #: Which data set `generated_tests` came from. None means "not generated".
     seed: int | None = None
+    #: Allotted time for a pen-and-paper exercise; None for everything else.
+    time_limit_minutes: int | None = None
+
+    @property
+    def exercise(self) -> bool:
+        """True for a pen-and-paper problem: nothing to build, run, randomise
+        or mark. It is answered on paper and compared with its solution page."""
+        return self.language_id == EXERCISE_LANGUAGE
 
     @property
     def language(self) -> languages.Language:
@@ -351,6 +363,34 @@ def _apply_locale_overlay(data: dict, overlay: dict) -> dict:
     return merged
 
 
+def _load_exercise(data: dict, path: Path, difficulty: str, topics: list) -> Problem:
+    """A pen-and-paper exercise: prose and a time limit, nothing executable.
+
+    `harness`, `tests` and the reference solution are not required, because
+    there is nothing for them to drive. The worked solution lives in the
+    `.solution.html` guide, like any other problem's.
+    """
+    minutes = data.get("time_limit_minutes", DEFAULT_TIME_LIMIT_MINUTES)
+    if (not isinstance(minutes, int) or isinstance(minutes, bool)
+            or not 1 <= minutes <= 480):
+        raise ProblemError(t("problem.error.exercise_time_limit", file=path.name))
+
+    return Problem(
+        id=str(data.get("id") or path.stem),
+        title=str(_require(data, "title", path)),
+        language_id=EXERCISE_LANGUAGE,
+        statement=str(_require(data, "statement", path)),
+        starter_code="",
+        harness="",
+        fixed_tests=(),
+        reference=ReferenceSolution(""),
+        difficulty=difficulty,
+        topics=tuple(str(topic) for topic in topics),
+        source_path=path,
+        time_limit_minutes=minutes,
+    )
+
+
 def load_problem(path: Path) -> Problem:
     """Parse and validate one problem file."""
     try:
@@ -391,6 +431,9 @@ def load_problem(path: Path) -> Problem:
     topics = data.get("topics", [])
     if not isinstance(topics, list):
         raise ProblemError(t("problem.error.topics_not_list", file=path.name))
+
+    if language_id == EXERCISE_LANGUAGE:
+        return _load_exercise(data, path, difficulty, topics)
 
     generator = _load_generator(data, path)
 

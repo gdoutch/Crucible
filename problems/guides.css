@@ -270,3 +270,27 @@ footer a { font-weight: 600; }
     details:not([open]) > *:not(summary) { display: revert; }
     pre { background: #f4f4f4; }
 }
+
+/* ------------------------------------------------- open questions (flow) */
+
+:root { --q-tint: #7a3fc0; --q-wash: #f1e9fb; }
+@media (prefers-color-scheme: dark) {
+    :root { --q-tint: #c3a0f0; --q-wash: #261c36; }
+}
+.question .kind { background: var(--q-wash); color: var(--q-tint); }
+
+.timer {
+    display: flex; align-items: center; gap: 1rem;
+    margin: 1.5rem 0; padding: .9rem 1.1rem;
+    border: 1px solid var(--rule); border-radius: 8px; background: var(--card);
+}
+.timer output {
+    font: 600 1.8rem/1 ui-monospace, Consolas, monospace;
+    min-width: 5ch; color: var(--q-tint);
+}
+.timer button {
+    font: inherit; padding: .35rem .9rem; cursor: pointer;
+    border: 1px solid var(--rule); border-radius: 6px;
+    background: var(--code-bg); color: var(--ink);
+}
+.timer.done output { color: var(--warn-tint); }

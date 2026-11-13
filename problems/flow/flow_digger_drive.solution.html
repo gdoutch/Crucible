@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solution — Digger Drive Control · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · Flow · medium</p>
+  <h1>Digger Drive Control</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">A model answer to compare against. Yours may differ in
+    names and split; check it covers the same data and the same safety
+    behaviour.</p>
+</header>
+
+<h2>Component diagram</h2>
+
+<pre class="mermaid">flowchart LR
+    J["Drive joystick<br/>(on seat armrest)"]
+    SW["Seat position sensors<br/>(2 redundant switches)"]
+    OC["Seat occupancy sensor"]
+    SP["Machine speed sensor"]
+    DC["Drive controller<br/>(direction + gear logic)"]
+    TX["Transmission / drive ECU"]
+    HMI["Operator display"]
+
+    J -- "stick axis, gear request, alive+CRC" --> DC
+    SW -- "seat N/S, moving, valid, alive+CRC" --> DC
+    OC -- "occupied" --> DC
+    SP -- "ground speed, valid" --> DC
+    DC -- "direction F/N/R, gear, alive+CRC" --> TX
+    TX -- "actual gear, actual speed, fault" --> DC
+    DC -- "direction shown, fault code" --> HMI</pre>
+
+<p class="mermaid-note">Not drawn? Rendering needs a script fetched from a
+  CDN. Offline, the table below is the same diagram.</p>
+
+<h2>The same thing as a table</h2>
+
+<table>
+  <tr><th>From</th><th>To</th><th>Data</th></tr>
+  <tr><td>Joystick</td><td>Drive controller</td>
+      <td>Stick position relative to the operator (forward / neutral /
+          back), gear request, alive counter, CRC</td></tr>
+  <tr><td>Seat position sensors</td><td>Drive controller</td>
+      <td>Seat facing (north / south), seat-moving flag, validity,
+          alive counter, CRC</td></tr>
+  <tr><td>Occupancy sensor</td><td>Drive controller</td>
+      <td>Occupied / unoccupied</td></tr>
+  <tr><td>Speed sensor</td><td>Drive controller</td>
+      <td>Ground speed, validity</td></tr>
+  <tr><td>Drive controller</td><td>Transmission ECU</td>
+      <td>Direction (forward / neutral / reverse), permitted gear, alive
+          counter, CRC</td></tr>
+  <tr><td>Transmission ECU</td><td>Drive controller</td>
+      <td>Actual gear, actual speed, fault status</td></tr>
+  <tr><td>Drive controller</td><td>Operator display</td>
+      <td>Direction in effect, fault code</td></tr>
+</table>
+
+<h2>Bus and messages</h2>
+
+<p>All links run over CAN, for example J1939 or CANopen.</p>
+
+<p>Every safety-relevant message carries an <strong>alive counter</strong> and
+  a <strong>CRC</strong>. Each receiver monitors a <strong>timeout</strong>.</p>
+
+<h2>Core logic in the drive controller</h2>
+
+<ol>
+  <li>Read the joystick as "forward relative to the operator".</li>
+  <li>Seat faces north: pass the direction through.
+    Seat faces south: invert it. Forward on the stick then always means the
+    way the operator is looking.</li>
+  <li>Map the gear request to an allowed gear, limited by machine speed.</li>
+</ol>
+
+<div class="note">
+<p>The key insight is that the joystick is fixed to the seat. Its reading is
+  relative to the operator, not to the machine. The seat position is what
+  turns it into a machine-frame direction.</p>
+</div>
+
+<h2>Safety rules to specify</h2>
+
+<table>
+  <tr><th>Condition</th><th>Command</th></tr>
+  <tr><td>Seat moving, position unknown, or the two switches disagree</td>
+      <td>Neutral</td></tr>
+  <tr><td>Seat unoccupied</td><td>Neutral</td></tr>
+  <tr><td>After any seat rotation</td>
+      <td>Neutral until the joystick returns to neutral, then re-engage</td></tr>
+  <tr><td>Direction reversal</td>
+      <td>Only below a speed threshold, and via neutral</td></tr>
+  <tr><td>Lost, stale or corrupt message</td>
+      <td>Neutral, and raise a fault</td></tr>
+</table>
+
+<div class="trap">
+<p>The "joystick must return to neutral after rotation" rule is the one most
+  often missed. Without it, a stick held forward while the seat turns
+  becomes a stick held in reverse, and the machine lurches the wrong way.</p>
+</div>
+
+<h2>Why this split</h2>
+
+<p>The sensors report raw state only. All interpretation sits in one
+  controller.</p>
+
+<p>The safety logic is then in a single place. It can be analysed, unit tested
+  and traced to the hazard analysis.</p>
+
+<h2>Point to raise</h2>
+
+<p>Is the inversion allowed in software alone? Or does the risk assessment
+  demand an independent hardware interlock on seat position?</p>
+
+<p>That decision drives the required safety integrity level, for example the
+  Performance Level under ISO 13849, or the ISO 25119 level for this type of
+  machine.</p>
+
+<h2>Self-marking checklist</h2>
+
+<ul>
+  <li>Joystick, seat sensor and controller all drawn, with a link between
+    each?</li>
+  <li>Joystick data labelled as relative to the operator?</li>
+  <li>Seat sensor data includes a moving or validity signal, not just
+    north / south?</li>
+  <li>Controller output carries direction and gear?</li>
+  <li>Fail-safe behaviour stated (neutral on any doubt)?</li>
+  <li>Neutral-before-re-engage after rotation mentioned?</li>
+</ul>
+
+<footer>
+  <p><a href="flow_digger_drive.question.html">← Question</a></p>
+</footer>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  if (window.mermaid) {
+    var dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    mermaid.initialize({ startOnLoad: true, theme: dark ? "dark" : "default" });
+  }
+</script>
+</body>
+</html>

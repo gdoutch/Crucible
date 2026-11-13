@@ -887,17 +887,23 @@ class TestShippedProblems(unittest.TestCase):
 
     def test_every_problem_has_a_hidden_reference(self):
         for problem in self.library.problems:
+            if problem.exercise:
+                continue
             with self.subTest(problem=problem.id):
                 self.assertTrue(problem.reference.source.strip())
 
     def test_every_problem_shows_its_tests(self):
         for problem in self.library.problems:
+            if problem.exercise:
+                continue
             with self.subTest(problem=problem.id):
                 self.assertGreater(len(problem.visible_tests), 0,
                                    "test cases are meant to be visible")
 
     def test_reference_solutions_pass_their_own_suites(self):
         for problem in self.library.problems:
+            if problem.exercise:
+                continue
             with self.subTest(problem=problem.id):
                 # Skip inside the subTest so one uninstalled toolchain does not
                 # silently skip the problems that *can* be verified.
@@ -910,6 +916,70 @@ class TestShippedProblems(unittest.TestCase):
                     + "\n".join(f"  {o.test.name}: expected "
                                 f"{o.test.expected_stdout!r} got {o.actual!r}"
                                 for o in result.failures()))
+
+
+# ---------------------------------------------------------------------------
+# pen-and-paper exercises
+# ---------------------------------------------------------------------------
+
+class TestExercises(unittest.TestCase):
+    """An exercise is answered on paper: prose and a time limit, with no
+    harness, tests or reference. It must load without them, never be run, and
+    be held to a Question page and a worked solution instead of a hint."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self._tmp.name)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def write(self, **fields) -> Path:
+        data = {"id": "paper", "title": "Paper", "language": "exercise",
+                "statement": "Draw it."}
+        data.update(fields)
+        path = self.dir / "paper.json"
+        path.write_text(json.dumps(data), encoding="utf-8")
+        return path
+
+    def test_loads_without_harness_tests_or_reference(self):
+        problem = load_problem(self.write())
+        self.assertTrue(problem.exercise)
+        self.assertEqual(problem.tests, ())
+        self.assertEqual(problem.time_limit_minutes, 20)
+
+    def test_time_limit_is_read(self):
+        self.assertEqual(
+            load_problem(self.write(time_limit_minutes=45)).time_limit_minutes, 45)
+
+    def test_bad_time_limit_is_rejected(self):
+        for bad in (0, 481, "20", True, 1.5):
+            with self.subTest(value=bad):
+                with self.assertRaises(ProblemError):
+                    load_problem(self.write(time_limit_minutes=bad))
+
+    def test_ordinary_problem_is_not_an_exercise(self):
+        self.assertFalse(load_problem(write_problem(self.dir)).exercise)
+
+    def test_guides_required_are_question_and_solution(self):
+        problem = load_problem(self.write())
+        self.assertEqual(guides.missing(problem),
+                         [guides.QUESTION, guides.SOLUTION])
+        (self.dir / "paper.question.html").write_text("q", encoding="utf-8")
+        (self.dir / "paper.solution.html").write_text("s", encoding="utf-8")
+        self.assertEqual(guides.missing(problem), [])
+
+    def test_cannot_be_built(self):
+        result = languages.get("exercise").build(self.dir, "", "")
+        self.assertFalse(result.ok)
+
+    def test_shipped_exercise_has_its_pages(self):
+        library = load_library(PROBLEMS_ROOT)
+        shipped = [p for p in library.problems if p.exercise]
+        self.assertGreater(len(shipped), 0)
+        for problem in shipped:
+            with self.subTest(problem=problem.id):
+                self.assertEqual(guides.missing(problem), [])
 
 
 # ---------------------------------------------------------------------------
@@ -1057,6 +1127,8 @@ class TestShippedGuides(unittest.TestCase):
 
     def test_a_worked_solution_shows_code_and_a_hint_does_not_show_the_answer(self):
         for problem, kind, page in self.each_page():
+            if problem.exercise:
+                continue  # answered on paper: no code, no reference to leak
             with self.subTest(problem=problem.id, kind=kind):
                 if kind == guides.SOLUTION:
                     self.assertIn("<pre><code>", page)
@@ -1072,9 +1144,10 @@ class TestShippedGuides(unittest.TestCase):
 
     def test_the_hint_and_the_solution_link_to_each_other(self):
         for problem, kind, page in self.each_page():
-            if kind not in guides.REQUIRED:
+            pair = guides.REQUIRED_EXERCISE if problem.exercise else guides.REQUIRED
+            if kind not in pair:
                 continue
-            other = guides.SOLUTION if kind == guides.HINT else guides.HINT
+            other = pair[1] if kind == pair[0] else pair[0]
             target = guides.guide_path(problem, other)
             with self.subTest(problem=problem.id, kind=kind):
                 self.assertIn(f'href="{target.name}"', page)

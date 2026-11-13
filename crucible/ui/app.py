@@ -269,7 +269,11 @@ class CrucibleApp(tk.Tk):
         self.guides_menu = tk.Menu(menubar, tearoff=0, **opts)
         #: Menu order, and the order `_refresh_guides_menu` walks to set each
         #: entry's state -- one list so the two cannot drift apart.
-        self._guide_order = (guides.DIAGRAM, guides.HINT, guides.SOLUTION)
+        self._guide_order = (guides.QUESTION, guides.DIAGRAM, guides.HINT,
+                             guides.SOLUTION)
+        self.guides_menu.add_command(
+            label=t("app.menu.guides.question"),
+            command=lambda: self._open_guide(guides.QUESTION))
         self.guides_menu.add_command(
             label=t("app.menu.guides.diagram"),
             command=lambda: self._open_guide(guides.DIAGRAM))
@@ -705,9 +709,11 @@ class CrucibleApp(tk.Tk):
         if self._profile is None:
             self.profile_label.configure(text="")
             return
-        solved = sum(1 for p in self._library.problems
+        # Exercises are self-marked, so they can never count as solved.
+        gradable = [p for p in self._library.problems if not p.exercise]
+        solved = sum(1 for p in gradable
                     if self._progress.get(p.id, {}).get("solved"))
-        total = len(self._library.problems)
+        total = len(gradable)
         note = (t("app.statusbar.solved_note", solved=solved, total=total) if total
                 else t("app.statusbar.no_problems_loaded"))
         self.profile_label.configure(
@@ -974,6 +980,12 @@ class CrucibleApp(tk.Tk):
         self._outcome_rows.clear()
         self._pending_tests.clear()
 
+        if problem.exercise:
+            self.test_tree.insert("", "end", iid="exercise",
+                                  values=("", t("app.results.exercise_row"), ""))
+            self._clear_detail()
+            return
+
         for index, test in enumerate(problem.tests):
             row = f"test{index}"
             self._pending_tests[row] = test
@@ -1053,6 +1065,10 @@ class CrucibleApp(tk.Tk):
 
     def _refresh_go_button(self) -> None:
         problem = self._problem
+        if problem is not None and problem.exercise:
+            self.new_data_button.configure(state="disabled")
+            self.go_button.configure(text=t("app.toolbar.go_button"), state="disabled")
+            return
         self.new_data_button.configure(
             state="normal" if problem is not None and problem.randomised
                               and not self._running else "disabled")
@@ -1298,7 +1314,7 @@ class CrucibleApp(tk.Tk):
         priority-0 entry jumps whatever the sweep has left to do, rather than
         leaving the banner on "checking..." while unrelated problems compile.
         """
-        if (problem.id, with_data) in self._requested:
+        if problem.exercise or (problem.id, with_data) in self._requested:
             return
         self._requested.add((problem.id, with_data))
 
@@ -1327,6 +1343,13 @@ class CrucibleApp(tk.Tk):
         self.banner_button.grid_remove()
         if problem is None:
             self.banner.configure(text="", background=self.palette.panel_bg)
+            return
+
+        if problem.exercise:
+            self.banner.configure(
+                text=t("app.banner.exercise", minutes=problem.time_limit_minutes),
+                background=self.palette.panel_bg,
+                foreground=self.palette.text_muted)
             return
 
         result = self._verification.get(problem.id, "missing")
@@ -1407,10 +1430,11 @@ class CrucibleApp(tk.Tk):
         self._override_gate.clear()
         self._requested.clear()
         self._verification.clear()
-        for problem in self._library.problems:
+        runnable = [p for p in self._library.problems if not p.exercise]
+        for problem in runnable:
             self._request_preparation(problem, priority=1, with_data=True)
         self.result_label.configure(
-            text=t("app.statusbar.verifying_problems", count=len(self._library.problems)))
+            text=t("app.statusbar.verifying_problems", count=len(runnable)))
 
     # ------------------------------------------------------------------
     # build output

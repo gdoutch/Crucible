@@ -1,0 +1,14 @@
+{
+  "id": "flow_xml_streaming",
+  "title": "2 MB XML on a 1 MB Microcontroller",
+  "language": "exercise",
+  "difficulty": "medium",
+  "topics": [
+    "embedded",
+    "streaming",
+    "parsing",
+    "memory"
+  ],
+  "time_limit_minutes": 10,
+  "statement": "Explain how a small device reads a file larger than its memory, and draw the data flow.\n\nThis is a **pen-and-paper exercise**. Nothing is compiled, run, randomised or marked.\n\n## The scenario\n\nA microcontroller has **1 MB of RAM**.\n\nIt must read an **XML file that is 2 MB**.\n\n## Your task\n\n- Say how the device reads the file.\n- Draw the **data flow** from the file to the application.\n- Label each link with what is passed.\n\n## How to use it\n\n- Open **Guides > Question for this exercise**. It has a 10 minute timer.\n- Answer on paper.\n- When the timer ends, open **Guides > Worked solution** and compare.\n\n## If time remains\n\n- Where can the file live, and how does it reach the device?\n- Which libraries would you consider?\n- What can go wrong with a streaming design?\n- When is streaming not enough?"
+}

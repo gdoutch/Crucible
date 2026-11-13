@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solution — 2 MB XML on a 1 MB Microcontroller · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide solution">
+
+<header>
+  <p class="crumb">Crucible · Flow · medium</p>
+  <h1>2 MB XML on a 1 MB Microcontroller</h1>
+  <p class="kind">Worked solution</p>
+  <p class="lede">A model answer to compare against. Check that yours reaches
+    the same conclusion and covers the same failure points.</p>
+</header>
+
+<h2>Answer</h2>
+
+<p><strong>Stream it. Never load the whole file.</strong></p>
+
+<h2>Data flow diagram</h2>
+
+<pre class="mermaid">flowchart LR
+    SRC["File source<br/>SD card, external flash, UART<br/>(2 MB XML)"]
+    BUF["Read buffer<br/>(static, 512 B to 4 KB)"]
+    PAR["Streaming parser<br/>(yxml, expat, state machine)"]
+    HND["Event handler"]
+    STK["Parse state<br/>(depth counter or tag stack)"]
+    APP["Application<br/>(settings, records, log)"]
+    ERR["Fault<br/>(reject the file)"]
+
+    SRC -- "chunk of bytes" --> BUF
+    BUF -- "bytes" --> PAR
+    PAR -- "need more input" --> SRC
+    PAR -- "events: start tag, attribute, text, end tag" --> HND
+    HND -- "update path" --> STK
+    STK -- "current element path" --> HND
+    HND -- "extracted values only" --> APP
+    PAR -- "token too long, too deep, bad encoding" --> ERR</pre>
+
+<p class="mermaid-note">Not drawn? Rendering needs a script fetched from a
+  CDN. Offline, the table below is the same diagram.</p>
+
+<h2>The same thing as a table</h2>
+
+<table>
+  <tr><th>From</th><th>To</th><th>Data</th></tr>
+  <tr><td>File source</td><td>Read buffer</td>
+      <td>One chunk of bytes, 512 B to 4 KB</td></tr>
+  <tr><td>Read buffer</td><td>Streaming parser</td>
+      <td>The bytes of the chunk</td></tr>
+  <tr><td>Streaming parser</td><td>File source</td>
+      <td>Request for the next chunk, once this one is consumed</td></tr>
+  <tr><td>Streaming parser</td><td>Event handler</td>
+      <td>Events: start tag, attribute, text, end tag</td></tr>
+  <tr><td>Event handler</td><td>Parse state</td>
+      <td>Push or pop of the current element</td></tr>
+  <tr><td>Parse state</td><td>Event handler</td>
+      <td>Current element path</td></tr>
+  <tr><td>Event handler</td><td>Application</td>
+      <td>Extracted values only. Everything else is dropped.</td></tr>
+  <tr><td>Streaming parser</td><td>Fault</td>
+      <td>Token too long, nesting too deep, bad encoding</td></tr>
+</table>
+
+<h2>Approach</h2>
+
+<ol>
+  <li><strong>Use a streaming (SAX-style) parser.</strong> Feed the file in
+    small chunks. The parser emits events and discards each chunk once
+    consumed.</li>
+  <li><strong>Process each event immediately.</strong> Extract the values you
+    need, act on them, and drop the rest. Never build a DOM tree.</li>
+  <li><strong>Keep state small.</strong> Track only the current element path.
+    Memory use depends on nesting depth and the longest token, not on file
+    size.</li>
+</ol>
+
+<div class="note">
+<p>The file is 2 MB, but the working set is a few kilobytes. Memory use is
+  set by the buffer, the tag stack and the longest token. None of those grow
+  with the file.</p>
+</div>
+
+<h2>Source options</h2>
+
+<ul>
+  <li>External flash or SD card, read through a filesystem such as FatFs or
+    LittleFS.</li>
+  <li>Network or UART, consumed as a byte stream.</li>
+  <li>Internal flash, memory-mapped and read directly.</li>
+</ul>
+
+<h2>Library candidates</h2>
+
+<table>
+  <tr><th>Library</th><th>Notes</th></tr>
+  <tr><td>expat</td><td>The classic SAX parser. Modest footprint.</td></tr>
+  <tr><td>yxml</td><td>Very small. No dynamic allocation. Suits bare
+      metal.</td></tr>
+  <tr><td>mxml (SAX mode)</td><td>Usable as a streaming parser.</td></tr>
+  <tr><td>Hand-rolled state machine</td>
+      <td>Best for a fixed, known schema.</td></tr>
+</table>
+
+<h2>Failure points</h2>
+
+<table>
+  <tr><th>Risk</th><th>Mitigation</th></tr>
+  <tr><td>Long tokens: one text node or attribute larger than the buffer</td>
+      <td>Set a maximum token length. Reject or truncate anything over
+          it.</td></tr>
+  <tr><td>Deep nesting overflows the tag stack</td>
+      <td>Cap the depth.</td></tr>
+  <tr><td>Entities and encodings</td>
+      <td>Handle <code>&amp;amp;</code>, character references and UTF-8
+          explicitly.</td></tr>
+  <tr><td>Dynamic allocation</td>
+      <td>Avoid <code>malloc</code>. Use static buffers to prevent
+          fragmentation, which matters under FreeRTOS.</td></tr>
+  <tr><td>Random access</td>
+      <td>Streaming is forward-only. Re-read the file, or store the
+          extracted values.</td></tr>
+</table>
+
+<div class="trap">
+<p>The most common wrong answer is "compress it" or "add external RAM".
+  Both avoid the question. The point is that the file never needs to be in
+  memory in full.</p>
+</div>
+
+<h2>When streaming is not enough</h2>
+
+<p>If the task needs the whole structure in memory, such as XPath queries or
+  tree manipulation, a 1 MB device cannot do it.</p>
+
+<p>Preprocess the XML off-device into a compact binary format, such as CBOR
+  or a packed struct table, and ship that instead.</p>
+
+<pre class="mermaid">flowchart LR
+    X["2 MB XML"] -- "parse on a PC or server" --> C["Converter<br/>(off-device)"]
+    C -- "compact binary<br/>(CBOR, packed structs)" --> D["Device<br/>(reads records directly)"]</pre>
+
+<h2>Self-marking checklist</h2>
+
+<ul>
+  <li>Said "stream it", and not "load it"?</li>
+  <li>Drew a read buffer between the source and the parser?</li>
+  <li>Showed the parser emitting events, not a tree?</li>
+  <li>Showed only extracted values reaching the application?</li>
+  <li>Noted that memory depends on depth and token size, not file size?</li>
+  <li>Named at least three failure points?</li>
+  <li>Offered the off-device conversion for whole-structure work?</li>
+</ul>
+
+<footer>
+  <p><a href="flow_xml_streaming.question.html">← Question</a></p>
+</footer>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  if (window.mermaid) {
+    var dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    mermaid.initialize({ startOnLoad: true, theme: dark ? "dark" : "default" });
+  }
+</script>
+</body>
+</html>

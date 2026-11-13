@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Question — 2 MB XML on a 1 MB Microcontroller · Crucible</title>
+<link rel="stylesheet" href="../guides.css">
+</head>
+<body>
+<main class="guide question">
+
+<header>
+  <p class="crumb">Crucible · Flow · medium</p>
+  <h1>2 MB XML on a 1 MB Microcontroller</h1>
+  <p class="kind">Question</p>
+  <p class="lede">Pen and paper. Nothing is compiled, randomised or marked
+    for you. Set the timer, answer, then compare with the solution sheet.</p>
+</header>
+
+<div class="timer" id="timer">
+  <output id="clock">10:00</output>
+  <button type="button" id="go">Start</button>
+  <button type="button" id="reset">Reset</button>
+  <span>Allotted: <strong>10 minutes</strong></span>
+</div>
+
+<h2>The scenario</h2>
+
+<p>A microcontroller has <strong>1 MB of RAM</strong>.</p>
+
+<p>It must read an <strong>XML file that is 2 MB</strong>.</p>
+
+<h2>Your task</h2>
+
+<ol>
+  <li>Say <strong>how</strong> the device reads the file.</li>
+  <li>Draw the <strong>data flow</strong> from the file to the
+    application.</li>
+  <li>Label each link with what is <strong>passed</strong>.</li>
+</ol>
+
+<h2>Stretch prompts</h2>
+
+<p>Only if time remains.</p>
+
+<ul>
+  <li>Where can the file live, and how does it reach the device?</li>
+  <li>Which libraries would you consider?</li>
+  <li>What can go wrong with a streaming design?</li>
+  <li>When is streaming not enough?</li>
+</ul>
+
+<footer>
+  <p><a href="flow_xml_streaming.solution.html">Solution sheet →</a>
+    (no peeking until the timer ends)</p>
+</footer>
+
+</main>
+
+<script>
+(function () {
+  var TOTAL = 10 * 60, left = TOTAL, tick = null;
+  var clock = document.getElementById("clock");
+  var box = document.getElementById("timer");
+  var go = document.getElementById("go");
+  function show() {
+    var m = Math.floor(left / 60), s = left % 60;
+    clock.textContent = (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
+  }
+  function stop() { clearInterval(tick); tick = null; go.textContent = "Start"; }
+  go.onclick = function () {
+    if (tick) { stop(); return; }
+    if (left === 0) { left = TOTAL; box.className = "timer"; }
+    go.textContent = "Pause";
+    tick = setInterval(function () {
+      left--; show();
+      if (left <= 0) { left = 0; show(); stop(); box.className = "timer done"; }
+    }, 1000);
+  };
+  document.getElementById("reset").onclick = function () {
+    stop(); left = TOTAL; box.className = "timer"; show();
+  };
+  show();
+})();
+</script>
+</body>
+</html>
